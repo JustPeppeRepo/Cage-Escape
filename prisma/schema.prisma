@@ -20,12 +20,15 @@ model User {
   username  String   @unique
   email     String   @unique
   hashedPassword  String
-  phone String
+  phone     String
 
   img String? @default("https://cageroom.avatar")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  bookings Booking[]
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  bookings  Booking[]
+
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
 }
 
 enum BookingStatus {
@@ -53,12 +56,12 @@ model Booking {
   id            String        @id @default(cuid())
   user          User          @relation(fields: [userId], references: [id])
   userId        String
-  startTime     DateTime
-  endTime       DateTime
+  startTime     DateTime      @db.Timestamptz
+  endTime       DateTime      @db.Timestamptz
   totalAmount   Decimal
   status        BookingStatus @default(PENDING)
   payments      Payment[]
-  createdAt     DateTime      @default(now())
+  createdAt     DateTime      @default(now()) @db.Timestamptz
   @@index([startTime, endTime])
 }
 
@@ -70,5 +73,5 @@ model Payment {
   amount          Decimal
   type            PaymentType
   status          PaymentStatus @default(PENDING)
-  paidAt          DateTime?
+  paidAt          DateTime?  @db.Timestamptz
 }

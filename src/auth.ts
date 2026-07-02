@@ -25,8 +25,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = await prisma.user.findUnique({ where: { email } })
         if (!user || !user.hashedPassword) return null
 
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          throw new Error("ACCOUNT_LOCKED");
+        }
+
         const passwordsMatch = await bcrypt.compare(password, user.hashedPassword)
-        if (!passwordsMatch) return null
+        if (!passwordsMatch){
+          const attempts = user.failedLoginAttempts + 1
+          const MAX_ATTEMPTS = 5
+      
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: attempts,
+              lockedUntil:
+                attempts >= MAX_ATTEMPTS
+                  ? new Date(Date.now() + 15 * 60 * 1000)
+                  : null,
+            },
+          })
+        } 
 
         return {
           id: user.id,
