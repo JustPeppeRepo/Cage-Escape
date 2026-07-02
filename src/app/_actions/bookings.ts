@@ -1,8 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { Prisma } from "@/generated/prisma/client";
 import { BookingStatus } from "@/generated/prisma/client";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/app/_lib/prisma";
 import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
@@ -135,7 +136,7 @@ export async function holdSlot(
     };
   }
 
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
     return {
       success: false,
@@ -288,7 +289,7 @@ export async function createStripeCheckoutSession(
     };
   }
 
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
     return {
       success: false,
@@ -363,7 +364,14 @@ export async function createStripeCheckoutSession(
       };
     }
 
-    const expiresAt = Math.floor(booking.holdExpiresAt.getTime() / 1000);
+    // Stripe rifiuta qualsiasi expires_at inferiore a 30 minuti da adesso:
+    // per questo la scadenza tecnica della sessione Stripe e VOLUTAMENTE
+    // disaccoppiata dall'hold interno di 10 minuti (booking.holdExpiresAt),
+    // che resta l'unica fonte di verita per la regola di business "tempo per
+    // pagare". Il webhook gestisce esplicitamente il caso in cui il pagamento
+    // arrivi dopo la scadenza dell'hold interno (vedi handleCheckoutCompleted).
+    const STRIPE_MIN_EXPIRATION_SECONDS = 30 * 60;
+    const expiresAt = Math.floor(Date.now() / 1000) + STRIPE_MIN_EXPIRATION_SECONDS;
 
     let checkoutSession;
     try {
@@ -388,6 +396,7 @@ export async function createStripeCheckoutSession(
         ],
         metadata: {
           bookingId: booking.id,
+          roomId: booking.roomId,
           userId: session.user.id,
           paymentChoice: booking.paymentChoice,
         },

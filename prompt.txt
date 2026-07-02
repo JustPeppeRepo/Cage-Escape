@@ -1,0 +1,53 @@
+Agisci come un pluripremiato Creative Director, UI/UX Designer ed esperto SEO d'avanguardia. Dobbiamo progettare l'intero comparto visuale e pubblico del nostro sito di ESCAPE ROOM HORROR. 
+
+L'obiettivo è creare un'esperienza straordinaria, moderna e profondamente inquietante, ma bilanciata da una UX impeccabile che converta i visitatori curiosi in clienti paganti. I pulsanti di conversione (CTA) devono essere chiarissimi e magnetici.
+
+### 🎨 REQUISITI DI DESIGN & EFFETTI HORROR (Framer Motion + Tailwind)
+- **Atmosfera visiva**: Sfondo Absolute Black o Antracite profondo, contrasti con rosso sangue vibrante (#990000) o verde ectoplasma fosforescente per gli elementi attivi. Caratteri tipografici graffianti o gotici moderni per i titoli, ma ultra-leggibili per i testi.
+- **Micro-Interazioni Disturbanti**: 
+  - Testi che sfarfallano ("flicker effect") come luci di un manicomio abbandonato.
+  - Al passaggio del mouse su determinati elementi, alcune parole devono trasformarsi temporaneamente in simboli arcani o glitchati.
+- **Jump Scare Controllati (UX-Safe)**: Crea un componente riutilizzabile `JumpScare.tsx` gestito tramite SessionStorage (per non perseguitare l'utente a ogni click). Ad esempio, al terzo scroll della Home o quando si indugia troppo su una stanza, un'ombra o un volto distorto appare in dissolvenza rapida per 400ms con una leggera vibrazione dello schermo (effetto CSS shake), seguito da un sussurro sonoro (opzionale se l'audio è attivo).
+
+---
+
+### 🖥️ ARCHITETTURA DELLE PAGINE DA CREARE
+
+Crea o completa le seguenti rotte nell'App Router (utilizzando file `.tsx` puliti, strutturati e tipizzati in TypeScript):
+
+#### 1. 🏠 LA HOME PAGE (`src/app/page.tsx`)
+- **Hero Section**: Un'apertura cinematografica spaventosa. Un titolo d'impatto ("Riuscirai a uscirne vivo?"), nebbia animata (CSS/SVG) sullo sfondo e una CTA gigante, pulsante e insanguinata che punta alla scelta delle stanze.
+- **Sezione Selezione Stanze**: Card animate con effetto hover tridimensionale. Mostra un'anteprima delle stanze disponibili (recuperate dinamicamente da Prisma), il livello di terrore (es. da 1 a 5 icone a forma di teschio) e il pulsante immediato "Prenota Slot".
+- **Sezione Recensioni (Le Testimonianze dei Sopravvissuti)**: Slider interattivo che mostra i commenti dei clienti reali accompagnati dalle foto di gruppo fatte a fine gioco (con una cornice stile polaroid invecchiata o sporca di sangue).
+- **FAQ Interattive**: Accordion in stile horror (l'apertura deve sembrare uno squarcio o avere un'animazione fluida) che risponde ai dubbi classici (es. "Cosa succede se ho troppa paura e voglio uscire?").
+- **Footer**: Oscuro, con link legali, icone social e un piccolo testo nascosto o un dettaglio inquietante che appare solo se si rimane fermi a fondo pagina.
+
+#### 2. 👥 ABOUT US - LA STORIA (`src/app/about/page.tsx`)
+- Una pagina narrativa che racconta la lore oscura dell'escape room (es. un vecchio orfanotrofio o i diari di uno scienziato pazzo). Usa uno scroll-driven layout dove il testo emerge dall'oscurità man mano che l'utente scende nella pagina.
+
+#### 3. 📞 CONTATTI & DOVE MORIRE (`src/app/contatti/page.tsx`)
+- Form di contatto dal design minimale e spettrale.
+- Mappa interattiva (o placeholder stilizzato dark) con indicazioni stradali inquietanti. Sotto i contatti standard, inserisci una frase ironica sul "recupero dei corpi".
+
+#### 4. 🔐 LOGIN / SIGN UP (`src/app/login/page.tsx` e `/signup/page.tsx`)
+- Pagine di autenticazione pulite ma coerenti con il tema. Il form deve integrarsi perfettamente con la logica di NextAuth v5 esistente senza romperla. Inserisci un micro-effetto di distorsione dello schermo se l'utente sbaglia la password.
+
+#### 5. 🔮 PAGINA CREATIVA BONUS: "IL RITO DELLA MALEDIZIONE" (`src/app/maledizione/page.tsx`)
+- Una pagina interattiva stile mini-gioco (Easter Egg). L'utente deve risolvere un enigma testuale o cliccare su 3 oggetti nascosti nella pagina avvolta dall'oscurità (utilizzando una torcia virtuale guidata dal puntatore del mouse). Se l'utente risolve l'enigma, sblocca un codice sconto del 5% generato al volo da mostrare nel checkout, aumentando drasticamente il tasso di conversione!
+
+---### 🔗 REGOLE DI INTEGRAZIONE, SEO & BLINDATURA SITO
+Per connettere perfettamente il frontend con il backend della Fase 1 senza introdurre bug:
+
+1. **Separazione Netta per la SEO (Server vs Client)**: Le pagine principali (`page.tsx`) devono rimanere Server Components per esportare i metadati SEO e i dati strutturati JSON-LD. Isola tutte le animazioni pesanti di Framer Motion, i form di Zod e i bottoni interattivi in componenti figli contrassegnati con 'use client' (es. `components/horror/HeroClient.tsx`), importandoli poi nelle pagine server.
+2. **Sincronizzazione Reale del Timer**: Il countdown dei 10 minuti nel checkout non deve essere un timer fittizio. Deve calcolare il tempo rimanente confrontando l'ora attuale del client con il timestamp di scadenza dello slot temporaneo restituito dalla Server Action di prenotazione. Se l'utente ricarica la pagina, il timer deve ripartire dal secondo esatto corretto, non da capo.
+3. **Sicurezza dei Dati & XSS**: Nella sezione recensioni/commenti, assicurati che qualsiasi testo inserito dagli utenti venga renderizzato in modo sicuro. Non usare mai `dangerouslySetInnerHTML` senza aver prima igienizzato l'input per prevenire attacchi di Cross-Site Scripting (XSS).
+4. **Condivisione Rigorosa dei Tipi**: Tutti i form di prenotazione e checkout devono utilizzare gli stessi identici tipi inferiti dagli schemi Zod usati nelle Server Actions e i modelli generati da Prisma. Zero approssimazioni.
+5. **Strict Debug Mode**: Inserisci dei log puliti ed esaustivi (utilizzando `console.error` strutturati) sia nelle Server Actions che nei componenti client, così in caso di fallimento di una prenotazione o di un pagamento Stripe sapremo esattamente in quale riga di codice si è interrotto il flusso.
+
+### 📈 STRATEGIA SEO & PERFORMANCE CELESTIALE
+Ogni pagina deve essere un capolavoro di ottimizzazione:
+- **Metadati Dinamici**: Ogni pagina deve esportare un oggetto `metadata` con Title accattivanti e Description ottimizzate per la SEO locale (es. "La migliore Escape Room Horror a [Tua Città] - Prenota la Stanza").
+- **JSON-LD Structured Data**: Inserisci nella Home i metadati strutturati (Schema.org) per `LocalBusiness` ed `Event` per far capire a Google gli orari, la posizione e i prezzi delle stanze, migliorando il posizionamento nei risultati di ricerca.
+- **Ottimizzazione Immagini**: Usa tassativamente `next/image` con blur placeholder per garantire tempi di caricamento fulminei e un punteggio Core Web Vitals perfetto.
+
+Procedi un file alla volta. Inizia creando la struttura della Home Page (`src/app/page.tsx`) e il componente del Jump Scare controllato. Mostrami il codice completo senza abbreviazioni.

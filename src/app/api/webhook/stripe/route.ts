@@ -4,11 +4,13 @@ import {
   BookingStatus,
   PaymentStatus,
   PaymentType,
+  Prisma,
 } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
 import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
 import { decimalToNumber } from "@/app/_lib/bookings/money";
+import { isSlotAvailable } from "@/app/_lib/bookings/slots";
 
 export const runtime = "nodejs";
 
@@ -62,88 +64,134 @@ async function handleCheckoutCompleted(
     throw new Error("Missing payment_intent on checkout session");
   }
 
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: { room: true, payments: true },
-  });
-
-  if (!booking) {
-    console.error("[stripe webhook] Booking not found", bookingId);
-    throw new Error("Booking not found");
-  }
-
-  if (
-    booking.status === BookingStatus.PAID ||
-    booking.status === BookingStatus.DEPOSIT_PAID
-  ) {
-    return;
-  }
-
-  const existingPayment = booking.payments.find(
-    (payment) => payment.stripePaymentId === paymentIntentId,
-  );
-  if (existingPayment) {
-    return;
-  }
-
-  const expectedAmount = getExpectedAmount(
-    paymentChoice,
-    booking.room.prezzoTotale,
-    booking.room.prezzoCaparra,
-  );
-  const paidAmount = (checkoutSession.amount_total ?? 0) / 100;
-
-  if (Math.abs(paidAmount - expectedAmount) > 0.01) {
-    console.warn(
-      "[stripe webhook] Amount mismatch",
-      JSON.stringify({
-        bookingId,
-        expectedAmount,
-        paidAmount,
-        paymentChoice,
-      }),
-    );
-  }
-
   const nextStatus =
     paymentChoice === PaymentType.FULL
       ? BookingStatus.PAID
       : BookingStatus.DEPOSIT_PAID;
 
-  await prisma.$transaction(async (tx) => {
-    const current = await tx.booking.findUnique({
-      where: { id: bookingId },
-      select: { status: true },
-    });
+  await prisma.$transaction(
+    async (tx) => {
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        include: { room: true, payments: true },
+      });
 
-    if (
-      !current ||
-      current.status === BookingStatus.PAID ||
-      current.status === BookingStatus.DEPOSIT_PAID
-    ) {
-      return;
-    }
+      if (!booking) {
+        console.error("[stripe webhook] Booking not found", bookingId);
+        throw new Error("Booking not found");
+      }
 
-    await tx.booking.update({
-      where: { id: bookingId },
-      data: {
-        status: nextStatus,
-        holdExpiresAt: null,
-        stripeSessionId: checkoutSession.id,
-      },
-    });
+      // Idempotenza: evento gia elaborato in una consegna precedente.
+      if (
+        booking.status === BookingStatus.PAID ||
+        booking.status === BookingStatus.DEPOSIT_PAID ||
+        booking.status === BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED
+      ) {
+        return;
+      }
 
-    await tx.payment.create({
-      data: {
-        bookingId,
-        stripePaymentId: paymentIntentId,
-        amount: expectedAmount,
-        type: paymentChoice,
-        status: PaymentStatus.SUCCEEDED,
-        paidAt: new Date(),
-      },
-    });
-  });
+      const existingPayment = booking.payments.find(
+        (payment) => payment.stripePaymentId === paymentIntentId,
+      );
+      if (existingPayment) {
+        return;
+      }
+
+      const expectedAmount = getExpectedAmount(
+        paymentChoice,
+        booking.room.prezzoTotale,
+        booking.room.prezzoCaparra,
+      );
+      const paidAmount = (checkoutSession.amount_total ?? 0) / 100;
+
+      if (Math.abs(paidAmount - expectedAmount) > 0.01) {
+        console.warn(
+          "[stripe webhook] Amount mismatch",
+          JSON.stringify({ bookingId, expectedAmount, paidAmount, paymentChoice }),
+        );
+      }
+
+      // Il fix del checkout impone expires_at Stripe a 30 minuti (minimo
+      // consentito dall'API), mentre l'hold interno dura solo 10 minuti.
+      // holdExpiresAt e sempre salvato in UTC da Prisma: getTime() confronta
+      // correttamente indipendentemente dal fuso orario dell'app (Europe/Rome).
+      const isHoldExpired =
+        !booking.holdExpiresAt || booking.holdExpiresAt.getTime() < Date.now();
+
+      if (isHoldExpired) {
+        const stillFree = await isSlotAvailable(
+          booking.roomId,
+          booking.startTime,
+          booking.endTime,
+          tx,
+        );
+
+        if (!stillFree) {
+          // Un'altra prenotazione ha gia occupato lo slot mentre l'hold di
+          // questo booking era scaduto: il pagamento e stato incassato da
+          // Stripe ma la stanza non e piu disponibile. Non tocchiamo la
+          // prenotazione vincente: segnaliamo questa come da rimborsare.
+          console.error(
+            "[stripe webhook] PAYMENT CONFLICT - rimborso manuale richiesto:",
+            JSON.stringify({
+              bookingId: booking.id,
+              paymentIntentId,
+              roomId: booking.roomId,
+              startTime: booking.startTime.toISOString(),
+              endTime: booking.endTime.toISOString(),
+            }),
+          );
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: {
+              status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+              holdExpiresAt: null,
+            },
+          });
+          return;
+        }
+      }
+
+      try {
+        await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            status: nextStatus,
+            holdExpiresAt: null,
+            stripeSessionId: checkoutSession.id,
+          },
+        });
+
+        await tx.payment.create({
+          data: {
+            bookingId: booking.id,
+            stripePaymentId: paymentIntentId,
+            amount: expectedAmount,
+            type: paymentChoice,
+            status: PaymentStatus.SUCCEEDED,
+            paidAt: new Date(),
+          },
+        });
+      } catch (updateError) {
+        // Ultima rete di sicurezza: un webhook concorrente ha vinto
+        // l'EXCLUDE constraint (booking_no_overlap_per_room) tra il nostro
+        // controllo di disponibilita e il nostro update.
+        console.error(
+          "[stripe webhook] PAYMENT CONFLICT su update finale - rimborso manuale richiesto:",
+          JSON.stringify({ bookingId: booking.id, paymentIntentId }),
+          updateError,
+        );
+        await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+            holdExpiresAt: null,
+          },
+        });
+      }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
 
 async function handleCheckoutExpired(

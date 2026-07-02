@@ -1,15 +1,14 @@
 "use server"
 
-import bcrypt from "bcrypt"
 import { z } from "zod"
-import { prisma } from "@/app/_lib/prisma"
-import { signIn } from "@/auth"
 import { redirect } from "next/navigation"
+import { APIError } from "better-auth"
+import { auth } from "@/lib/auth"
 
 const signupSchema = z.object({
   username: z.string().min(2),
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(8),
   phone: z.string().min(10)
 })
 
@@ -25,18 +24,26 @@ export async function signup(prevState: unknown, formData: FormData) {
     return { errors: parsed.error.flatten().fieldErrors }
   }
 
-  const { username, email, password, phone} = parsed.data
-  const hashedPassword = await bcrypt.hash(password, 10)
+  const { username, email, password, phone } = parsed.data
 
   try {
-    await prisma.user.create({
-      data: { username, email, hashedPassword, phone},
+    await auth.api.signUpEmail({
+      body: {
+        name: username,
+        username,
+        email,
+        password,
+        phone,
+      },
     })
+  } catch (error) {
+    if (error instanceof APIError) {
+      console.error("[signup] Better Auth error:", error.message)
+      return { errors: { email: [error.message] } }
+    }
+    console.error("[signup] Unexpected error:", error)
+    return { errors: { email: ["Errore durante la registrazione"] } }
   }
-  catch(err){
-    console.error(err)
-  }
-  await signIn("credentials", { email, password, redirect: false })
 
-  redirect("/dashboard")
+  redirect("/")
 }

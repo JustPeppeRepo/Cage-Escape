@@ -1,0 +1,36 @@
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
+import { prisma } from "@/app/_lib/prisma";
+import { env } from "@/app/_lib/env";
+
+export const auth = betterAuth({
+  secret: env.BETTER_AUTH_SECRET,
+  baseURL: env.BETTER_AUTH_URL,
+  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    requireEmailVerification: false,
+  },
+  rateLimit: {
+    enabled: true,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 5 },
+    },
+  },
+  user: {
+    additionalFields: {
+      username: { type: "string", required: true },
+      phone: { type: "string", required: true },
+      role: { type: "string", input: false, defaultValue: "USER" },
+      failedLoginAttempts: { type: "number", input: false, defaultValue: 0 },
+      lockedUntil: { type: "date", input: false, required: false },
+    },
+  },
+  // nextCookies() deve restare l'ultimo plugin dell'array: imposta
+  // automaticamente il cookie di sessione quando le API vengono chiamate
+  // da Server Action/Route Handler.
+  plugins: [nextCookies()],
+});

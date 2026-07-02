@@ -35,16 +35,15 @@ async function verifyAvailability() {
 }
 
 async function ensureTestUsers() {
-  const passwordHash =
-    "$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012";
-
+  // Righe User "nude" (senza Account/password): sufficienti per il test di
+  // race condition sulle prenotazioni, che non passa dal login Better Auth.
   const userA = await prisma.user.upsert({
     where: { email: "verify-a@cageroom.test" },
     update: {},
     create: {
+      name: "Verify A",
       username: "verify_a",
       email: "verify-a@cageroom.test",
-      hashedPassword: passwordHash,
       phone: "0000000001",
     },
   });
@@ -53,9 +52,9 @@ async function ensureTestUsers() {
     where: { email: "verify-b@cageroom.test" },
     update: {},
     create: {
+      name: "Verify B",
       username: "verify_b",
       email: "verify-b@cageroom.test",
-      hashedPassword: passwordHash,
       phone: "0000000002",
     },
   });
