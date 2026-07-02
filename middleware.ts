@@ -8,6 +8,17 @@ const { auth } = NextAuth(authConfig)
 // Route pubbliche (accessibili senza login)
 const publicRoutes = ["/", "/login", "/signup"]
 
+function isPublicPath(pathname: string): boolean {
+  if (publicRoutes.includes(pathname)) {
+    return true
+  }
+
+  return (
+    pathname.startsWith("/rooms") ||
+    pathname.startsWith("/checkout")
+  )
+}
+
 // Route che richiedono ruolo ADMIN
 const adminRoutes = ["/admin"]
 
@@ -16,7 +27,7 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth
   const userRole = req.auth?.user?.role
 
-  const isPublicRoute = publicRoutes.includes(nextUrl.pathname)
+  const isPublicRoute = isPublicPath(nextUrl.pathname)
   const isAdminRoute = adminRoutes.some((route) =>
     nextUrl.pathname.startsWith(route)
   )
@@ -43,5 +54,5 @@ export default auth((req) => {
 
 // Esclude asset statici, immagini, api routes di NextAuth stesso
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/auth|api/webhook|_next/static|_next/image|favicon.ico).*)"],
 }

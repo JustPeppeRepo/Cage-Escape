@@ -14,23 +14,6 @@ enum Role {
   ADMIN
 }
 
-model User {
-  id        String   @id @default(uuid())
-  role      Role     @default(USER)
-  username  String   @unique
-  email     String   @unique
-  hashedPassword  String
-  phone     String
-
-  img String? @default("https://cageroom.avatar")
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-  bookings  Booking[]
-
-  failedLoginAttempts  Int       @default(0)
-  lockedUntil          DateTime?
-}
-
 enum BookingStatus {
   PENDING
   DEPOSIT_PAID
@@ -52,26 +35,89 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum ScheduleOverrideType {
+  CLOSED
+  CUSTOM_HOURS
+}
+
+model User {
+  id               String    @id @default(uuid())
+  role             Role      @default(USER)
+  username         String    @unique
+  email            String    @unique
+  hashedPassword   String
+  phone            String
+  img              String?   @default("https://cageroom.avatar")
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @db.Timestamptz
+  bookings         Booking[]
+  failedLoginAttempts Int    @default(0)
+  lockedUntil      DateTime?
+}
+
+model Room {
+  id              String             @id @default(cuid())
+  slug            String             @unique
+  name            String
+  description     String
+  prezzoTotale    Decimal
+  prezzoCaparra   Decimal
+  durationMinutes Int
+  minPlayers      Int
+  maxPlayers      Int
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now()) @db.Timestamptz
+  updatedAt       DateTime           @updatedAt @db.Timestamptz
+  bookings        Booking[]
+  scheduleOverrides ScheduleOverride[]
+}
+
+model ScheduleOverride {
+  id        String               @id @default(cuid())
+  date      DateTime             @db.Date
+  roomId    String?
+  room      Room?                @relation(fields: [roomId], references: [id])
+  type      ScheduleOverrideType
+  openHour  Int?
+  closeHour Int?
+  reason    String?
+  createdAt DateTime             @default(now()) @db.Timestamptz
+  updatedAt DateTime             @updatedAt @db.Timestamptz
+
+  @@unique([date, roomId])
+  @@index([date])
+}
+
 model Booking {
-  id            String        @id @default(cuid())
-  user          User          @relation(fields: [userId], references: [id])
-  userId        String
-  startTime     DateTime      @db.Timestamptz
-  endTime       DateTime      @db.Timestamptz
-  totalAmount   Decimal
-  status        BookingStatus @default(PENDING)
-  payments      Payment[]
-  createdAt     DateTime      @default(now()) @db.Timestamptz
+  id              String        @id @default(cuid())
+  user            User          @relation(fields: [userId], references: [id])
+  userId          String
+  room            Room          @relation(fields: [roomId], references: [id])
+  roomId          String
+  startTime       DateTime      @db.Timestamptz
+  endTime         DateTime      @db.Timestamptz
+  totalAmount     Decimal
+  status          BookingStatus @default(PENDING)
+  holdExpiresAt   DateTime?     @db.Timestamptz
+  stripeSessionId String?       @unique
+  paymentChoice   PaymentType
+  participantCount Int
+  minorCount      Int           @default(0)
+  payments        Payment[]
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+
   @@index([startTime, endTime])
+  @@index([roomId, startTime, endTime])
+  @@index([holdExpiresAt])
 }
 
 model Payment {
-  id              String   @id @default(cuid())
-  booking         Booking  @relation(fields: [bookingId], references: [id])
+  id              String        @id @default(cuid())
+  booking         Booking       @relation(fields: [bookingId], references: [id])
   bookingId       String
-  stripePaymentId String   @unique
+  stripePaymentId String        @unique
   amount          Decimal
   type            PaymentType
   status          PaymentStatus @default(PENDING)
-  paidAt          DateTime?  @db.Timestamptz
+  paidAt          DateTime?     @db.Timestamptz
 }
