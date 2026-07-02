@@ -1,10 +1,14 @@
-import { auth } from "@/auth"
+import NextAuth from "next-auth"
+import { authConfig } from "@/auth.config" // Assicurati che il path sia corretto per la tua struttura
 import { NextResponse } from "next/server"
+
+// Inizializziamo la versione "Edge" di NextAuth usando solo la configurazione base
+const { auth } = NextAuth(authConfig)
 
 // Route pubbliche (accessibili senza login)
 const publicRoutes = ["/", "/login", "/signup"]
 
-// Route che richiedono ruolo ADMIN (adatta ai tuoi valori enum)
+// Route che richiedono ruolo ADMIN
 const adminRoutes = ["/admin"]
 
 export default auth((req) => {
@@ -17,19 +21,19 @@ export default auth((req) => {
     nextUrl.pathname.startsWith(route)
   )
 
-  // Non loggato e route privata -> redirect a login
+  // 1. Non loggato e route privata -> redirect a login
   if (!isLoggedIn && !isPublicRoute) {
     const loginUrl = new URL("/login", nextUrl)
     loginUrl.searchParams.set("callbackUrl", nextUrl.pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Loggato ma senza ruolo ADMIN su route admin -> redirect o 403
+  // 2. Loggato ma senza ruolo ADMIN su route admin -> redirect alla home
   if (isAdminRoute && userRole !== "ADMIN") {
     return NextResponse.redirect(new URL("/", nextUrl))
   }
 
-  // Loggato che prova ad accedere a login/signup -> redirect a dashboard
+  // 3. Loggato che prova ad accedere a login/signup -> redirect alla home
   if (isLoggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {
     return NextResponse.redirect(new URL("/", nextUrl))
   }
