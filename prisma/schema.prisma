@@ -118,6 +118,7 @@ model Room {
   durationMinutes Int
   minPlayers      Int
   maxPlayers      Int
+  terrorLevel     Int                @default(3)
   isActive        Boolean            @default(true)
   createdAt       DateTime           @default(now()) @db.Timestamptz
   updatedAt       DateTime           @updatedAt @db.Timestamptz

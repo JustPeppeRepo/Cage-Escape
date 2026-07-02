@@ -20,6 +20,7 @@ async function main() {
       durationMinutes: 90,
       minPlayers: 2,
       maxPlayers: 6,
+      terrorLevel: 5,
       isActive: true,
     },
   });

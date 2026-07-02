@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #0a0a0a;
+  --color-void-deep: #030303;
+  --color-void-mist: #161616;
+  --color-blood: #990000;
+  --color-blood-bright: #cc1a1a;
+  --color-ectoplasm: #39ff88;
+  --color-bone: #e8e2d6;
+
+  --font-display: var(--font-gothic-display), "Georgia", serif;
+  --font-body: var(--font-body-sans), system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-void);
+  color: var(--color-bone);
+  font-family: var(--font-body);
+}
+
+@keyframes flicker {
+  0%,
+  19%,
+  21%,
+  23%,
+  25%,
+  54%,
+  56%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  22%,
+  24%,
+  55% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes glitch-shift {
+  0% {
+    text-shadow: 0 0 var(--color-blood-bright);
+    transform: translate(0);
+  }
+  20% {
+    text-shadow: -2px 0 var(--color-blood-bright), 2px 0 var(--color-ectoplasm);
+    transform: translate(-1px, 1px);
+  }
+  40% {
+    text-shadow: 2px 0 var(--color-blood-bright), -2px 0 var(--color-ectoplasm);
+    transform: translate(1px, -1px);
+  }
+  60% {
+    text-shadow: -1px 0 var(--color-blood-bright), 1px 0 var(--color-ectoplasm);
+    transform: translate(-1px, 0);
+  }
+  100% {
+    text-shadow: 0 0 var(--color-blood-bright);
+    transform: translate(0);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    transform: translate(-6px, 2px) rotate(-1deg);
+  }
+  40% {
+    transform: translate(6px, -2px) rotate(1deg);
+  }
+  60% {
+    transform: translate(-4px, 3px) rotate(-1deg);
+  }
+  80% {
+    transform: translate(4px, -3px) rotate(1deg);
+  }
+}
+
+@keyframes fog-drift {
+  0% {
+    transform: translateX(-10%) translateY(0);
+  }
+  50% {
+    transform: translateX(5%) translateY(-2%);
+  }
+  100% {
+    transform: translateX(-10%) translateY(0);
+  }
+}
+
+@utility animate-flicker {
+  animation: flicker 4s linear infinite;
+}
+
+/* Applicare con il prefisso variant `hover:` (es. hover:animate-glitch-hover) */
+@utility animate-glitch-hover {
+  animation: glitch-shift 0.3s steps(2, end) infinite;
+}
+
+@utility animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@utility animate-fog-drift {
+  animation: fog-drift 18s ease-in-out infinite;
+}
