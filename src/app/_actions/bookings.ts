@@ -4,7 +4,12 @@ import { Prisma } from "@/generated/prisma/client";
 import { BookingStatus } from "@/generated/prisma/client";
 import { getCurrentSession } from "@/lib/dal";
 import { prisma } from "@/app/_lib/prisma";
-import { stripe } from "@/app/_lib/stripe";
+import {
+  getStripeConfigurationError,
+  isStripeConfigurationError,
+  stripe,
+} from "@/app/_lib/stripe";
+import { logError } from "@/lib/logger";
 import { env } from "@/app/_lib/env";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
 import {
@@ -478,6 +483,15 @@ export async function createStripeCheckoutSession(
       };
     }
 
+    const stripeConfigError = getStripeConfigurationError();
+    if (stripeConfigError) {
+      return {
+        success: false,
+        error: stripeConfigError,
+        code: "STRIPE_NOT_CONFIGURED",
+      };
+    }
+
     // Stripe rifiuta qualsiasi expires_at inferiore a 30 minuti da adesso:
     // per questo la scadenza tecnica della sessione Stripe e VOLUTAMENTE
     // disaccoppiata dall'hold interno di 10 minuti (booking.holdExpiresAt),
@@ -520,31 +534,39 @@ export async function createStripeCheckoutSession(
         client_reference_id: booking.id,
       });
     } catch (stripeError) {
-      console.error("[createStripeCheckoutSession] Stripe error:", stripeError);
+      logError(
+        "createStripeCheckoutSession",
+        "Stripe checkout session creation failed",
+        stripeError,
+      );
 
-      await prisma.booking.update({
-        where: { id: booking.id },
-        data: {
-          status: BookingStatus.CANCELLED,
-          holdExpiresAt: null,
-        },
-      });
+      const configError = isStripeConfigurationError(stripeError);
+
+      if (!configError) {
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: {
+            status: BookingStatus.CANCELLED,
+            holdExpiresAt: null,
+          },
+        });
+      }
 
       return {
         success: false,
-        error: "Impossibile avviare il pagamento. Riprova.",
-        code: "STRIPE_ERROR",
+        error: configError
+          ? "Pagamento non disponibile: configurazione Stripe non valida. Verifica STRIPE_SECRET_KEY nel file .env."
+          : "Impossibile avviare il pagamento. Riprova.",
+        code: configError ? "STRIPE_NOT_CONFIGURED" : "STRIPE_ERROR",
       };
     }
 
     if (!checkoutSession.url) {
-      await prisma.booking.update({
-        where: { id: booking.id },
-        data: {
-          status: BookingStatus.CANCELLED,
-          holdExpiresAt: null,
-        },
-      });
+      logError(
+        "createStripeCheckoutSession",
+        "Stripe session created without checkout URL",
+        { sessionId: checkoutSession.id },
+      );
 
       return {
         success: false,
@@ -563,7 +585,7 @@ export async function createStripeCheckoutSession(
       data: { url: checkoutSession.url },
     };
   } catch (error) {
-    console.error("[createStripeCheckoutSession]", error);
+    logError("createStripeCheckoutSession", "Unexpected error", error);
     return {
       success: false,
       error: "Errore durante la creazione della sessione di pagamento",

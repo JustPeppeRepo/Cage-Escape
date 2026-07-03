@@ -40,7 +40,7 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] Shake su errori login/signup
 - [x] `src/lib/logger.ts`
 - [x] Tipi consolidati in `src/types/`
-- [ ] `.env.example` (aggiungere manualmente se bloccato dal workspace)
+- [x] `.env.example`
 - [ ] (Facoltativo) recensioni da DB invece che statiche
 
 ## Note di coerenza
