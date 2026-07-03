@@ -15,7 +15,12 @@ export async function checkRateLimit(
 ): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
   const headerStore = await headers();
   const forwarded = headerStore.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() ?? headerStore.get("x-real-ip") ?? "unknown";
+  // L'ultimo hop della catena X-Forwarded-For e' quello aggiunto dal proxy
+  // fidato (Vercel) piu' vicino al nostro server, quindi il piu' difficile
+  // da falsificare per un client esterno. Il primo hop e' invece il valore
+  // che il client stesso puo' impostare liberamente nell'header in ingresso.
+  const forwardedIps = forwarded?.split(",").map((value) => value.trim()).filter(Boolean);
+  const ip = forwardedIps?.at(-1) ?? headerStore.get("x-real-ip") ?? "unknown";
   const key = `${action}:${ip}`;
   const now = Date.now();
 

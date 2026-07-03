@@ -20,7 +20,7 @@ const signupSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1).max(72),
+  password: z.string().min(8).max(72),
 })
 
 function isUsernameConflict(error: unknown): boolean {
@@ -78,8 +78,12 @@ export async function signup(prevState: unknown, formData: FormData) {
       return { errors: { username: ["Username già in uso"] } }
     }
     if (error instanceof APIError) {
+      // Messaggio generico anche qui (non solo nel login): il messaggio
+      // originale di Better Auth per un'email gia' registrata la conferma
+      // esplicitamente ("User already exists"), un oracolo di user
+      // enumeration. Il dettaglio resta solo nel log server-side.
       console.error("[signup] Better Auth error:", error.message)
-      return { errors: { email: [error.message] } }
+      return { errors: { email: ["Registrazione non riuscita. Verifica i dati o prova ad accedere."] } }
     }
     console.error("[signup] Unexpected error:", error)
     return { errors: { email: ["Errore durante la registrazione"] } }

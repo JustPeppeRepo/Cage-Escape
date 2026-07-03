@@ -7,6 +7,11 @@ import { env } from "@/app/_lib/env";
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
+  // Esplicito invece di affidarsi al solo default (che ricaverebbe l'origin
+  // fidato da baseURL): rende la configurazione auditabile e blocca richieste
+  // cross-origin verso gli endpoint sensibili di Better Auth (CSRF/origin
+  // check) anche se in futuro baseURL dovesse essere derivato diversamente.
+  trustedOrigins: [env.BETTER_AUTH_URL],
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,

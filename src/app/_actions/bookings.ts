@@ -7,7 +7,10 @@ import { prisma } from "@/app/_lib/prisma";
 import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
-import { HOLD_DURATION_MS } from "@/app/_lib/bookings/constants";
+import {
+  HOLD_DURATION_MS,
+  MAX_CONCURRENT_HOLDS_PER_USER,
+} from "@/app/_lib/bookings/constants";
 import {
   createStripeCheckoutSessionSchema,
   getAvailableSlotsSchema,
@@ -246,6 +249,18 @@ export async function holdSlot(
       async (tx) => {
         await releaseExpiredHolds(tx);
 
+        const activeHoldsCount = await tx.booking.count({
+          where: {
+            userId: session.user.id,
+            status: BookingStatus.PENDING,
+            holdExpiresAt: { gt: new Date() },
+          },
+        });
+
+        if (activeHoldsCount >= MAX_CONCURRENT_HOLDS_PER_USER) {
+          throw new Error("TOO_MANY_HOLDS");
+        }
+
         const available = await isSlotAvailable(
           room.id,
           slotStart,
@@ -290,6 +305,14 @@ export async function holdSlot(
         success: false,
         error: "Questo slot non è più disponibile",
         code: "SLOT_TAKEN",
+      };
+    }
+
+    if (error instanceof Error && error.message === "TOO_MANY_HOLDS") {
+      return {
+        success: false,
+        error: "Hai già delle prenotazioni in attesa di pagamento. Completa o attendi la scadenza di quelle esistenti prima di crearne altre.",
+        code: "TOO_MANY_HOLDS",
       };
     }
 

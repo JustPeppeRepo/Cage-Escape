@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/dal";
 import { prisma } from "@/app/_lib/prisma";
+import { stripe } from "@/app/_lib/stripe";
 import { BookingStatus, PaymentStatus } from "@/generated/prisma/client";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
 import { PaymentStatusPoller } from "@/components/horror/checkout/PaymentStatusPoller";
@@ -32,17 +33,41 @@ export default async function CheckoutSuccessPage({
     notFound();
   }
 
-  const booking = await prisma.booking.findUnique({
-    where: { stripeSessionId: sessionId },
-    include: {
-      room: true,
-      payments: {
-        where: { status: PaymentStatus.SUCCEEDED },
-        orderBy: { paidAt: "desc" },
-        take: 1,
-      },
+  const bookingInclude = {
+    room: true,
+    payments: {
+      where: { status: PaymentStatus.SUCCEEDED },
+      orderBy: { paidAt: "desc" as const },
+      take: 1,
     },
+  };
+
+  let booking = await prisma.booking.findUnique({
+    where: { stripeSessionId: sessionId },
+    include: bookingInclude,
   });
+
+  if (!booking) {
+    // stripeSessionId su Booking viene sovrascritto a ogni nuova sessione
+    // Stripe creata per la stessa prenotazione (createStripeCheckoutSession
+    // in src/app/_actions/bookings.ts). Se l'utente paga una sessione
+    // precedente ancora valida invece dell'ultima creata, il webhook la
+    // conferma comunque correttamente (usa metadata.bookingId), ma la
+    // ricerca qui sopra non trova piu' nulla. Fallback: chiediamo
+    // direttamente a Stripe a quale booking appartiene questo session_id.
+    try {
+      const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+      const fallbackBookingId = checkoutSession.metadata?.bookingId;
+      if (fallbackBookingId) {
+        booking = await prisma.booking.findUnique({
+          where: { id: fallbackBookingId },
+          include: bookingInclude,
+        });
+      }
+    } catch (error) {
+      console.error("[checkout/success] Impossibile recuperare la sessione Stripe:", error);
+    }
+  }
 
   // notFound() invece di 403: non confermiamo l'esistenza di una sessione
   // Stripe/prenotazione altrui a chi non ne e' il proprietario.
