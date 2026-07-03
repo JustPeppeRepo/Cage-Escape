@@ -9,10 +9,10 @@ function isPublicPath(pathname: string): boolean {
     return true
   }
 
-  return (
-    pathname.startsWith("/rooms") ||
-    pathname.startsWith("/checkout")
-  )
+  // /checkout NON e' pubblica: richiede login (vedi requireUser() in
+  // src/app/checkout/page.tsx). Resta fuori da questa funzione cosi' il
+  // check 1 qui sotto reindirizza al login con callbackUrl.
+  return pathname.startsWith("/rooms")
 }
 
 // NOTA: la documentazione di Next.js descrive "middleware.ts" come

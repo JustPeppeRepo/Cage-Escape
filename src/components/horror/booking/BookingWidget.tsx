@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getAvailableSlots, holdSlot } from "@/app/_actions/bookings";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 import { BookingCalendar } from "@/components/horror/booking/BookingCalendar";
@@ -27,22 +28,12 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("it-IT", {
   minute: "2-digit",
 });
 
-const DATETIME_FORMATTER = new Intl.DateTimeFormat("it-IT", {
-  timeZone: "Europe/Rome",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
-
 function formatSlotTime(iso: string): string {
   return TIME_FORMATTER.format(new Date(iso));
 }
 
-function formatHoldExpiry(iso: string): string {
-  return DATETIME_FORMATTER.format(new Date(iso));
-}
-
 export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState(room.minPlayers);
@@ -91,6 +82,13 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdState]);
 
+  useEffect(() => {
+    if (holdState?.success) {
+      router.push(`/checkout?bookingId=${holdState.data.bookingId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdState]);
+
   const previewTier = resolvePricingTier(pricingTiers, participantCount);
 
   if (holdState?.success) {
@@ -99,21 +97,9 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
         <h3 className="mb-2 font-[family-name:var(--font-display)] text-2xl text-ectoplasm">
           Slot bloccato
         </h3>
-        <p className="mb-4 text-sm text-bone/70">
-          Hai 10 minuti di tempo per completare il pagamento prima che lo slot
-          torni disponibile ad altri. Il pagamento sarà disponibile nella
-          prossima fase.
+        <p className="text-sm text-bone/70">
+          Reindirizzamento al pagamento…
         </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-bone/50">Prenotazione</dt>
-          <dd>{holdState.data.bookingId}</dd>
-          <dt className="text-bone/50">Scadenza blocco</dt>
-          <dd>{formatHoldExpiry(holdState.data.holdExpiresAt)}</dd>
-          <dt className="text-bone/50">Totale</dt>
-          <dd>{holdState.data.totalAmount} €</dd>
-          <dt className="text-bone/50">Caparra</dt>
-          <dd>{holdState.data.depositAmount} €</dd>
-        </dl>
       </div>
     );
   }
