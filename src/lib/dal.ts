@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { headers } from "next/headers";
-import { forbidden, redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 
@@ -41,7 +41,7 @@ export async function requireAdmin() {
   const session = await requireUser();
 
   if (session.user.role !== "ADMIN") {
-    forbidden();
+    notFound();
   }
 
   return session;
