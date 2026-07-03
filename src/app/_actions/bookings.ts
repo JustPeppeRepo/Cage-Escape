@@ -1,9 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
 import { Prisma } from "@/generated/prisma/client";
 import { BookingStatus } from "@/generated/prisma/client";
-import { auth } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/dal";
 import { prisma } from "@/app/_lib/prisma";
 import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
@@ -140,7 +139,7 @@ export async function holdSlot(
     };
   }
 
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getCurrentSession();
   if (!session?.user?.id) {
     return {
       success: false,
@@ -332,7 +331,7 @@ export async function createStripeCheckoutSession(
     };
   }
 
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getCurrentSession();
   if (!session?.user?.id) {
     return {
       success: false,
