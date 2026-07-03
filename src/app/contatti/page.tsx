@@ -6,11 +6,12 @@ export const metadata: Metadata = {
   title: "Contatti | Cage Room",
   description:
     "Contattaci per prenotazioni, informazioni o per segnalare qualcosa di strano uscito dalla stanza.",
+  alternates: { canonical: "/contatti" },
 };
 
 export default function ContattiPage() {
   return (
-    <main className="min-h-screen bg-void px-6 py-24">
+    <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto grid max-w-5xl gap-12 lg:grid-cols-2">
         <div>
           <Link href="/" className="text-sm text-bone/50 hover:text-bone">

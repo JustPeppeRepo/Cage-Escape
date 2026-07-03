@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Le nostre stanze horror | Cage Room",
   description:
     "Scopri tutte le escape room a tema horror di Cage Room. Scegli la tua stanza e prenota online in pochi minuti.",
+  alternates: { canonical: "/rooms" },
 };
 
 export default async function RoomsPage() {
@@ -18,7 +19,7 @@ export default async function RoomsPage() {
   const roomSummaries = rooms.map(toRoomSummary);
 
   return (
-    <main className="min-h-screen bg-void px-6 py-24">
+    <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
         <SectionHeading eyebrow="Scegli il tuo destino" title="Le nostre stanze" />
         <RoomsGrid rooms={roomSummaries} />

@@ -30,6 +30,14 @@ export async function generateMetadata({
   return {
     title: `${room.name} | Cage Room`,
     description: room.description,
+    alternates: {
+      canonical: `/rooms/${slug}`,
+    },
+    openGraph: {
+      title: `${room.name} | Cage Room`,
+      description: room.description,
+      url: `/rooms/${slug}`,
+    },
   };
 }
 
@@ -52,7 +60,7 @@ export default async function RoomDetailPage({
   }));
 
   return (
-    <main className="min-h-screen bg-void px-6 py-24">
+    <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto flex max-w-4xl flex-col gap-10">
         <header className="flex flex-col gap-4 border-b border-void-mist pb-8">
           <h1 className="font-[family-name:var(--font-display)] text-4xl text-blood-bright sm:text-5xl">

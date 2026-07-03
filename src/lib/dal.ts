@@ -2,6 +2,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { forbidden, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { logError } from "@/lib/logger";
 
 // Data Access Layer: unico punto in cui viene letta/validata la sessione
 // server-side (query al DB tramite Better Auth, non il semplice cookie
@@ -9,7 +10,12 @@ import { auth } from "@/lib/auth";
 // stesso render pass, cosi' piu' componenti/azioni che la richiamano nella
 // stessa request non pagano round-trip multipli.
 export const getCurrentSession = cache(async () => {
-  return auth.api.getSession({ headers: await headers() });
+  try {
+    return await auth.api.getSession({ headers: await headers() });
+  } catch (error) {
+    logError("getCurrentSession", "Session lookup failed", error);
+    return null;
+  }
 });
 
 // Da usare in ogni page/azione che richiede un utente autenticato.

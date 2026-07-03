@@ -74,13 +74,13 @@ export default async function Home() {
       <main>
         <HeroClient />
 
-        <section className="mx-auto max-w-6xl px-6 py-24">
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
           <SectionHeading eyebrow="Scegli il tuo destino" title="Le nostre stanze" />
           <RoomsGrid rooms={roomSummaries} />
         </section>
 
         {reviews.length > 0 ? (
-          <section className="bg-void-deep px-6 py-24">
+          <section className="bg-void-deep px-4 py-16 sm:px-6 sm:py-24">
             <SectionHeading eyebrow="Non fidarti di noi" title="Chi è sopravvissuto racconta" />
             <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-8">
               {reviews.map((review) => (
@@ -95,7 +95,7 @@ export default async function Home() {
           </section>
         ) : null}
 
-        <section className="mx-auto max-w-6xl px-6 py-24">
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
           <SectionHeading eyebrow="Prima di prenotare" title="Domande frequenti" />
           <FaqAccordion items={FAQ_ITEMS} />
         </section>

@@ -6,11 +6,12 @@ export const metadata: Metadata = {
   title: "Chi siamo | Cage Room",
   description:
     "La storia oscura dietro Cage Room: manicomio abbandonato, diari perduti e enigmi che non dovresti risolvere.",
+  alternates: { canonical: "/about" },
 };
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-void px-6 py-24">
+    <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-3xl">
         <Link href="/" className="text-sm text-bone/50 hover:text-bone">
           ← Torna alla home

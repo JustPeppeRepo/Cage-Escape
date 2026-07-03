@@ -14,3 +14,12 @@
 {"sessionId":"ffe0c9","location":"page.tsx:Home:entry","message":"Home render prisma delegates","data":{"hasReviewDelegate":true,"hasRoomDelegate":true},"timestamp":1783090425067,"hypothesisId":"H1-H3","runId":"pre-fix"}
 {"sessionId":"ffe0c9","location":"prisma.ts:getPrismaClient","message":"Prisma singleton check","data":{"hasCached":false,"cachedHasReview":false,"nodeEnv":"development"},"timestamp":1783090427811,"hypothesisId":"H1","runId":"pre-fix"}
 {"sessionId":"ffe0c9","location":"prisma.ts:getPrismaClient","message":"Created fresh Prisma client","data":{"freshHasReview":true,"replacedStaleCache":false},"timestamp":1783090427857,"hypothesisId":"H1-H2","runId":"pre-fix"}
+{"sessionId":"ffe0c9","location":"prisma.ts:getPrismaClient","message":"Prisma singleton state","data":{"hasCached":true,"cachedHasReview":true,"hasSharedPool":false},"timestamp":1783091358485,"hypothesisId":"H1","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"prisma.ts:getPrismaClient","message":"Prisma singleton state","data":{"hasCached":false,"cachedHasReview":false,"hasSharedPool":false},"timestamp":1783091364234,"hypothesisId":"H1","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"prisma.ts:getPrismaClient","message":"Prisma singleton state","data":{"hasCached":false,"cachedHasReview":false,"hasSharedPool":false},"timestamp":1783091452678,"hypothesisId":"H1","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"dal.ts:getCurrentSession","message":"Session lookup ok","data":{"hasUser":false},"timestamp":1783091453437,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"dal.ts:getCurrentSession","message":"Session lookup ok","data":{"hasUser":false},"timestamp":1783091456343,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"dal.ts:getCurrentSession","message":"Session lookup ok","data":{"hasUser":false},"timestamp":1783091457265,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"dal.ts:getCurrentSession","message":"Session lookup ok","data":{"hasUser":false},"timestamp":1783091500508,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"dal.ts:getCurrentSession","message":"Session lookup ok","data":{"hasUser":false},"timestamp":1783091502311,"hypothesisId":"H2","runId":"post-fix"}
+{"sessionId":"ffe0c9","location":"dal.ts:getCurrentSession","message":"Session lookup ok","data":{"hasUser":false},"timestamp":1783091509640,"hypothesisId":"H2","runId":"post-fix"}

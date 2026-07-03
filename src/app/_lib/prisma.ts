@@ -4,41 +4,49 @@ import { Pool } from 'pg'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
+  pgPool: Pool | undefined
 }
 
-function createPrismaClient() {
+function getOrCreatePool(): Pool {
+  if (globalForPrisma.pgPool) {
+    return globalForPrisma.pgPool
+  }
+
   const connectionUrl = new URL(process.env.DATABASE_URL ?? '')
-  // pg-connection-string emette un deprecation warning quando trova
-  // sslmode=prefer|require|verify-ca nella stringa (verranno trattati come
-  // alias di verify-full nella prossima major, con semantiche piu deboli).
-  // Rimuoviamo il parametro dalla stringa PRIMA che venga fatto il parsing e
-  // impostiamo l'equivalente esplicito verify-full via l'opzione `ssl` del
-  // Pool, che verifica anche il certificato del server (piu sicuro di
-  // `require`, che cifra ma non valida l'identita del server).
   const sslmode = connectionUrl.searchParams.get('sslmode')
   connectionUrl.searchParams.delete('sslmode')
 
   const pool = new Pool({
     connectionString: connectionUrl.toString(),
     ssl: sslmode && sslmode !== 'disable' ? { rejectUnauthorized: true } : undefined,
+    max: 10,
+    connectionTimeoutMillis: 15_000,
+    idleTimeoutMillis: 30_000,
   })
-  const adapter = new PrismaPg(pool)
+
+  globalForPrisma.pgPool = pool
+  return pool
+}
+
+function createPrismaClient(): PrismaClient {
+  const adapter = new PrismaPg(getOrCreatePool())
   return new PrismaClient({ adapter })
 }
 
 function getPrismaClient(): PrismaClient {
-  const cached = globalForPrisma.prisma;
+  const cached = globalForPrisma.prisma
+
   if (cached?.review) {
-    return cached;
+    return cached
   }
 
-  const client = createPrismaClient();
+  const client = createPrismaClient()
 
   if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = client;
+    globalForPrisma.prisma = client
   }
 
-  return client;
+  return client
 }
 
 export const prisma = getPrismaClient()
