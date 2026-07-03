@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "@/app/_lib/prisma";
 import { env } from "@/app/_lib/env";
+import { sendPasswordResetEmail } from "@/app/_lib/auth/email";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -17,6 +18,10 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 8,
     requireEmailVerification: false,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail({ email: user.email, url });
+    },
   },
   rateLimit: {
     enabled: true,
@@ -26,6 +31,9 @@ export const auth = betterAuth({
     },
   },
   user: {
+    deleteUser: {
+      enabled: true,
+    },
     additionalFields: {
       username: { type: "string", required: true },
       phone: { type: "string", required: true },

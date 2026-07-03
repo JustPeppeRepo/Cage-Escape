@@ -36,6 +36,13 @@ function NavAuthSection({
           <p className="text-bone">{user.name}</p>
           <p className="text-xs text-bone/50">{user.email}</p>
         </div>
+        <Link
+          href="/account"
+          onClick={onNavigate}
+          className="rounded border border-void-mist px-3 py-1.5 text-bone/80 transition-colors hover:border-blood/50 hover:text-bone"
+        >
+          Il mio account
+        </Link>
         {user.isAdmin ? (
           <Link
             href="/admin"

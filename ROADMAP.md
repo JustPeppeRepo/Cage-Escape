@@ -45,7 +45,14 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] Navbar pubblica con link alle pagine, stato login e info utente (`SiteNav` + sessione server-side)
 - [x] Recensioni homepage da DB con CRUD admin (`/admin/reviews`)
 
-## Note di coerenza
+## Fase E — Area utente e recupero password ✅
+
+- [x] `/account`: profilo con avatar predefiniti, ordini, cambio password, eliminazione account
+- [x] Recupero password: `/forgot-password`, `/reset-password`, link da login
+- [x] Email reset via Resend (opzionale, come contatti)
+- [x] Navbar: link «Il mio account» per utenti loggati
+- [x] Blocco eliminazione account con prenotazioni attive o pagate
+
 
 - In caso di conflitto col prompt architetturale, vince lo stato attuale funzionante.
 - Resend approvato per Fase B; variabili email opzionali finché non configurate.

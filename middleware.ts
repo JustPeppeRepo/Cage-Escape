@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getSessionCookie } from "better-auth/cookies"
 
 // Route pubbliche (accessibili senza login)
-const publicRoutes = ["/", "/login", "/signup", "/about", "/contatti", "/maledizione"]
+const publicRoutes = ["/", "/login", "/signup", "/about", "/contatti", "/maledizione", "/forgot-password", "/reset-password"]
 
 function isPublicPath(pathname: string): boolean {
   if (publicRoutes.includes(pathname)) {

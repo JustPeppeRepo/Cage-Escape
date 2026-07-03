@@ -52,6 +52,15 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
         ) : null}
       </label>
 
+      <p className="text-right text-sm">
+        <Link
+          href="/forgot-password"
+          className="text-bone/60 underline decoration-blood underline-offset-4 hover:text-bone"
+        >
+          Password dimenticata?
+        </Link>
+      </p>
+
       <button
         type="submit"
         disabled={pending}

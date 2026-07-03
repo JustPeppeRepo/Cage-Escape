@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Corvo">
+  <rect width="64" height="64" rx="12" fill="#141414"/>
+  <ellipse cx="32" cy="34" rx="14" ry="12" fill="#2a2a2a"/>
+  <circle cx="32" cy="24" r="10" fill="#2a2a2a"/>
+  <path d="M22 24 L32 18 L42 24" fill="#8b1a1a"/>
+  <circle cx="28" cy="24" r="2" fill="#f5c542"/>
+  <path d="M18 36 Q10 28 8 20 Q16 26 22 32" fill="#1a1a1a"/>
+  <path d="M46 36 Q54 28 56 20 Q48 26 42 32" fill="#1a1a1a"/>
+</svg>
