@@ -11,16 +11,19 @@ import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
 import { decimalToNumber } from "@/app/_lib/bookings/money";
 import { isSlotAvailable } from "@/app/_lib/bookings/slots";
+import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 
 export const runtime = "nodejs";
 
 function getExpectedAmount(
   paymentChoice: PaymentType,
-  prezzoTotale: { toString(): string },
-  prezzoCaparra: { toString(): string },
+  tier: {
+    totalPrice: { toString(): string };
+    depositPrice: { toString(): string };
+  },
 ): number {
   const amount =
-    paymentChoice === PaymentType.FULL ? prezzoTotale : prezzoCaparra;
+    paymentChoice === PaymentType.FULL ? tier.totalPrice : tier.depositPrice;
   return decimalToNumber(amount);
 }
 
@@ -73,7 +76,7 @@ async function handleCheckoutCompleted(
     async (tx) => {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
-        include: { room: true, payments: true },
+        include: { room: { include: { pricingTiers: true } }, payments: true },
       });
 
       if (!booking) {
@@ -97,11 +100,37 @@ async function handleCheckoutCompleted(
         return;
       }
 
-      const expectedAmount = getExpectedAmount(
-        paymentChoice,
-        booking.room.prezzoTotale,
-        booking.room.prezzoCaparra,
+      const tier = resolvePricingTier(
+        booking.room.pricingTiers,
+        booking.participantCount,
       );
+
+      if (!tier) {
+        // Dato incoerente (es. fasce di prezzo rimosse/modificate dopo la
+        // creazione dell'hold): non possiamo validare in sicurezza l'importo
+        // incassato. Il pagamento e gia stato preso da Stripe, quindi
+        // segnaliamo per rimborso manuale invece di rischiare un calcolo
+        // errato.
+        console.error(
+          "[stripe webhook] Nessuna fascia di prezzo trovata - rimborso manuale richiesto:",
+          JSON.stringify({
+            bookingId: booking.id,
+            paymentIntentId,
+            roomId: booking.roomId,
+            participantCount: booking.participantCount,
+          }),
+        );
+        await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+            holdExpiresAt: null,
+          },
+        });
+        return;
+      }
+
+      const expectedAmount = getExpectedAmount(paymentChoice, tier);
       const paidAmount = (checkoutSession.amount_total ?? 0) / 100;
 
       if (Math.abs(paidAmount - expectedAmount) > 0.01) {

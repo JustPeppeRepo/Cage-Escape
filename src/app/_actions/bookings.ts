@@ -23,6 +23,7 @@ import {
   isSlotAvailable,
   releaseExpiredHolds,
 } from "@/app/_lib/bookings/slots";
+import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 
 export type BookingActionError = {
   success: false;
@@ -177,6 +178,7 @@ export async function holdSlot(
   try {
     const room = await prisma.room.findFirst({
       where: { slug: roomSlug, isActive: true },
+      include: { pricingTiers: true },
     });
 
     if (!room) {
@@ -191,6 +193,16 @@ export async function holdSlot(
       return {
         success: false,
         error: `Numero partecipanti non valido (${room.minPlayers}-${room.maxPlayers})`,
+        code: "VALIDATION_ERROR",
+      };
+    }
+
+    const tier = resolvePricingTier(room.pricingTiers, participantCount);
+
+    if (!tier) {
+      return {
+        success: false,
+        error: "Nessuna fascia di prezzo disponibile per questo numero di partecipanti",
         code: "VALIDATION_ERROR",
       };
     }
@@ -221,7 +233,7 @@ export async function holdSlot(
             roomId: room.id,
             startTime: slotStart,
             endTime: slotEnd,
-            totalAmount: room.prezzoTotale,
+            totalAmount: tier.totalPrice,
             status: BookingStatus.PENDING,
             holdExpiresAt,
             paymentChoice,
@@ -238,8 +250,8 @@ export async function holdSlot(
       data: {
         bookingId: booking.id,
         holdExpiresAt: booking.holdExpiresAt!.toISOString(),
-        totalAmount: formatEuroAmount(room.prezzoTotale),
-        depositAmount: formatEuroAmount(room.prezzoCaparra),
+        totalAmount: formatEuroAmount(tier.totalPrice),
+        depositAmount: formatEuroAmount(tier.depositPrice),
       },
     };
   } catch (error) {
@@ -314,7 +326,7 @@ export async function createStripeCheckoutSession(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { room: true },
+      include: { room: { include: { pricingTiers: true } } },
     });
 
     if (!booking || booking.userId !== session.user.id) {
@@ -349,10 +361,29 @@ export async function createStripeCheckoutSession(
       };
     }
 
+    const tier = resolvePricingTier(
+      booking.room.pricingTiers,
+      booking.participantCount,
+    );
+
+    if (!tier) {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: BookingStatus.CANCELLED,
+          holdExpiresAt: null,
+        },
+      });
+
+      return {
+        success: false,
+        error: "Nessuna fascia di prezzo disponibile per questa prenotazione",
+        code: "INTERNAL_ERROR",
+      };
+    }
+
     const chargeAmount =
-      booking.paymentChoice === "FULL"
-        ? booking.room.prezzoTotale
-        : booking.room.prezzoCaparra;
+      booking.paymentChoice === "FULL" ? tier.totalPrice : tier.depositPrice;
 
     const unitAmount = decimalToStripeCents(chargeAmount);
 

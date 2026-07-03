@@ -113,6 +113,9 @@ model Room {
   slug            String             @unique
   name            String
   description     String
+  // Prezzo indicativo "a partire da", usato solo per la visualizzazione nelle
+  // card di listing. Il prezzo effettivo addebitato dipende dal numero di
+  // partecipanti ed e risolto tramite RoomPricingTier.
   prezzoTotale    Decimal
   prezzoCaparra   Decimal
   durationMinutes Int
@@ -124,6 +127,22 @@ model Room {
   updatedAt       DateTime           @updatedAt @db.Timestamptz
   bookings        Booking[]
   scheduleOverrides ScheduleOverride[]
+  pricingTiers    RoomPricingTier[]
+}
+
+model RoomPricingTier {
+  id              String   @id @default(cuid())
+  roomId          String
+  room            Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  minParticipants Int
+  maxParticipants Int
+  totalPrice      Decimal
+  depositPrice    Decimal
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  @@unique([roomId, minParticipants, maxParticipants])
+  @@index([roomId])
 }
 
 model ScheduleOverride {
