@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { LoginForm } from "@/components/horror/auth/LoginForm";
+import { SignupForm } from "@/components/horror/auth/SignupForm";
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = {
-  title: "Accedi | Cage Room",
+  title: "Registrati | Cage Room",
   robots: { index: false, follow: false },
 };
 
-type LoginPageProps = {
+type SignupPageProps = {
   searchParams: Promise<{ callbackUrl?: string }>;
 };
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
+export default async function SignupPage({ searchParams }: SignupPageProps) {
   const { callbackUrl } = await searchParams;
   const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl);
 
@@ -19,9 +19,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <main className="flex min-h-screen items-center justify-center bg-void px-6 py-24 text-bone">
       <div className="w-full max-w-sm">
         <h1 className="mb-6 text-center font-[family-name:var(--font-display)] text-3xl text-blood-bright">
-          Accedi
+          Crea un account
         </h1>
-        <LoginForm callbackUrl={safeCallbackUrl} />
+        <SignupForm callbackUrl={safeCallbackUrl} />
       </div>
     </main>
   );
