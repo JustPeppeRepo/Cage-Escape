@@ -41,6 +41,18 @@ async function handleCheckoutCompleted(
     throw new Error("Missing checkout session metadata");
   }
 
+  // Difesa in profondita: con soli "card" tra i payment_method_types
+  // l'evento completed arriva sempre gia pagato, ma controlliamo comunque
+  // esplicitamente per non fidarci implicitamente del tipo di evento nel
+  // caso in futuro vengano abilitati metodi di pagamento asincroni.
+  if (checkoutSession.payment_status !== "paid") {
+    console.warn(
+      "[stripe webhook] checkout.session.completed con payment_status non 'paid', ignorato:",
+      JSON.stringify({ sessionId: checkoutSession.id, paymentStatus: checkoutSession.payment_status }),
+    );
+    return;
+  }
+
   if (
     paymentChoiceRaw !== PaymentType.FULL &&
     paymentChoiceRaw !== PaymentType.DEPOSIT

@@ -1,14 +1,17 @@
 import { z } from "zod";
 import { PaymentType } from "@/generated/prisma/client";
+import { getRomeDateString } from "@/app/_lib/bookings/slots";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 function isTodayOrFuture(dateStr: string): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const target = new Date(year, month - 1, day);
-  return target >= today;
+  // Confronto in fuso Europe/Rome (coerente con il resto del modulo slots),
+  // non nel fuso locale del server: su Vercel il server gira in UTC, e un
+  // confronto naive con `new Date()` produce una finestra di alcune ore
+  // intorno alla mezzanotte in cui la data "oggi" percepita differisce da
+  // quella reale a Roma.
+  const todayRome = getRomeDateString(new Date());
+  return dateStr >= todayRome;
 }
 
 export const getAvailableSlotsSchema = z.object({

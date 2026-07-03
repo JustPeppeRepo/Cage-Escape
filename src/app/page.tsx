@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
-import { formatEuroAmount } from "@/app/_lib/bookings/money";
 import { env } from "@/app/_lib/env";
+import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { HeroClient } from "@/components/horror/HeroClient";
 import { JumpScare } from "@/components/horror/JumpScare";
-import { RoomCard } from "@/components/horror/RoomCard";
+import { RoomsGrid } from "@/components/horror/RoomsGrid";
 import { ReviewPolaroid } from "@/components/horror/ReviewPolaroid";
 import { FaqAccordion } from "@/components/horror/FaqAccordion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import type { RoomSummary } from "@/types";
 
 export const metadata: Metadata = {
   title: "Cage Room — Escape Room Horror | Prenota il tuo incubo",
@@ -45,32 +44,6 @@ const REVIEWS = [
   { author: "Luca P.", quote: "Ci siamo salvati per un pelo. Torneremo.", rotation: -2 },
 ];
 
-function toRoomSummary(room: {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  prezzoTotale: { toString(): string };
-  prezzoCaparra: { toString(): string };
-  durationMinutes: number;
-  minPlayers: number;
-  maxPlayers: number;
-  terrorLevel: number;
-}): RoomSummary {
-  return {
-    id: room.id,
-    slug: room.slug,
-    name: room.name,
-    description: room.description,
-    prezzoTotale: formatEuroAmount(room.prezzoTotale),
-    prezzoCaparra: formatEuroAmount(room.prezzoCaparra),
-    durationMinutes: room.durationMinutes,
-    minPlayers: room.minPlayers,
-    maxPlayers: room.maxPlayers,
-    terrorLevel: room.terrorLevel,
-  };
-}
-
 export default async function Home() {
   const rooms = await prisma.room.findMany({
     where: { isActive: true },
@@ -102,17 +75,7 @@ export default async function Home() {
 
         <section className="mx-auto max-w-6xl px-6 py-24">
           <SectionHeading eyebrow="Scegli il tuo destino" title="Le nostre stanze" />
-          {roomSummaries.length > 0 ? (
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {roomSummaries.map((room) => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-bone/60">
-              Nessuna stanza disponibile al momento. Torna a trovarci presto.
-            </p>
-          )}
+          <RoomsGrid rooms={roomSummaries} />
         </section>
 
         <section className="bg-void-deep px-6 py-24">
