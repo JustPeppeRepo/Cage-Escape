@@ -49,6 +49,10 @@ function getZonedParts(date: Date, timeZone: string) {
   };
 }
 
+export function getRomeDateString(date: Date): string {
+  return getZonedParts(date, TIMEZONE).date;
+}
+
 export function createRomeDateTime(
   dateStr: string,
   hour: number,

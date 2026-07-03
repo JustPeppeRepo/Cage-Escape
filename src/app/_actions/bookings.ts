@@ -19,9 +19,12 @@ import {
   formatEuroAmount,
 } from "@/app/_lib/bookings/money";
 import {
+  generateTimeSlots,
   getAvailableSlotsForRoom,
+  getRomeDateString,
   isSlotAvailable,
   releaseExpiredHolds,
+  resolveDaySchedule,
 } from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 
@@ -207,9 +210,37 @@ export async function holdSlot(
       };
     }
 
-    const slotEnd = new Date(
-      slotStart.getTime() + room.durationMinutes * 60_000,
+    const dateStr = getRomeDateString(slotStart);
+    const schedule = await resolveDaySchedule(dateStr, room.id);
+
+    if (schedule.closed) {
+      return {
+        success: false,
+        error: "La stanza non è disponibile in questa data",
+        code: "VALIDATION_ERROR",
+      };
+    }
+
+    const validSlots = generateTimeSlots(
+      dateStr,
+      room.durationMinutes,
+      schedule.openHour,
+      schedule.closeHour,
     );
+
+    const matchedSlot = validSlots.find(
+      (slot) => slot.startTime.getTime() === slotStart.getTime(),
+    );
+
+    if (!matchedSlot) {
+      return {
+        success: false,
+        error: "Orario non disponibile per questa stanza",
+        code: "VALIDATION_ERROR",
+      };
+    }
+
+    const slotEnd = matchedSlot.endTime;
     const holdExpiresAt = new Date(Date.now() + HOLD_DURATION_MS);
 
     const booking = await prisma.$transaction(

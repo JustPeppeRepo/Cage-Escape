@@ -42,5 +42,5 @@
 
 ## Cosa NON fare
 - Non generare pagine/componenti UI complete con v0-style client-fetch logic incorporata: v0 genera solo componenti presentazionali, la logica di fetch/state va scritta a mano o replicata dal pattern esistente.
-- Non usare localStorage per dati di sessione (si usa JWT via NextAuth, gestito da cookie httpOnly).
+- Non usare localStorage per dati di sessione (si usa JWT via BetterAuth, gestito da cookie httpOnly).
 - Non creare nuovi pattern di error handling: seguire quello già stabilito (Zod safeParse + state).

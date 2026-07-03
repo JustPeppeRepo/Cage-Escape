@@ -4,6 +4,7 @@ import { z } from "zod"
 import { redirect } from "next/navigation"
 import { APIError } from "better-auth"
 import { auth } from "@/lib/auth"
+import { checkRateLimit } from "@/app/_lib/rate-limit"
 
 const signupSchema = z.object({
   username: z.string().min(2),
@@ -13,6 +14,22 @@ const signupSchema = z.object({
 })
 
 export async function signup(prevState: unknown, formData: FormData) {
+  // auth.api.signUpEmail e una chiamata server-side diretta: Better Auth
+  // applica il proprio rate limiting solo alle richieste client-initiated
+  // (vedi https://www.better-auth.com/docs/concepts/rate-limit), quindi le
+  // customRules su /sign-up/email non hanno alcun effetto qui. Riusiamo lo
+  // stesso helper gia usato dalle booking actions.
+  const rateLimit = await checkRateLimit("signup", 5);
+  if (!rateLimit.allowed) {
+    return {
+      errors: {
+        email: [
+          `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+        ],
+      },
+    }
+  }
+
   const parsed = signupSchema.safeParse({
     username: formData.get("username"),
     email: formData.get("email"),
