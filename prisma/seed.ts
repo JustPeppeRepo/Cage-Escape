@@ -54,6 +54,33 @@ async function main() {
     ],
   });
 
+  const seedReviews = [
+    {
+      author: "Marco T.",
+      quote: "Non dormo più la notte. Consigliatissimo.",
+      rotation: -4,
+      sortOrder: 0,
+      isPublished: true,
+    },
+    {
+      author: "Giulia R.",
+      quote: "Il livello di dettaglio è agghiacciante.",
+      rotation: 3,
+      sortOrder: 1,
+      isPublished: true,
+    },
+    {
+      author: "Luca P.",
+      quote: "Ci siamo salvati per un pelo. Torneremo.",
+      rotation: -2,
+      sortOrder: 2,
+      isPublished: true,
+    },
+  ];
+
+  await prisma.review.deleteMany();
+  await prisma.review.createMany({ data: seedReviews });
+
   console.log("Seed completato:", room.slug);
 }
 

@@ -39,17 +39,17 @@ const FAQ_ITEMS = [
   },
 ];
 
-const REVIEWS = [
-  { author: "Marco T.", quote: "Non dormo più la notte. Consigliatissimo.", rotation: -4 },
-  { author: "Giulia R.", quote: "Il livello di dettaglio è agghiacciante.", rotation: 3 },
-  { author: "Luca P.", quote: "Ci siamo salvati per un pelo. Torneremo.", rotation: -2 },
-];
-
 export default async function Home() {
-  const rooms = await prisma.room.findMany({
-    where: { isActive: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [rooms, reviews] = await Promise.all([
+    prisma.room.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.review.findMany({
+      where: { isPublished: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
   const roomSummaries = rooms.map(toRoomSummary);
 
   const jsonLd = {
@@ -79,14 +79,21 @@ export default async function Home() {
           <RoomsGrid rooms={roomSummaries} />
         </section>
 
-        <section className="bg-void-deep px-6 py-24">
-          <SectionHeading eyebrow="Non fidarti di noi" title="Chi è sopravvissuto racconta" />
-          <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-8">
-            {REVIEWS.map((review) => (
-              <ReviewPolaroid key={review.author} {...review} />
-            ))}
-          </div>
-        </section>
+        {reviews.length > 0 ? (
+          <section className="bg-void-deep px-6 py-24">
+            <SectionHeading eyebrow="Non fidarti di noi" title="Chi è sopravvissuto racconta" />
+            <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-8">
+              {reviews.map((review) => (
+                <ReviewPolaroid
+                  key={review.id}
+                  author={review.author}
+                  quote={review.quote}
+                  rotation={review.rotation}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mx-auto max-w-6xl px-6 py-24">
           <SectionHeading eyebrow="Prima di prenotare" title="Domande frequenti" />

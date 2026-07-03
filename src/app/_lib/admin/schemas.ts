@@ -85,8 +85,25 @@ export const generateDiscountCodeSchema = z.object({
   puzzleAnswer: z.string().min(1).max(50),
 });
 
+export const reviewFormSchema = z.object({
+  id: z.string().optional(),
+  author: z.string().min(1).max(64),
+  quote: z.string().min(5).max(500),
+  rotation: z.coerce.number().int().min(-10).max(10),
+  sortOrder: z.coerce.number().int().min(0).max(999),
+  isPublished: z
+    .union([z.literal("true"), z.literal("false"), z.literal("on")])
+    .optional()
+    .transform((value) => value === "true" || value === "on"),
+});
+
+export const deleteReviewSchema = z.object({
+  reviewId: z.string().min(1),
+});
+
 export type RoomFormInput = z.infer<typeof roomFormSchema>;
 export type PricingTierFormInput = z.infer<typeof pricingTierFormSchema>;
 export type ScheduleOverrideFormInput = z.infer<typeof scheduleOverrideFormSchema>;
 export type SiteSettingsFormInput = z.infer<typeof siteSettingsFormSchema>;
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
+export type ReviewFormInput = z.infer<typeof reviewFormSchema>;

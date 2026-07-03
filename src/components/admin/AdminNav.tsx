@@ -6,6 +6,7 @@ const links = [
   { href: "/admin/rooms", label: "Stanze" },
   { href: "/admin/schedule", label: "Orari" },
   { href: "/admin/bookings", label: "Prenotazioni" },
+  { href: "/admin/reviews", label: "Recensioni" },
   { href: "/admin/impostazioni", label: "Impostazioni" },
 ];
 

@@ -233,3 +233,16 @@ model DiscountCode {
   @@index([userId])
   @@index([code])
 }
+
+model Review {
+  id          String   @id @default(cuid())
+  author      String
+  quote       String
+  rotation    Int      @default(0)
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  @@index([isPublished, sortOrder])
+}

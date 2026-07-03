@@ -5,7 +5,7 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 ## Stato attuale (riepilogo — già fatto, non ritoccare)
 
 - [x] Auth: Better Auth (login/signup, cookie/session server-side via `src/lib/dal.ts`, `trustedOrigins`)
-- [x] Home page: hero cinematico, nebbia animata, card stanze da Prisma, teschi terrore, recensioni polaroid (statiche), FAQ accordion, JSON-LD `LocalBusiness`, `JumpScare.tsx`, footer con dettagli nascosti
+- [x] Home page: hero cinematico, nebbia animata, card stanze da Prisma, teschi terrore, recensioni polaroid da DB, FAQ accordion, JSON-LD `LocalBusiness`, `JumpScare.tsx`, footer con dettagli nascosti
 - [x] Listing e dettaglio stanze (`/rooms`, `/rooms/[slug]`) con calendario e booking widget (+ campo codice sconto)
 - [x] Checkout con countdown hold (`/checkout?bookingId=`), polling stato pagamento
 - [x] Stripe Checkout + webhook con verifica firma, controllo importo/valuta/metadata, gestione pagamenti duplicati, stato `PAYMENT_CONFLICT_REFUND_REQUIRED`, sconto easter egg
@@ -43,7 +43,7 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] Tipi consolidati in `src/types/`
 - [x] `.env.example`
 - [x] Navbar pubblica con link alle pagine, stato login e info utente (`SiteNav` + sessione server-side)
-- [ ] (Facoltativo) recensioni da DB invece che statiche
+- [x] Recensioni homepage da DB con CRUD admin (`/admin/reviews`)
 
 ## Note di coerenza
 
