@@ -1,4 +1,10 @@
 import { headers } from "next/headers";
+import {
+  isRedisRateLimitConfigured,
+  safeRedisFixedWindowCount,
+} from "@/app/_lib/rate-limit-redis";
+import { env } from "@/app/_lib/env";
+import { logError } from "@/lib/logger";
 
 type RateLimitEntry = {
   count: number;
@@ -8,22 +14,39 @@ type RateLimitEntry = {
 const store = new Map<string, RateLimitEntry>();
 
 const WINDOW_MS = 60_000;
+const WINDOW_SECONDS = 60;
 
-export async function checkRateLimit(
-  action: string,
-  maxRequests: number,
-): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
+export type RateLimitOptions = {
+  userId?: string;
+};
+
+async function resolveClientIp(): Promise<string> {
   const headerStore = await headers();
   const forwarded = headerStore.get("x-forwarded-for");
-  // L'ultimo hop della catena X-Forwarded-For e' quello aggiunto dal proxy
-  // fidato (Vercel) piu' vicino al nostro server, quindi il piu' difficile
-  // da falsificare per un client esterno. Il primo hop e' invece il valore
-  // che il client stesso puo' impostare liberamente nell'header in ingresso.
-  const forwardedIps = forwarded?.split(",").map((value) => value.trim()).filter(Boolean);
-  const ip = forwardedIps?.at(-1) ?? headerStore.get("x-real-ip") ?? "unknown";
-  const key = `${action}:${ip}`;
-  const now = Date.now();
+  const forwardedIps = forwarded
+    ?.split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return forwardedIps?.at(-1) ?? headerStore.get("x-real-ip") ?? "unknown";
+}
 
+function buildRateLimitKey(
+  action: string,
+  ip: string,
+  options?: RateLimitOptions,
+): string {
+  if (options?.userId) {
+    return `ratelimit:${action}:user:${options.userId}`;
+  }
+
+  return `ratelimit:${action}:ip:${ip}`;
+}
+
+function checkInMemoryRateLimit(
+  key: string,
+  maxRequests: number,
+): { allowed: true } | { allowed: false; retryAfterSeconds: number } {
+  const now = Date.now();
   const existing = store.get(key);
 
   if (!existing || existing.resetAt <= now) {
@@ -39,4 +62,30 @@ export async function checkRateLimit(
   existing.count += 1;
   store.set(key, existing);
   return { allowed: true };
+}
+
+export async function checkRateLimit(
+  action: string,
+  maxRequests: number,
+  options?: RateLimitOptions,
+): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
+  const ip = await resolveClientIp();
+  const key = buildRateLimitKey(action, ip, options);
+
+  if (isRedisRateLimitConfigured()) {
+    const count = await safeRedisFixedWindowCount(key, WINDOW_SECONDS);
+    if (count !== null) {
+      if (count > maxRequests) {
+        return { allowed: false, retryAfterSeconds: WINDOW_SECONDS };
+      }
+      return { allowed: true };
+    }
+  } else if (env.NODE_ENV === "production") {
+    logError(
+      "rate-limit",
+      "Upstash Redis non configurato in produzione: rate limit degrado in-memory",
+    );
+  }
+
+  return checkInMemoryRateLimit(key, maxRequests);
 }

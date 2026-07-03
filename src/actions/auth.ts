@@ -7,6 +7,11 @@ import { APIError } from "better-auth"
 import { Prisma } from "@/generated/prisma/client"
 import { auth } from "@/lib/auth"
 import { checkRateLimit } from "@/app/_lib/rate-limit"
+import {
+  getLoginLockStatus,
+  recordFailedLoginAttempt,
+  resetLoginAttempts,
+} from "@/app/_lib/auth/lockout"
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect"
 
 // Limiti superiori oltre ai minimi: senza un max(), un payload con
@@ -120,15 +125,25 @@ export async function login(prevState: unknown, formData: FormData) {
   }
 
   const { email, password } = parsed.data
-  // Non ci fidiamo del valore che torna dal client nel campo hidden: viene
-  // ri-sanitizzato qui prima di essere usato in redirect().
   const callbackUrl = sanitizeCallbackUrl(formData.get("callbackUrl") as string | null)
+
+  const lockStatus = await getLoginLockStatus(email)
+  if (lockStatus.locked) {
+    return {
+      errors: {
+        email: [
+          `Account temporaneamente bloccato. Riprova tra ${lockStatus.retryAfterSeconds} secondi.`,
+        ],
+      },
+    }
+  }
 
   try {
     await auth.api.signInEmail({
       body: { email, password },
     })
   } catch (error) {
+    await recordFailedLoginAttempt(email)
     if (error instanceof APIError) {
       return {
         errors: { email: ["Credenziali non valide"] },
@@ -137,6 +152,8 @@ export async function login(prevState: unknown, formData: FormData) {
     console.error("[login] Unexpected error:", error)
     return { errors: { email: ["Errore durante l'accesso"] } }
   }
+
+  await resetLoginAttempts(email)
 
   redirect(callbackUrl)
 }

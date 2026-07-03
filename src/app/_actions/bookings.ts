@@ -358,6 +358,19 @@ export async function holdSlot(
     }
 
     if (isPrismaKnownError(error) && error.code === "P2002") {
+      const target = error.meta?.target;
+      if (
+        Array.isArray(target) &&
+        target.some((field) => String(field).includes("discountCodeId"))
+      ) {
+        return {
+          success: false,
+          error:
+            "Questo codice sconto è già associato a un'altra prenotazione attiva",
+          code: "DISCOUNT_INVALID",
+        };
+      }
+
       return {
         success: false,
         error: "Questo slot non è più disponibile",

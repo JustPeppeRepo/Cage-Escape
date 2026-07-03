@@ -127,7 +127,17 @@ export async function changePassword(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireUser();
+  const session = await requireUser();
+
+  const rateLimit = await checkRateLimit("changePassword", 5, {
+    userId: session.user.id,
+  });
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+    };
+  }
 
   const parsed = changePasswordSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {

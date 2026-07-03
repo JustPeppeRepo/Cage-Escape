@@ -1,3 +1,4 @@
+import { BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
 import { getSiteSettings } from "@/app/_lib/admin/site-settings";
 
@@ -42,6 +43,28 @@ export async function validateDiscountCodeForUser(
 
   if (discount.discountPercent !== settings.easterEggDiscountPercent) {
     return { ok: false, error: "Codice sconto non più valido" };
+  }
+
+  const now = new Date();
+  const activeBooking = await prisma.booking.findFirst({
+    where: {
+      discountCodeId: discount.id,
+      OR: [
+        { status: { in: [BookingStatus.DEPOSIT_PAID, BookingStatus.PAID] } },
+        {
+          status: BookingStatus.PENDING,
+          holdExpiresAt: { gt: now },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+
+  if (activeBooking) {
+    return {
+      ok: false,
+      error: "Questo codice sconto è già associato a un'altra prenotazione attiva",
+    };
   }
 
   return {

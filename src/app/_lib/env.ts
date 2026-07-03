@@ -10,8 +10,11 @@ const envSchema = z
     STRIPE_SECRET_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     NEXT_PUBLIC_APP_URL: z.string().url(),
+    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
     RESEND_API_KEY: z.string().min(1).optional(),
     CONTACT_EMAIL_TO: z.string().email().optional(),
+    STRIPE_OPS_EMAIL_TO: z.string().email().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   })
   .superRefine((data, ctx) => {
