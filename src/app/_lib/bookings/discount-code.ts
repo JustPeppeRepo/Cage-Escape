@@ -1,0 +1,55 @@
+import { prisma } from "@/app/_lib/prisma";
+import { getSiteSettings } from "@/app/_lib/admin/site-settings";
+
+export type ValidatedDiscountCode = {
+  id: string;
+  code: string;
+  discountPercent: number;
+};
+
+export async function validateDiscountCodeForUser(
+  rawCode: string | undefined,
+  userId: string,
+): Promise<
+  | { ok: true; discount: ValidatedDiscountCode | null }
+  | { ok: false; error: string }
+> {
+  const normalized = rawCode?.trim().toUpperCase();
+  if (!normalized) {
+    return { ok: true, discount: null };
+  }
+
+  const settings = await getSiteSettings();
+  if (!settings.easterEggDiscountEnabled) {
+    return { ok: false, error: "Gli sconti non sono attualmente disponibili" };
+  }
+
+  const discount = await prisma.discountCode.findUnique({
+    where: { code: normalized },
+  });
+
+  if (!discount || discount.userId !== userId) {
+    return { ok: false, error: "Codice sconto non valido" };
+  }
+
+  if (discount.used) {
+    return { ok: false, error: "Questo codice sconto è già stato utilizzato" };
+  }
+
+  if (discount.expiresAt <= new Date()) {
+    return { ok: false, error: "Questo codice sconto è scaduto" };
+  }
+
+  if (discount.discountPercent !== settings.easterEggDiscountPercent) {
+    return { ok: false, error: "Codice sconto non più valido" };
+  }
+
+  return {
+    ok: true,
+    discount: {
+      id: discount.id,
+      code: discount.code,
+      discountPercent: discount.discountPercent,
+    },
+  };
+}

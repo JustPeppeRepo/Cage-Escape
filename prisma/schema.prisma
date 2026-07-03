@@ -57,6 +57,7 @@ model User {
   bookings            Booking[]
   sessions            Session[]
   accounts            Account[]
+  discountCodes       DiscountCode[]
 
   @@map("user")
 }
@@ -176,6 +177,8 @@ model Booking {
   paymentChoice   PaymentType
   participantCount Int
   minorCount      Int           @default(0)
+  discountCodeId  String?
+  discountCode    DiscountCode? @relation(fields: [discountCodeId], references: [id])
   payments        Payment[]
   createdAt       DateTime      @default(now()) @db.Timestamptz
 
@@ -193,4 +196,40 @@ model Payment {
   type            PaymentType
   status          PaymentStatus @default(PENDING)
   paidAt          DateTime?     @db.Timestamptz
+}
+
+// Riga singola di configurazione globale (id fisso "default").
+model SiteSettings {
+  id                       String   @id @default("default")
+  easterEggDiscountEnabled Boolean  @default(false)
+  easterEggDiscountPercent Int      @default(5)
+  updatedAt                DateTime @updatedAt @db.Timestamptz
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([createdAt])
+}
+
+model DiscountCode {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  discountPercent Int
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  used            Boolean   @default(false)
+  usedAt          DateTime? @db.Timestamptz
+  expiresAt       DateTime  @db.Timestamptz
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  bookings        Booking[]
+
+  @@index([userId])
+  @@index([code])
 }

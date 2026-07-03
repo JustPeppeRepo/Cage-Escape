@@ -29,6 +29,7 @@ export const holdSlotSchema = z
     participantCount: z.coerce.number().int().min(1),
     minorCount: z.coerce.number().int().min(0).default(0),
     paymentChoice: z.enum([PaymentType.FULL, PaymentType.DEPOSIT]),
+    discountCode: z.string().max(32).optional().or(z.literal("")),
   })
   .refine((data) => data.minorCount <= data.participantCount, {
     message: "Il numero di minorenni non può superare i partecipanti",

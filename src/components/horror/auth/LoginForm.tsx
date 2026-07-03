@@ -14,7 +14,9 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6 text-bone"
+      className={`flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6 text-bone ${
+        state?.errors ? "animate-shake" : ""
+      }`}
     >
       <input type="hidden" name="callbackUrl" value={callbackUrl} readOnly />
 

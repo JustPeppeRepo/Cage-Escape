@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { BookingStatus } from "@/generated/prisma/client";
+import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
 
 export const metadata: Metadata = {
@@ -7,22 +10,81 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPage() {
-  // Controllo indipendente da quello nel layout: e' questo, non quello nel
-  // layout, a garantire la protezione ad ogni navigazione (vedi commento in
-  // admin/layout.tsx).
   const session = await requireAdmin();
 
+  const [pendingBookings, conflictBookings, upcomingBookings, roomCount] =
+    await Promise.all([
+      prisma.booking.count({ where: { status: BookingStatus.PENDING } }),
+      prisma.booking.count({
+        where: { status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED },
+      }),
+      prisma.booking.count({
+        where: {
+          status: { in: [BookingStatus.PAID, BookingStatus.DEPOSIT_PAID] },
+          startTime: { gte: new Date() },
+        },
+      }),
+      prisma.room.count(),
+    ]);
+
+  const cards = [
+    {
+      label: "Prenotazioni in attesa",
+      value: pendingBookings,
+      href: "/admin/bookings?status=PENDING",
+    },
+    {
+      label: "Conflitti pagamento",
+      value: conflictBookings,
+      href: "/admin/bookings?status=PAYMENT_CONFLICT_REFUND_REQUIRED",
+      alert: conflictBookings > 0,
+    },
+    {
+      label: "Prossime confermate",
+      value: upcomingBookings,
+      href: "/admin/bookings",
+    },
+    { label: "Stanze", value: roomCount, href: "/admin/rooms" },
+  ];
+
   return (
-    <main className="min-h-screen bg-void px-6 py-24 text-bone">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl text-blood-bright">
-          Pannello amministrazione
-        </h1>
-        <p className="mt-4 text-bone/70">
-          Bentornato, {session.user.name}. La gestione di stanze, orari e
-          prenotazioni sarà disponibile in una fase successiva.
-        </p>
+    <main>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl text-blood-bright">
+        Pannello amministrazione
+      </h1>
+      <p className="mt-2 text-bone/70">Bentornato, {session.user.name}.</p>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((card) => (
+          <Link
+            key={card.label}
+            href={card.href}
+            className={`rounded border p-4 transition-colors hover:border-blood/50 ${
+              card.alert
+                ? "border-blood bg-blood/10"
+                : "border-void-mist bg-void-deep"
+            }`}
+          >
+            <p className="text-sm text-bone/60">{card.label}</p>
+            <p className="mt-2 text-3xl text-bone">{card.value}</p>
+          </Link>
+        ))}
       </div>
+
+      <nav className="mt-8 flex flex-wrap gap-3 md:hidden">
+        <Link href="/admin/rooms" className="text-sm text-blood-bright underline">
+          Stanze
+        </Link>
+        <Link href="/admin/schedule" className="text-sm text-blood-bright underline">
+          Orari
+        </Link>
+        <Link href="/admin/bookings" className="text-sm text-blood-bright underline">
+          Prenotazioni
+        </Link>
+        <Link href="/admin/impostazioni" className="text-sm text-blood-bright underline">
+          Impostazioni
+        </Link>
+      </nav>
     </main>
   );
 }

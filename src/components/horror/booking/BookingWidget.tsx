@@ -38,6 +38,7 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState(room.minPlayers);
   const [minorCount, setMinorCount] = useState(0);
+  const [discountCode, setDiscountCode] = useState("");
   const [paymentChoice, setPaymentChoice] = useState<"FULL" | "DEPOSIT">(
     "FULL",
   );
@@ -237,6 +238,20 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
               </span>
             </label>
           </fieldset>
+
+          <label className="flex flex-col gap-1 text-sm text-bone/80">
+            Codice sconto (opzionale)
+            <input
+              type="text"
+              name="discountCode"
+              value={discountCode}
+              onChange={(event) =>
+                setDiscountCode(event.target.value.toUpperCase())
+              }
+              placeholder="RITO-XXXX-XXXX"
+              className="rounded border border-void-mist bg-void px-3 py-2 text-bone uppercase"
+            />
+          </label>
 
           {!previewTier ? (
             <p className="text-sm text-blood-bright">

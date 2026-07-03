@@ -1,0 +1,55 @@
+import type { Metadata } from "next";
+import { prisma } from "@/app/_lib/prisma";
+import { requireAdmin } from "@/lib/dal";
+import { ScheduleManager } from "@/components/admin/ScheduleManager";
+
+export const metadata: Metadata = {
+  title: "Orari | Admin | Cage Room",
+  robots: { index: false, follow: false },
+};
+
+function formatDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export default async function AdminSchedulePage() {
+  await requireAdmin();
+
+  const [rooms, overrides] = await Promise.all([
+    prisma.room.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.scheduleOverride.findMany({
+      orderBy: { date: "asc" },
+      include: { room: { select: { name: true } } },
+    }),
+  ]);
+
+  return (
+    <main>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl text-blood-bright">
+        Orari e chiusure
+      </h1>
+      <p className="mt-2 text-sm text-bone/60">
+        Override per date specifiche (chiusura o orario personalizzato).
+      </p>
+
+      <div className="mt-8">
+        <ScheduleManager
+          rooms={rooms}
+          overrides={overrides.map((override) => ({
+            id: override.id,
+            date: formatDateOnly(override.date),
+            roomId: override.roomId,
+            roomName: override.room?.name ?? null,
+            type: override.type,
+            openHour: override.openHour,
+            closeHour: override.closeHour,
+            reason: override.reason,
+          }))}
+        />
+      </div>
+    </main>
+  );
+}

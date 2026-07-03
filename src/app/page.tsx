@@ -7,6 +7,7 @@ import { JumpScare } from "@/components/horror/JumpScare";
 import { RoomsGrid } from "@/components/horror/RoomsGrid";
 import { ReviewPolaroid } from "@/components/horror/ReviewPolaroid";
 import { FaqAccordion } from "@/components/horror/FaqAccordion";
+import { SiteFooter } from "@/components/horror/SiteFooter";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
 export const metadata: Metadata = {
@@ -92,9 +93,7 @@ export default async function Home() {
           <FaqAccordion items={FAQ_ITEMS} />
         </section>
 
-        <footer className="border-t border-void-mist px-6 py-12 text-center text-sm text-bone/50">
-          <p>© {new Date().getFullYear()} Cage Room. Chi entra, spera di uscire.</p>
-        </footer>
+        <SiteFooter />
       </main>
     </>
   );

@@ -1,17 +1,22 @@
 import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/dal";
+import { AdminNav } from "@/components/admin/AdminNav";
 
 export default async function AdminLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  // Difesa in profondita' a livello di shell. Per via del partial rendering
-  // di Next.js questo controllo NON viene ripetuto ad ogni navigazione
-  // client-side tra pagine sorelle sotto /admin: ogni page.tsx qui sotto
-  // DEVE comunque richiamare autonomamente requireAdmin() (vedi Next.js
-  // "Layouts and auth checks" nella guida authentication).
   await requireAdmin();
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-void text-bone">
+      <div className="mx-auto flex min-h-screen max-w-7xl">
+        <aside className="hidden w-56 shrink-0 md:block">
+          <AdminNav />
+        </aside>
+        <div className="flex-1 px-6 py-8">{children}</div>
+      </div>
+    </div>
+  );
 }

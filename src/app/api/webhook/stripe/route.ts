@@ -9,22 +9,23 @@ import {
 import { prisma } from "@/app/_lib/prisma";
 import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
-import { decimalToNumber } from "@/app/_lib/bookings/money";
 import { isSlotAvailable } from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
+import { getBookingChargeAmountNumber } from "@/app/_lib/bookings/charge-amount";
 
 export const runtime = "nodejs";
 
 function getExpectedAmount(
-  paymentChoice: PaymentType,
+  booking: {
+    paymentChoice: PaymentType;
+    discountCode?: { discountPercent: number } | null;
+  },
   tier: {
     totalPrice: { toString(): string };
     depositPrice: { toString(): string };
   },
 ): number {
-  const amount =
-    paymentChoice === PaymentType.FULL ? tier.totalPrice : tier.depositPrice;
-  return decimalToNumber(amount);
+  return getBookingChargeAmountNumber(booking, tier);
 }
 
 async function handleCheckoutCompleted(
@@ -88,7 +89,11 @@ async function handleCheckoutCompleted(
     async (tx) => {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
-        include: { room: { include: { pricingTiers: true } }, payments: true },
+        include: {
+          room: { include: { pricingTiers: true } },
+          payments: true,
+          discountCode: true,
+        },
       });
 
       if (!booking) {
@@ -229,7 +234,7 @@ async function handleCheckoutCompleted(
         return;
       }
 
-      const expectedAmount = getExpectedAmount(paymentChoice, tier);
+      const expectedAmount = getExpectedAmount(booking, tier);
       const paidAmount = (checkoutSession.amount_total ?? 0) / 100;
 
       if (Math.abs(paidAmount - expectedAmount) > 0.01) {
@@ -313,6 +318,13 @@ async function handleCheckoutCompleted(
             paidAt: new Date(),
           },
         });
+
+        if (booking.discountCodeId) {
+          await tx.discountCode.update({
+            where: { id: booking.discountCodeId },
+            data: { used: true, usedAt: new Date() },
+          });
+        }
       } catch (updateError) {
         // Ultima rete di sicurezza: un webhook concorrente ha vinto
         // l'EXCLUDE constraint (booking_no_overlap_per_room) tra il nostro

@@ -29,6 +29,9 @@ import {
   resolveDaySchedule,
 } from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
+import { getBookingChargeAmount } from "@/app/_lib/bookings/charge-amount";
+import { validateDiscountCodeForUser } from "@/app/_lib/bookings/discount-code";
+import { applyDiscountPercent } from "@/app/_lib/admin/discount";
 
 export type BookingActionError = {
   success: false;
@@ -160,7 +163,7 @@ export async function holdSlot(
     };
   }
 
-  const { roomSlug, startTime, participantCount, minorCount, paymentChoice } =
+  const { roomSlug, startTime, participantCount, minorCount, paymentChoice, discountCode } =
     parsed.data;
   const slotStart = new Date(startTime);
 
@@ -211,6 +214,23 @@ export async function holdSlot(
         code: "VALIDATION_ERROR",
       };
     }
+
+    const discountValidation = await validateDiscountCodeForUser(
+      discountCode,
+      session.user.id,
+    );
+
+    if (!discountValidation.ok) {
+      return {
+        success: false,
+        error: discountValidation.error,
+        code: "DISCOUNT_INVALID",
+      };
+    }
+
+    const discountedTotal = discountValidation.discount
+      ? applyDiscountPercent(tier.totalPrice, discountValidation.discount.discountPercent)
+      : tier.totalPrice;
 
     const dateStr = getRomeDateString(slotStart);
     const schedule = await resolveDaySchedule(dateStr, room.id);
@@ -278,12 +298,13 @@ export async function holdSlot(
             roomId: room.id,
             startTime: slotStart,
             endTime: slotEnd,
-            totalAmount: tier.totalPrice,
+            totalAmount: discountedTotal,
             status: BookingStatus.PENDING,
             holdExpiresAt,
             paymentChoice,
             participantCount,
             minorCount,
+            discountCodeId: discountValidation.discount?.id ?? null,
           },
         });
       },
@@ -295,8 +316,15 @@ export async function holdSlot(
       data: {
         bookingId: booking.id,
         holdExpiresAt: booking.holdExpiresAt!.toISOString(),
-        totalAmount: formatEuroAmount(tier.totalPrice),
-        depositAmount: formatEuroAmount(tier.depositPrice),
+        totalAmount: formatEuroAmount(discountedTotal),
+        depositAmount: formatEuroAmount(
+          discountValidation.discount
+            ? applyDiscountPercent(
+                tier.depositPrice,
+                discountValidation.discount.discountPercent,
+              )
+            : tier.depositPrice,
+        ),
       },
     };
   } catch (error) {
@@ -379,7 +407,10 @@ export async function createStripeCheckoutSession(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { room: { include: { pricingTiers: true } } },
+      include: {
+        room: { include: { pricingTiers: true } },
+        discountCode: true,
+      },
     });
 
     if (!booking || booking.userId !== session.user.id) {
@@ -435,8 +466,7 @@ export async function createStripeCheckoutSession(
       };
     }
 
-    const chargeAmount =
-      booking.paymentChoice === "FULL" ? tier.totalPrice : tier.depositPrice;
+    const chargeAmount = getBookingChargeAmount(booking, tier);
 
     const unitAmount = decimalToStripeCents(chargeAmount);
 
