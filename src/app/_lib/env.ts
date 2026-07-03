@@ -22,27 +22,9 @@ const envSchema = z
     }
   });
 
-// #region agent log
-const CHECK_KEYS = [
-  "BETTER_AUTH_URL",
-  "STRIPE_SECRET_KEY",
-  "STRIPE_WEBHOOK_SECRET",
-  "NEXT_PUBLIC_APP_URL",
-] as const;
-const isBrowserContext = typeof window !== "undefined";
-fetch('http://127.0.0.1:7808/ingest/f514f2e9-5ac4-48b3-b1b3-d645f78092c0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ffe0c9'},body:JSON.stringify({sessionId:'ffe0c9',runId:'pre-fix',hypothesisId:'H1-H4-H5',location:'src/app/_lib/env.ts:pre-parse',message:'env var presence/length diagnostic',data:{isBrowserContext,vars:Object.fromEntries(CHECK_KEYS.map((k)=>[k,{isDefined:k in process.env,length:(process.env[k]??"").length,startsWithHttp:(process.env[k]??"").startsWith("http")}]))},timestamp:Date.now()})}).catch(()=>{});
-// #endregion agent log
-
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  // #region agent log
-  const relevantIssues = parsed.error.issues
-    .filter((issue) => CHECK_KEYS.includes(issue.path[0] as (typeof CHECK_KEYS)[number]))
-    .map((issue) => ({ path: issue.path, code: issue.code, message: issue.message }));
-  fetch('http://127.0.0.1:7808/ingest/f514f2e9-5ac4-48b3-b1b3-d645f78092c0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ffe0c9'},body:JSON.stringify({sessionId:'ffe0c9',runId:'pre-fix',hypothesisId:'H1-H4',location:'src/app/_lib/env.ts:parse-fail',message:'zod validation issues for target keys',data:{isBrowserContext,relevantIssues},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
-
   console.error(
     "❌ Variabili d'ambiente non valide:\n",
     z.treeifyError(parsed.error),
