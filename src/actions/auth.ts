@@ -1,6 +1,7 @@
 "use server"
 
 import { z } from "zod"
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { APIError } from "better-auth"
 import { Prisma } from "@/generated/prisma/client"
@@ -138,4 +139,12 @@ export async function login(prevState: unknown, formData: FormData) {
   }
 
   redirect(callbackUrl)
+}
+
+export async function logout() {
+  await auth.api.signOut({
+    headers: await headers(),
+  });
+
+  redirect("/")
 }

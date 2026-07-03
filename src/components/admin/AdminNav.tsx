@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { logout } from "@/actions/auth";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
@@ -29,6 +30,14 @@ export function AdminNav() {
       >
         ← Torna al sito
       </Link>
+      <form action={logout} className="mt-2">
+        <button
+          type="submit"
+          className="w-full rounded px-3 py-2 text-left text-sm text-bone/50 transition-colors hover:bg-void-mist hover:text-bone/80"
+        >
+          Esci
+        </button>
+      </form>
     </nav>
   );
 }

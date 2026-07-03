@@ -16,6 +16,7 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] Due round di security review (open redirect, enumerazione utenti, ecc.)
 - [x] Pannello Admin completo (`/admin`, rooms, schedule, bookings, impostazioni)
 - [x] Pagine `/about`, `/contatti`, `/maledizione`
+- [x] Navbar pubblica con sessione server-side (link, login/logout, info utente)
 
 ## Fase A — Pannello Admin ✅
 
@@ -41,6 +42,7 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] `src/lib/logger.ts`
 - [x] Tipi consolidati in `src/types/`
 - [x] `.env.example`
+- [x] Navbar pubblica con link alle pagine, stato login e info utente (`SiteNav` + sessione server-side)
 - [ ] (Facoltativo) recensioni da DB invece che statiche
 
 ## Note di coerenza
