@@ -1,14 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { BookingStatus } from "@/generated/prisma/client";
+import { BookingStatus, PaymentStatus } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
+import { stripe } from "@/app/_lib/stripe";
 import { cancelBookingSchema } from "@/app/_lib/admin/schemas";
 import {
   type AdminActionResult,
   formDataToObject,
 } from "@/app/_lib/admin/action-result";
+
+const REFUNDABLE_STATUSES: BookingStatus[] = [
+  BookingStatus.PAID,
+  BookingStatus.DEPOSIT_PAID,
+];
 
 export async function cancelBooking(
   prevState: AdminActionResult | null,
@@ -29,7 +35,11 @@ export async function cancelBooking(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { status: true },
+      include: {
+        payments: {
+          where: { status: PaymentStatus.SUCCEEDED },
+        },
+      },
     });
 
     if (!booking) {
@@ -44,6 +54,41 @@ export async function cancelBooking(
         success: false,
         error: "Questa prenotazione non può essere annullata",
       };
+    }
+
+    if (REFUNDABLE_STATUSES.includes(booking.status)) {
+      if (booking.payments.length === 0) {
+        return {
+          success: false,
+          error: "Nessun pagamento registrato da rimborsare",
+        };
+      }
+
+      for (const payment of booking.payments) {
+        try {
+          await stripe.refunds.create({
+            payment_intent: payment.stripePaymentId,
+          });
+        } catch (error) {
+          console.error("[admin/cancelBooking] Stripe refund failed", {
+            bookingId,
+            paymentId: payment.id,
+            error,
+          });
+          return {
+            success: false,
+            error: "Rimborso Stripe non riuscito; prenotazione non annullata",
+          };
+        }
+      }
+
+      await prisma.payment.updateMany({
+        where: {
+          bookingId: booking.id,
+          status: PaymentStatus.SUCCEEDED,
+        },
+        data: { status: PaymentStatus.REFUNDED },
+      });
     }
 
     await prisma.booking.update({

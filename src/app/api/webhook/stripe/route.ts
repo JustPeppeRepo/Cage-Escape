@@ -12,8 +12,26 @@ import { env } from "@/app/_lib/env";
 import { isSlotAvailable } from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 import { getBookingChargeAmountNumber } from "@/app/_lib/bookings/charge-amount";
+import { sendStripeOpsAlert } from "@/app/_lib/stripe/ops-alert";
 
 export const runtime = "nodejs";
+
+type StripeOpsAlertPayload = {
+  subject: string;
+  details: Record<string, unknown>;
+};
+
+function queueStripeOpsAlert(
+  alerts: StripeOpsAlertPayload[],
+  subject: string,
+  details: Record<string, unknown>,
+): void {
+  alerts.push({ subject, details });
+}
+
+async function dispatchStripeOpsAlerts(alerts: StripeOpsAlertPayload[]): Promise<void> {
+  await Promise.all(alerts.map((alert) => sendStripeOpsAlert(alert)));
+}
 
 function getExpectedAmount(
   booking: {
@@ -85,6 +103,8 @@ async function handleCheckoutCompleted(
       ? BookingStatus.PAID
       : BookingStatus.DEPOSIT_PAID;
 
+  const opsAlerts: StripeOpsAlertPayload[] = [];
+
   await prisma.$transaction(
     async (tx) => {
       const booking = await tx.booking.findUnique({
@@ -141,6 +161,12 @@ async function handleCheckoutCompleted(
             paidAt: new Date(),
           },
         });
+        queueStripeOpsAlert(opsAlerts, "Pagamento duplicato su booking confermato", {
+          bookingId: booking.id,
+          paymentIntentId,
+          existingStatus: booking.status,
+          duplicatePaidAmount,
+        });
         return;
       }
 
@@ -178,9 +204,16 @@ async function handleCheckoutCompleted(
             holdExpiresAt: null,
           },
         });
+        queueStripeOpsAlert(opsAlerts, "Metadata Stripe incoerenti", {
+          bookingId: booking.id,
+          paymentIntentId,
+          metadataPaymentChoice: paymentChoiceRaw,
+          bookingPaymentChoice: booking.paymentChoice,
+          metadataUserId,
+          bookingUserId: booking.userId,
+        });
         return;
       }
-
       // Il checkout crea sempre sessioni in "eur" (bookings.ts), ma non ci
       // fidiamo implicitamente del tipo di evento: verifichiamo comunque la
       // valuta effettiva della sessione pagata prima di confermare, stesso
@@ -200,6 +233,11 @@ async function handleCheckoutCompleted(
             status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
             holdExpiresAt: null,
           },
+        });
+        queueStripeOpsAlert(opsAlerts, "Valuta Stripe inattesa", {
+          bookingId: booking.id,
+          paymentIntentId,
+          currency: checkoutSession.currency,
         });
         return;
       }
@@ -231,6 +269,12 @@ async function handleCheckoutCompleted(
             holdExpiresAt: null,
           },
         });
+        queueStripeOpsAlert(opsAlerts, "Fascia prezzo mancante al webhook", {
+          bookingId: booking.id,
+          paymentIntentId,
+          roomId: booking.roomId,
+          participantCount: booking.participantCount,
+        });
         return;
       }
 
@@ -253,6 +297,12 @@ async function handleCheckoutCompleted(
             status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
             holdExpiresAt: null,
           },
+        });
+        queueStripeOpsAlert(opsAlerts, "Importo Stripe diverso da atteso", {
+          bookingId,
+          expectedAmount,
+          paidAmount,
+          paymentChoice,
         });
         return;
       }
@@ -294,11 +344,63 @@ async function handleCheckoutCompleted(
               holdExpiresAt: null,
             },
           });
+          queueStripeOpsAlert(opsAlerts, "Conflitto slot post-hold scaduto", {
+            bookingId: booking.id,
+            paymentIntentId,
+            roomId: booking.roomId,
+            startTime: booking.startTime.toISOString(),
+            endTime: booking.endTime.toISOString(),
+          });
           return;
         }
       }
 
       try {
+        if (booking.discountCodeId) {
+          const discount = await tx.discountCode.findUnique({
+            where: { id: booking.discountCodeId },
+          });
+
+          if (discount?.used) {
+            const redeemedByOther = await tx.booking.findFirst({
+              where: {
+                discountCodeId: booking.discountCodeId,
+                id: { not: booking.id },
+                status: {
+                  in: [BookingStatus.PAID, BookingStatus.DEPOSIT_PAID],
+                },
+              },
+              select: { id: true },
+            });
+
+            if (redeemedByOther) {
+              console.error(
+                "[stripe webhook] Codice sconto già utilizzato - rimborso manuale richiesto:",
+                JSON.stringify({
+                  bookingId: booking.id,
+                  paymentIntentId,
+                  discountCodeId: booking.discountCodeId,
+                  redeemedByBookingId: redeemedByOther.id,
+                }),
+              );
+              await tx.booking.update({
+                where: { id: booking.id },
+                data: {
+                  status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+                  holdExpiresAt: null,
+                },
+              });
+              queueStripeOpsAlert(opsAlerts, "Codice sconto già utilizzato", {
+                bookingId: booking.id,
+                paymentIntentId,
+                discountCodeId: booking.discountCodeId,
+                redeemedByBookingId: redeemedByOther.id,
+              });
+              return;
+            }
+          }
+        }
+
         await tx.booking.update({
           where: { id: booking.id },
           data: {
@@ -341,10 +443,16 @@ async function handleCheckoutCompleted(
             holdExpiresAt: null,
           },
         });
+        queueStripeOpsAlert(opsAlerts, "Conflitto su update finale booking", {
+          bookingId: booking.id,
+          paymentIntentId,
+        });
       }
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
+
+  await dispatchStripeOpsAlerts(opsAlerts);
 }
 
 async function handleCheckoutExpired(
