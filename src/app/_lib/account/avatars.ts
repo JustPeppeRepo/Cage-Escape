@@ -34,7 +34,3 @@ export function resolveAvatarId(image: string | null | undefined): AvatarId {
 
   return AVATARS[0].id;
 }
-
-export function isTrustedAvatarUrl(url: string): boolean {
-  return avatarByUrl.has(url);
-}

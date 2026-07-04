@@ -25,9 +25,3 @@ export const deleteAccountSchema = z.object({
   confirmEmail: z.string().email("Email non valida"),
   password: z.string().min(8).max(72),
 });
-
-export type ProfileFormInput = z.infer<typeof profileFormSchema>;
-export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
-export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

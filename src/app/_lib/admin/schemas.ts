@@ -109,12 +109,3 @@ export const reviewFormSchema = z.object({
 export const deleteReviewSchema = z.object({
   reviewId: z.string().min(1),
 });
-
-export type RoomFormInput = z.infer<typeof roomFormSchema>;
-export type PricingTierFormInput = z.infer<typeof pricingTierFormSchema>;
-export type ScheduleOverrideFormInput = z.infer<typeof scheduleOverrideFormSchema>;
-export type SiteSettingsFormInput = z.infer<typeof siteSettingsFormSchema>;
-export type ContactFormInput = z.infer<typeof contactFormSchema>;
-export type ContactMessageIdInput = z.infer<typeof contactMessageIdSchema>;
-export type SetContactMessageReadInput = z.infer<typeof setContactMessageReadSchema>;
-export type ReviewFormInput = z.infer<typeof reviewFormSchema>;

@@ -1,5 +1,3 @@
-type LogLevel = "error" | "warn" | "info";
-
 function formatPayload(
   scope: string,
   message: string,
@@ -17,13 +15,3 @@ function formatPayload(
 export function logError(scope: string, message: string, detail?: unknown): void {
   console.error(formatPayload(scope, message, detail));
 }
-
-export function logWarn(scope: string, message: string, detail?: unknown): void {
-  console.warn(formatPayload(scope, message, detail));
-}
-
-export function logInfo(scope: string, message: string, detail?: unknown): void {
-  console.info(formatPayload(scope, message, detail));
-}
-
-export type { LogLevel };
