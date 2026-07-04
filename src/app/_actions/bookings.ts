@@ -60,6 +60,7 @@ export type BookingActionResult<T> =
   | BookingActionError;
 
 type AvailableSlotPayload = {
+  date: string;
   slots: Array<{ startTime: string; endTime: string }>;
 };
 
@@ -110,27 +111,51 @@ export async function getAvailableSlots(
     };
   }
 
-  const { roomSlug, date } = parsed.data;
+  const { roomSlug, roomId: providedRoomId, date } = parsed.data;
 
   try {
-    const room = await prisma.room.findFirst({
-      where: { slug: roomSlug, isActive: true },
-      select: { id: true, durationMinutes: true },
-    });
+    let roomId = providedRoomId;
+    let durationMinutes: number;
 
-    if (!room) {
-      return {
-        success: false,
-        error: "Stanza non trovata o non disponibile",
-        code: "ROOM_NOT_FOUND",
-      };
+    if (roomId) {
+      const room = await prisma.room.findFirst({
+        where: { id: roomId, slug: roomSlug, isActive: true },
+        select: { id: true, durationMinutes: true },
+      });
+
+      if (!room) {
+        return {
+          success: false,
+          error: "Stanza non trovata o non disponibile",
+          code: "ROOM_NOT_FOUND",
+        };
+      }
+
+      durationMinutes = room.durationMinutes;
+    } else {
+      const room = await prisma.room.findFirst({
+        where: { slug: roomSlug, isActive: true },
+        select: { id: true, durationMinutes: true },
+      });
+
+      if (!room) {
+        return {
+          success: false,
+          error: "Stanza non trovata o non disponibile",
+          code: "ROOM_NOT_FOUND",
+        };
+      }
+
+      roomId = room.id;
+      durationMinutes = room.durationMinutes;
     }
 
-    const slots = await getAvailableSlotsForRoom(room.id, room.durationMinutes, date);
+    const slots = await getAvailableSlotsForRoom(roomId, durationMinutes, date);
 
     return {
       success: true,
       data: {
+        date,
         slots: slots.map((slot) => ({
           startTime: slot.startTime.toISOString(),
           endTime: slot.endTime.toISOString(),

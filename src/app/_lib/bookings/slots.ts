@@ -20,6 +20,16 @@ export type DaySchedule = {
 
 export type DayAvailabilityStatus = "available" | "partial" | "unavailable";
 
+export type SerializedTimeSlot = {
+  startTime: string;
+  endTime: string;
+};
+
+export type RoomAvailabilityRangeResult = {
+  days: Record<string, DayAvailabilityStatus>;
+  slotsByDate: Record<string, SerializedTimeSlot[]>;
+};
+
 type ScheduleOverrideRecord = {
   date: Date;
   roomId: string | null;
@@ -320,16 +330,23 @@ function getBookableSlotsForDay(
   return { bookable, available };
 }
 
+function serializeTimeSlots(slots: TimeSlot[]): SerializedTimeSlot[] {
+  return slots.map((slot) => ({
+    startTime: slot.startTime.toISOString(),
+    endTime: slot.endTime.toISOString(),
+  }));
+}
+
 export async function getAvailableSlotsForRoom(
   roomId: string,
   durationMinutes: number,
   dateStr: string,
 ): Promise<TimeSlot[]> {
-  await releaseExpiredHolds();
-
-  const schedule = await resolveDaySchedule(dateStr, roomId);
   const { dayStart, dayEnd } = getDayBounds(dateStr);
-  const occupied = await getOccupiedSlots(roomId, dayStart, dayEnd);
+  const [schedule, occupied] = await Promise.all([
+    resolveDaySchedule(dateStr, roomId),
+    getOccupiedSlots(roomId, dayStart, dayEnd),
+  ]);
 
   return getBookableSlotsForDay(
     dateStr,
@@ -340,20 +357,47 @@ export async function getAvailableSlotsForRoom(
   ).available;
 }
 
-export async function getRoomMonthAvailability(
+export function getDefaultPrefetchRangeBounds(): {
+  startDateStr: string;
+  endDateStr: string;
+} {
+  const todayRome = getRomeDateString(new Date());
+  const [year, month] = todayRome.split("-").map(Number);
+  const monthStart = `${year}-${pad(month)}-01`;
+  const startDateStr = todayRome > monthStart ? todayRome : monthStart;
+
+  let nextMonth = month + 1;
+  let nextYear = year;
+  if (nextMonth > 12) {
+    nextMonth = 1;
+    nextYear += 1;
+  }
+
+  const lastDay = new Date(nextYear, nextMonth, 0).getDate();
+  const endDateStr = `${nextYear}-${pad(nextMonth)}-${pad(lastDay)}`;
+
+  return { startDateStr, endDateStr };
+}
+
+function addDaysToDateStr(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + days));
+  return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`;
+}
+
+export async function getRoomAvailabilityRange(
   roomId: string,
   durationMinutes: number,
-  year: number,
-  month: number,
-): Promise<Record<string, DayAvailabilityStatus>> {
-  await releaseExpiredHolds();
+  startDateStr: string,
+  endDateStr: string,
+  options?: { skipReleaseExpiredHolds?: boolean },
+): Promise<RoomAvailabilityRangeResult> {
+  if (!options?.skipReleaseExpiredHolds) {
+    await releaseExpiredHolds();
+  }
 
   const todayRome = getRomeDateString(new Date());
   const now = new Date();
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  const monthPrefix = `${year}-${pad(month + 1)}`;
-  const startDateStr = `${monthPrefix}-01`;
-  const endDateStr = `${monthPrefix}-${pad(lastDay)}`;
   const { dayStart: rangeStart } = getDayBounds(startDateStr);
   const { dayEnd: rangeEnd } = getDayBounds(endDateStr);
 
@@ -371,10 +415,14 @@ export async function getRoomMonthAvailability(
     getOccupiedSlots(roomId, rangeStart, rangeEnd),
   ]);
 
-  const availability: Record<string, DayAvailabilityStatus> = {};
+  const days: Record<string, DayAvailabilityStatus> = {};
+  const slotsByDate: Record<string, SerializedTimeSlot[]> = {};
 
-  for (let day = 1; day <= lastDay; day += 1) {
-    const dateStr = `${monthPrefix}-${pad(day)}`;
+  for (
+    let dateStr = startDateStr;
+    dateStr <= endDateStr;
+    dateStr = addDaysToDateStr(dateStr, 1)
+  ) {
     if (dateStr < todayRome) {
       continue;
     }
@@ -397,19 +445,41 @@ export async function getRoomMonthAvailability(
       now,
     );
 
+    slotsByDate[dateStr] = serializeTimeSlots(available);
+
     if (bookable.length === 0) {
-      availability[dateStr] = "unavailable";
+      days[dateStr] = "unavailable";
       continue;
     }
 
     if (available.length === 0) {
-      availability[dateStr] = "unavailable";
+      days[dateStr] = "unavailable";
       continue;
     }
 
-    availability[dateStr] =
-      dayOccupied.length > 0 ? "partial" : "available";
+    days[dateStr] = dayOccupied.length > 0 ? "partial" : "available";
   }
 
-  return availability;
+  return { days, slotsByDate };
+}
+
+export async function getRoomMonthAvailability(
+  roomId: string,
+  durationMinutes: number,
+  year: number,
+  month: number,
+): Promise<Record<string, DayAvailabilityStatus>> {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const monthPrefix = `${year}-${pad(month + 1)}`;
+  const startDateStr = `${monthPrefix}-01`;
+  const endDateStr = `${monthPrefix}-${pad(lastDay)}`;
+
+  const { days } = await getRoomAvailabilityRange(
+    roomId,
+    durationMinutes,
+    startDateStr,
+    endDateStr,
+  );
+
+  return days;
 }

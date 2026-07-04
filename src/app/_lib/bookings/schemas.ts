@@ -16,6 +16,7 @@ function isTodayOrFuture(dateStr: string): boolean {
 
 export const getAvailableSlotsSchema = z.object({
   roomSlug: z.string().trim().min(1).max(64),
+  roomId: z.string().trim().min(1).max(64).optional(),
   date: z
     .string()
     .regex(dateRegex, "Formato data non valido (YYYY-MM-DD)")

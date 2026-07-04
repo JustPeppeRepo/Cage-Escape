@@ -1,13 +1,22 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   getAvailableSlots,
   getMonthAvailability,
   holdSlot,
 } from "@/app/_actions/bookings";
-import type { DayAvailabilityStatus } from "@/app/_lib/bookings/slots";
+import type {
+  DayAvailabilityStatus,
+  SerializedTimeSlot,
+} from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 import { BookingCalendar } from "@/components/horror/booking/BookingCalendar";
 
@@ -20,11 +29,17 @@ type PricingTierPreview = {
 
 type BookingWidgetProps = {
   room: {
+    id: string;
     slug: string;
     minPlayers: number;
     maxPlayers: number;
+    durationMinutes: number;
   };
   pricingTiers: PricingTierPreview[];
+  initialDayAvailability: Record<string, DayAvailabilityStatus>;
+  initialSlotsByDate: Record<string, SerializedTimeSlot[]>;
+  prefetchedRangeStart: string;
+  prefetchedRangeEnd: string;
 };
 
 const TIME_FORMATTER = new Intl.DateTimeFormat("it-IT", {
@@ -33,17 +48,59 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("it-IT", {
   minute: "2-digit",
 });
 
+const HOVER_PREFETCH_DELAY_MS = 150;
+
 function formatSlotTime(iso: string): string {
   return TIME_FORMATTER.format(new Date(iso));
 }
 
-export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
+function padMonth(month: number): string {
+  return String(month + 1).padStart(2, "0");
+}
+
+function monthHasAvailabilityData(
+  dayAvailability: Record<string, DayAvailabilityStatus>,
+  year: number,
+  month: number,
+): boolean {
+  const prefix = `${year}-${padMonth(month)}-`;
+  return Object.keys(dayAvailability).some((date) => date.startsWith(prefix));
+}
+
+function slotsEqual(
+  left: SerializedTimeSlot[],
+  right: SerializedTimeSlot[],
+): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every(
+    (slot, index) =>
+      slot.startTime === right[index]?.startTime &&
+      slot.endTime === right[index]?.endTime,
+  );
+}
+
+export function BookingWidget({
+  room,
+  pricingTiers,
+  initialDayAvailability,
+  initialSlotsByDate,
+  prefetchedRangeStart: _prefetchedRangeStart,
+  prefetchedRangeEnd: _prefetchedRangeEnd,
+}: BookingWidgetProps) {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [dayAvailability, setDayAvailability] = useState<
-    Record<string, DayAvailabilityStatus>
-  >({});
+  const [dayAvailability, setDayAvailability] = useState(
+    initialDayAvailability,
+  );
+  const [slotsCache, setSlotsCache] = useState(initialSlotsByDate);
+  const [slotsRequestDate, setSlotsRequestDate] = useState<string | null>(
+    null,
+  );
+  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [participantCount, setParticipantCount] = useState(room.minPlayers);
   const [minorCount, setMinorCount] = useState(0);
   const [discountCode, setDiscountCode] = useState("");
@@ -54,35 +111,124 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
   const dateInputRef = useRef<HTMLInputElement>(null);
   const slotsFormRef = useRef<HTMLFormElement>(null);
   const availabilityRequestRef = useRef(0);
+  const slotsRequestRef = useRef(0);
+  const hoverPrefetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const hoverPrefetchInFlightRef = useRef<Set<string>>(new Set());
+  const loadedMonthsRef = useRef<Set<string>>(new Set());
+  const slotsCacheRef = useRef(initialSlotsByDate);
+
+  useEffect(() => {
+    slotsCacheRef.current = slotsCache;
+  }, [slotsCache]);
 
   const loadMonthAvailability = useCallback(
     async (year: number, month: number) => {
+      const monthKey = `${year}-${padMonth(month)}`;
+      if (loadedMonthsRef.current.has(monthKey)) {
+        return;
+      }
+
       const requestId = availabilityRequestRef.current + 1;
       availabilityRequestRef.current = requestId;
+      setIsLoadingAvailability(true);
 
       const formData = new FormData();
       formData.set("roomSlug", room.slug);
       formData.set("year", String(year));
       formData.set("month", String(month + 1));
 
-      const result = await getMonthAvailability(null, formData);
-      if (
-        availabilityRequestRef.current !== requestId ||
-        !result.success
-      ) {
-        return;
-      }
+      try {
+        const result = await getMonthAvailability(null, formData);
+        if (
+          availabilityRequestRef.current !== requestId ||
+          !result.success
+        ) {
+          return;
+        }
 
-      setDayAvailability(result.data.days);
+        loadedMonthsRef.current.add(monthKey);
+        setDayAvailability((current) => ({ ...current, ...result.data.days }));
+      } finally {
+        if (availabilityRequestRef.current === requestId) {
+          setIsLoadingAvailability(false);
+        }
+      }
     },
     [room.slug],
   );
 
   const handleMonthChange = useCallback(
     (year: number, month: number) => {
+      if (monthHasAvailabilityData(dayAvailability, year, month)) {
+        return;
+      }
+
       void loadMonthAvailability(year, month);
     },
-    [loadMonthAvailability],
+    [dayAvailability, loadMonthAvailability],
+  );
+
+  const refreshSlotsForDate = useCallback((date: string) => {
+    const requestId = slotsRequestRef.current + 1;
+    slotsRequestRef.current = requestId;
+    setSlotsRequestDate(date);
+
+    if (dateInputRef.current) {
+      dateInputRef.current.value = date;
+    }
+    slotsFormRef.current?.requestSubmit();
+  }, []);
+
+  const prefetchSlotsForDate = useCallback(
+    async (date: string) => {
+      if (slotsCacheRef.current[date] !== undefined) {
+        return;
+      }
+
+      if (hoverPrefetchInFlightRef.current.has(date)) {
+        return;
+      }
+
+      hoverPrefetchInFlightRef.current.add(date);
+
+      const formData = new FormData();
+      formData.set("roomSlug", room.slug);
+      formData.set("roomId", room.id);
+      formData.set("date", date);
+
+      try {
+        const result = await getAvailableSlots(null, formData);
+        if (!result.success || result.data.date !== date) {
+          return;
+        }
+
+        setSlotsCache((current) => {
+          if (current[date] !== undefined) {
+            return current;
+          }
+
+          return { ...current, [date]: result.data.slots };
+        });
+      } finally {
+        hoverPrefetchInFlightRef.current.delete(date);
+      }
+    },
+    [room.id, room.slug],
+  );
+
+  const handleDayHover = useCallback(
+    (date: string) => {
+      if (hoverPrefetchTimeoutRef.current) {
+        clearTimeout(hoverPrefetchTimeoutRef.current);
+      }
+
+      hoverPrefetchTimeoutRef.current = setTimeout(() => {
+        void prefetchSlotsForDate(date);
+      }, HOVER_PREFETCH_DELAY_MS);
+    },
+    [prefetchSlotsForDate],
   );
 
   const [slotsState, slotsAction, slotsPending] = useActionState(
@@ -94,30 +240,57 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
     null,
   );
 
-  function requestSlotsForDate(date: string) {
-    if (dateInputRef.current) {
-      dateInputRef.current.value = date;
-    }
-    slotsFormRef.current?.requestSubmit();
-  }
-
   function handleSelectDate(date: string) {
     setSelectedDate(date);
     setSelectedSlot(null);
-    requestSlotsForDate(date);
+    refreshSlotsForDate(date);
   }
+
+  useEffect(() => {
+    if (!slotsState?.success || !slotsRequestDate) {
+      return;
+    }
+
+    if (slotsState.data.date !== slotsRequestDate) {
+      return;
+    }
+
+    setSlotsCache((current) => {
+      const previous = current[slotsRequestDate];
+      if (previous && slotsEqual(previous, slotsState.data.slots)) {
+        return current;
+      }
+
+      return { ...current, [slotsRequestDate]: slotsState.data.slots };
+    });
+
+    setSelectedSlot((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const stillAvailable = slotsState.data.slots.some(
+        (slot) => slot.startTime === current,
+      );
+      return stillAvailable ? current : null;
+    });
+  }, [slotsRequestDate, slotsState]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverPrefetchTimeoutRef.current) {
+        clearTimeout(hoverPrefetchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const isSlotTaken =
     !!holdState && !holdState.success && holdState.code === "SLOT_TAKEN";
-  // Se lo slot scelto e stato preso da un altro utente tra la selezione e il
-  // submit, lo stato derivato qui sotto nasconde subito lo step 3 (nessun
-  // setState sincrono nell'effetto), mentre l'effetto si limita a richiedere
-  // gli slot aggiornati per la stessa data.
   const effectiveSelectedSlot = isSlotTaken ? null : selectedSlot;
 
   useEffect(() => {
     if (isSlotTaken && selectedDate) {
-      requestSlotsForDate(selectedDate);
+      refreshSlotsForDate(selectedDate);
       const [year, month] = selectedDate.split("-").map(Number);
       void loadMonthAvailability(year, month - 1);
     }
@@ -132,6 +305,24 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
   }, [holdState]);
 
   const previewTier = resolvePricingTier(pricingTiers, participantCount);
+
+  const cachedSlotsForSelectedDate =
+    selectedDate !== null ? slotsCache[selectedDate] : undefined;
+  const showSlotsSection =
+    selectedDate !== null &&
+    slotsRequestDate === selectedDate &&
+    cachedSlotsForSelectedDate !== undefined;
+  const showSlotsLoader =
+    selectedDate !== null &&
+    slotsRequestDate === selectedDate &&
+    cachedSlotsForSelectedDate === undefined &&
+    slotsPending;
+  const showSlotsError =
+    selectedDate !== null &&
+    slotsRequestDate === selectedDate &&
+    !slotsPending &&
+    !!slotsState &&
+    !slotsState.success;
 
   if (holdState?.success) {
     return (
@@ -150,6 +341,7 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
     <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-x-10 lg:gap-y-6">
       <form ref={slotsFormRef} action={slotsAction} className="hidden">
         <input type="hidden" name="roomSlug" defaultValue={room.slug} />
+        <input type="hidden" name="roomId" defaultValue={room.id} />
         <input ref={dateInputRef} type="hidden" name="date" defaultValue="" />
       </form>
 
@@ -160,32 +352,34 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
         <BookingCalendar
           selectedDate={selectedDate}
           dayAvailability={dayAvailability}
+          isLoadingAvailability={isLoadingAvailability}
           onSelectDate={handleSelectDate}
           onMonthChange={handleMonthChange}
+          onDayHover={handleDayHover}
         />
       </div>
 
       <div className="flex min-w-0 flex-col gap-6">
-        {slotsPending ? (
+        {showSlotsLoader ? (
           <p className="text-sm text-bone/60">Ricerca slot disponibili…</p>
         ) : null}
 
-        {slotsState && !slotsState.success ? (
+        {showSlotsError ? (
           <p className="text-sm text-blood-bright">{slotsState.error}</p>
         ) : null}
 
-        {slotsState?.success ? (
+        {showSlotsSection ? (
           <div>
             <h2 className="mb-3 text-sm font-semibold tracking-wide text-bone/60 uppercase">
               2. Scegli un orario
             </h2>
-            {slotsState.data.slots.length === 0 ? (
+            {cachedSlotsForSelectedDate.length === 0 ? (
               <p className="text-sm text-bone/60">
                 Nessuno slot disponibile per questa data. Prova un altro giorno.
               </p>
             ) : (
               <div className="flex flex-wrap gap-3">
-                {slotsState.data.slots.map((slot) => (
+                {cachedSlotsForSelectedDate.map((slot) => (
                   <button
                     key={slot.startTime}
                     type="button"

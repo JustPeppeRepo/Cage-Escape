@@ -6,8 +6,10 @@ import type { DayAvailabilityStatus } from "@/app/_lib/bookings/slots";
 type BookingCalendarProps = {
   selectedDate: string | null;
   dayAvailability: Record<string, DayAvailabilityStatus>;
+  isLoadingAvailability?: boolean;
   onSelectDate: (date: string) => void;
   onMonthChange: (year: number, month: number) => void;
+  onDayHover?: (date: string) => void;
 };
 
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -50,6 +52,15 @@ function startOfToday(): Date {
   return now;
 }
 
+function monthHasAvailabilityData(
+  dayAvailability: Record<string, DayAvailabilityStatus>,
+  year: number,
+  month: number,
+): boolean {
+  const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+  return Object.keys(dayAvailability).some((date) => date.startsWith(prefix));
+}
+
 function getDayButtonClassName({
   isPast,
   isSelected,
@@ -81,8 +92,10 @@ function getDayButtonClassName({
 export function BookingCalendar({
   selectedDate,
   dayAvailability,
+  isLoadingAvailability = false,
   onSelectDate,
   onMonthChange,
+  onDayHover,
 }: BookingCalendarProps) {
   const today = useMemo(() => startOfToday(), []);
   const minMonth = useMemo(() => startOfMonth(today), [today]);
@@ -95,8 +108,15 @@ export function BookingCalendar({
   const [viewedMonth, setViewedMonth] = useState(minMonth);
 
   useEffect(() => {
-    onMonthChange(viewedMonth.getFullYear(), viewedMonth.getMonth());
-  }, [viewedMonth, onMonthChange]);
+    const year = viewedMonth.getFullYear();
+    const month = viewedMonth.getMonth();
+
+    if (monthHasAvailabilityData(dayAvailability, year, month)) {
+      return;
+    }
+
+    onMonthChange(year, month);
+  }, [viewedMonth, onMonthChange, dayAvailability]);
 
   const canGoPrev = viewedMonth.getTime() > minMonth.getTime();
   const canGoNext = viewedMonth.getTime() < maxMonth.getTime();
@@ -167,6 +187,10 @@ export function BookingCalendar({
         </button>
       </div>
 
+      {isLoadingAvailability ? (
+        <p className="mb-3 text-xs text-bone/50">Aggiornamento disponibilità…</p>
+      ) : null}
+
       <div className="grid grid-cols-7 gap-1 text-center text-xs text-bone/50 sm:text-sm">
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className="py-1">
@@ -193,6 +217,16 @@ export function BookingCalendar({
               type="button"
               disabled={isDisabled}
               onClick={() => onSelectDate(cell.dateStr)}
+              onMouseEnter={() => {
+                if (!isDisabled) {
+                  onDayHover?.(cell.dateStr);
+                }
+              }}
+              onFocus={() => {
+                if (!isDisabled) {
+                  onDayHover?.(cell.dateStr);
+                }
+              }}
               className={`flex aspect-square w-full items-center justify-center rounded text-sm transition-colors sm:text-base ${getDayButtonClassName(
                 {
                   isPast,
