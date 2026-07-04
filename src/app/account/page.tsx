@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
 import { requireUser } from "@/lib/dal";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
+import { getCancellationEligibility } from "@/app/_lib/bookings/refund-policy";
 import {
   AccountDashboard,
   type AccountBooking,
@@ -24,15 +25,26 @@ export default async function AccountPage() {
     orderBy: { startTime: "desc" },
   });
 
-  const serializedBookings: AccountBooking[] = bookings.map((booking) => ({
-    id: booking.id,
-    startTime: booking.startTime.toISOString(),
-    endTime: booking.endTime.toISOString(),
-    totalAmount: formatEuroAmount(booking.totalAmount),
-    status: booking.status,
-    holdExpiresAt: booking.holdExpiresAt?.toISOString() ?? null,
-    room: booking.room,
-  }));
+  const serializedBookings: AccountBooking[] = bookings.map((booking) => {
+    const eligibility = getCancellationEligibility(booking);
+
+    return {
+      id: booking.id,
+      startTime: booking.startTime.toISOString(),
+      endTime: booking.endTime.toISOString(),
+      totalAmount: formatEuroAmount(booking.totalAmount),
+      status: booking.status,
+      holdExpiresAt: booking.holdExpiresAt?.toISOString() ?? null,
+      room: booking.room,
+      cancellation:
+        eligibility.kind === "REFUND_ELIGIBLE"
+          ? {
+              kind: eligibility.kind,
+              refundCutoffAt: eligibility.refundCutoffAt.toISOString(),
+            }
+          : { kind: eligibility.kind, refundCutoffAt: null },
+    };
+  });
 
   const phone =
     typeof session.user.phone === "string" ? session.user.phone : "";

@@ -14,6 +14,11 @@ import {
 const REFUNDABLE_STATUSES: BookingStatus[] = [
   BookingStatus.PAID,
   BookingStatus.DEPOSIT_PAID,
+  // Booking con pagamento incassato da Stripe ma bloccato per un conflitto
+  // (slot, importo, metadata, codice sconto...): il webhook registra sempre
+  // una riga Payment SUCCEEDED anche per questi casi, quindi vanno rimborsati
+  // esattamente come PAID/DEPOSIT_PAID invece di essere annullati "a secco".
+  BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
 ];
 
 export async function cancelBooking(

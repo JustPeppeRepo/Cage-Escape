@@ -7,3 +7,7 @@ export const TIMEZONE = "Europe/Rome";
 // minuti ciascuno (il rate limit su holdSlot e' solo per-IP e per-minuto),
 // negando disponibilita' ad altri utenti.
 export const MAX_CONCURRENT_HOLDS_PER_USER = 2;
+// Oltre questa soglia rispetto all'inizio dell'evento, l'annullamento
+// self-service (con rimborso) non e' piu' consentito: l'utente deve
+// contattare l'assistenza per eventuali eccezioni.
+export const REFUND_CUTOFF_HOURS = 48;

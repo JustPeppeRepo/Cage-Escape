@@ -40,8 +40,13 @@ export const createStripeCheckoutSessionSchema = z.object({
   bookingId: z.string().min(1),
 });
 
+export const cancelMyBookingSchema = z.object({
+  bookingId: z.string().min(1),
+});
+
 export type GetAvailableSlotsInput = z.infer<typeof getAvailableSlotsSchema>;
 export type HoldSlotInput = z.infer<typeof holdSlotSchema>;
 export type CreateStripeCheckoutSessionInput = z.infer<
   typeof createStripeCheckoutSessionSchema
 >;
+export type CancelMyBookingInput = z.infer<typeof cancelMyBookingSchema>;

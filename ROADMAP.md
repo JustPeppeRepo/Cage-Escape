@@ -53,6 +53,17 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] Navbar: link «Il mio account» per utenti loggati
 - [x] Blocco eliminazione account con prenotazioni attive o pagate
 
+## Fase F — Sicurezza pagamenti e policy di rimborso ✅
+
+- [x] Rate limiting distribuito (Upstash Redis) con fallback in-memory in sviluppo
+- [x] Riserva atomica del codice sconto (indice unico parziale su `Booking.discountCodeId`) + guardia webhook
+- [x] Refund Stripe obbligatorio nell'annullamento admin, incluso per `PAYMENT_CONFLICT_REFUND_REQUIRED`
+- [x] `customRules` Better Auth su endpoint sensibili + lockout account su tentativi di login falliti
+- [x] Alert operativi via email per ogni conflitto di pagamento rilevato dal webhook
+- [x] Rimozione della feature experimental `authInterrupts` (sostituita con `notFound()` stabile)
+- [x] Ogni ramo `PAYMENT_CONFLICT_REFUND_REQUIRED` del webhook registra sempre una riga `Payment` tracciabile
+- [x] Annullamento self-service utente (`/account`) con rimborso automatico Stripe se effettuato oltre 48h prima dell'evento; bloccato entro le 48h (idempotency key, claim atomico anti-race, revert su fallimento rimborso)
+
 
 - In caso di conflitto col prompt architetturale, vince lo stato attuale funzionante.
 - Resend approvato per Fase B; variabili email opzionali finché non configurate.

@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
-import { BookingStatus } from "@/generated/prisma/client";
+import { BookingStatus, PaymentStatus } from "@/generated/prisma/client";
 import { getCurrentSession } from "@/lib/dal";
 import { prisma } from "@/app/_lib/prisma";
 import {
@@ -17,10 +18,13 @@ import {
   MAX_CONCURRENT_HOLDS_PER_USER,
 } from "@/app/_lib/bookings/constants";
 import {
+  cancelMyBookingSchema,
   createStripeCheckoutSessionSchema,
   getAvailableSlotsSchema,
   holdSlotSchema,
 } from "@/app/_lib/bookings/schemas";
+import { getCancellationEligibility } from "@/app/_lib/bookings/refund-policy";
+import { sendStripeOpsAlert } from "@/app/_lib/stripe/ops-alert";
 import {
   decimalToStripeCents,
   formatEuroAmount,
@@ -602,6 +606,210 @@ export async function createStripeCheckoutSession(
     return {
       success: false,
       error: "Errore durante la creazione della sessione di pagamento",
+      code: "INTERNAL_ERROR",
+    };
+  }
+}
+
+type CancelMyBookingPayload = {
+  refunded: boolean;
+};
+
+export async function cancelMyBooking(
+  prevState: unknown,
+  formData: FormData,
+): Promise<BookingActionResult<CancelMyBookingPayload>> {
+  const session = await getCurrentSession();
+  if (!session?.user?.id) {
+    return {
+      success: false,
+      error: "Devi effettuare l'accesso per annullare una prenotazione",
+      code: "UNAUTHORIZED",
+    };
+  }
+
+  const rateLimit = await checkRateLimit("cancelMyBooking", 5, {
+    userId: session.user.id,
+  });
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+      code: "RATE_LIMITED",
+    };
+  }
+
+  const parsed = cancelMyBookingSchema.safeParse(formDataToObject(formData));
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Input non valido",
+      code: "VALIDATION_ERROR",
+    };
+  }
+
+  const { bookingId } = parsed.data;
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        payments: { where: { status: PaymentStatus.SUCCEEDED } },
+      },
+    });
+
+    // notFound-style generico: non confermiamo l'esistenza di una
+    // prenotazione altrui a chi non ne e' il proprietario.
+    if (!booking || booking.userId !== session.user.id) {
+      return {
+        success: false,
+        error: "Prenotazione non trovata",
+        code: "BOOKING_NOT_FOUND",
+      };
+    }
+
+    const eligibility = getCancellationEligibility(booking);
+
+    if (eligibility.kind === "NOT_CANCELLABLE") {
+      return {
+        success: false,
+        error: "Questa prenotazione non può essere annullata",
+        code: "NOT_CANCELLABLE",
+      };
+    }
+
+    if (eligibility.kind === "MANUAL_REVIEW") {
+      return {
+        success: false,
+        error:
+          "Questa prenotazione richiede l'intervento dell'assistenza: contattaci per procedere.",
+        code: "MANUAL_REVIEW",
+      };
+    }
+
+    if (eligibility.kind === "PAST_CUTOFF") {
+      return {
+        success: false,
+        error:
+          "Non è possibile annullare entro 48 ore dall'inizio dell'evento. Contattaci per casi eccezionali.",
+        code: "PAST_CUTOFF",
+      };
+    }
+
+    if (eligibility.kind === "FREE_CANCEL") {
+      const claimed = await prisma.booking.updateMany({
+        where: {
+          id: bookingId,
+          userId: session.user.id,
+          status: BookingStatus.PENDING,
+        },
+        data: { status: BookingStatus.CANCELLED, holdExpiresAt: null },
+      });
+
+      if (claimed.count !== 1) {
+        return {
+          success: false,
+          error: "Questa prenotazione è già stata aggiornata. Ricarica la pagina.",
+          code: "ALREADY_HANDLED",
+        };
+      }
+
+      revalidatePath("/account");
+      return { success: true, data: { refunded: false } };
+    }
+
+    // REFUND_ELIGIBLE: booking PAID o DEPOSIT_PAID, evento a piu' di 48h.
+    if (booking.payments.length === 0) {
+      // Non dovrebbe accadere per uno stato PAID/DEPOSIT_PAID (il webhook
+      // registra sempre il pagamento prima di confermare), ma non rischiamo
+      // di liberare lo slot senza alcuna traccia di un pagamento da
+      // rimborsare: segnaliamo per revisione manuale invece di annullare.
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+          holdExpiresAt: null,
+        },
+      });
+      logError(
+        "cancelMyBooking",
+        "Booking PAID/DEPOSIT_PAID senza pagamenti registrati",
+        { bookingId, userId: session.user.id },
+      );
+      await sendStripeOpsAlert({
+        subject: "Annullamento utente senza pagamento registrato",
+        details: { bookingId, userId: session.user.id, status: booking.status },
+      });
+      return {
+        success: false,
+        error: "Errore interno durante l'annullamento. Contattaci per assistenza.",
+        code: "INTERNAL_ERROR",
+      };
+    }
+
+    const originalStatus = booking.status;
+
+    const claimed = await prisma.booking.updateMany({
+      where: { id: bookingId, userId: session.user.id, status: originalStatus },
+      data: { status: BookingStatus.CANCELLED, holdExpiresAt: null },
+    });
+
+    if (claimed.count !== 1) {
+      return {
+        success: false,
+        error: "Questa prenotazione è già stata aggiornata. Ricarica la pagina.",
+        code: "ALREADY_HANDLED",
+      };
+    }
+
+    try {
+      for (const payment of booking.payments) {
+        await stripe.refunds.create(
+          { payment_intent: payment.stripePaymentId },
+          { idempotencyKey: `refund-${payment.id}` },
+        );
+      }
+
+      await prisma.payment.updateMany({
+        where: { bookingId, status: PaymentStatus.SUCCEEDED },
+        data: { status: PaymentStatus.REFUNDED },
+      });
+
+      revalidatePath("/account");
+      return { success: true, data: { refunded: true } };
+    } catch (stripeError) {
+      // Il rimborso Stripe e' fallito: la prenotazione non deve restare
+      // "annullata" senza che il cliente sia stato rimborsato. Torniamo allo
+      // stato originale cosi' l'utente puo' ritentare, e avvisiamo lo staff.
+      logError(
+        "cancelMyBooking",
+        "Rimborso Stripe fallito, ripristino stato prenotazione",
+        { bookingId, userId: session.user.id, error: stripeError },
+      );
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: originalStatus },
+      });
+      await sendStripeOpsAlert({
+        subject: "Rimborso self-service fallito",
+        details: {
+          bookingId,
+          userId: session.user.id,
+          originalStatus,
+          error: String(stripeError),
+        },
+      });
+      return {
+        success: false,
+        error: "Rimborso non riuscito. Riprova tra qualche minuto o contattaci.",
+        code: "STRIPE_ERROR",
+      };
+    }
+  } catch (error) {
+    logError("cancelMyBooking", "Unexpected error", error);
+    return {
+      success: false,
+      error: "Errore durante l'annullamento della prenotazione",
       code: "INTERNAL_ERROR",
     };
   }

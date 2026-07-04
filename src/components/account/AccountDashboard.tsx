@@ -22,6 +22,7 @@ import {
   adminLabelClassName,
   adminSecondaryButtonClassName,
 } from "@/components/admin/AdminFormFeedback";
+import { CancelMyBookingButton } from "@/components/account/CancelMyBookingButton";
 
 type AccountBookingStatus =
   | "PENDING"
@@ -30,6 +31,18 @@ type AccountBookingStatus =
   | "CANCELLED"
   | "COMPLETED"
   | "PAYMENT_CONFLICT_REFUND_REQUIRED";
+
+type AccountBookingCancellationKind =
+  | "FREE_CANCEL"
+  | "REFUND_ELIGIBLE"
+  | "PAST_CUTOFF"
+  | "MANUAL_REVIEW"
+  | "NOT_CANCELLABLE";
+
+type AccountBookingCancellation = {
+  kind: AccountBookingCancellationKind;
+  refundCutoffAt: string | null;
+};
 
 const STATUS_LABELS: Record<AccountBookingStatus, string> = {
   PENDING: "In attesa",
@@ -56,6 +69,7 @@ export type AccountBooking = {
     name: string;
     slug: string;
   };
+  cancellation: AccountBookingCancellation;
 };
 
 type AccountDashboardProps = {
@@ -208,6 +222,45 @@ function ProfileSection({
   );
 }
 
+function CancellationAction({ booking }: { booking: AccountBooking }) {
+  const { kind, refundCutoffAt } = booking.cancellation;
+
+  if (kind === "FREE_CANCEL") {
+    return <CancelMyBookingButton bookingId={booking.id} variant="free" />;
+  }
+
+  if (kind === "REFUND_ELIGIBLE") {
+    return (
+      <div className="flex flex-col gap-1">
+        <CancelMyBookingButton bookingId={booking.id} variant="refund" />
+        {refundCutoffAt ? (
+          <p className="text-[11px] text-bone/50">
+            Rimborsabile entro il {DATE_FORMATTER.format(new Date(refundCutoffAt))}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (kind === "PAST_CUTOFF") {
+    return (
+      <p className="max-w-[16rem] text-[11px] text-bone/50">
+        Non annullabile entro 48h dall&apos;evento. Contattaci per assistenza.
+      </p>
+    );
+  }
+
+  if (kind === "MANUAL_REVIEW") {
+    return (
+      <p className="max-w-[16rem] text-[11px] text-bone/50">
+        Contattaci per questa prenotazione.
+      </p>
+    );
+  }
+
+  return null;
+}
+
 function OrdersSection({ bookings }: { bookings: AccountBooking[] }) {
   const now = Date.now();
 
@@ -255,14 +308,17 @@ function OrdersSection({ bookings }: { bookings: AccountBooking[] }) {
                       € {formatEuroAmount(booking.totalAmount)}
                     </td>
                     <td className="px-2 py-3">
-                      {canCheckout ? (
-                        <Link
-                          href={`/checkout?bookingId=${booking.id}`}
-                          className={adminSecondaryButtonClassName}
-                        >
-                          Completa pagamento
-                        </Link>
-                      ) : null}
+                      <div className="flex flex-col gap-2">
+                        {canCheckout ? (
+                          <Link
+                            href={`/checkout?bookingId=${booking.id}`}
+                            className={adminSecondaryButtonClassName}
+                          >
+                            Completa pagamento
+                          </Link>
+                        ) : null}
+                        <CancellationAction booking={booking} />
+                      </div>
                     </td>
                   </tr>
                 );
