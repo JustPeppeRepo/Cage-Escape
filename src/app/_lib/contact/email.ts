@@ -1,4 +1,5 @@
 import { logError } from "@/lib/logger";
+import { getResendFromAddress } from "@/app/_lib/email/shared";
 
 export async function sendContactNotificationEmail(input: {
   name: string;
@@ -18,7 +19,7 @@ export async function sendContactNotificationEmail(input: {
 
   try {
     const { error } = await resend.emails.send({
-      from: "Cage Room <onboarding@resend.dev>",
+      from: getResendFromAddress("Cage Room", env.RESEND_FROM_EMAIL),
       to: env.CONTACT_EMAIL_TO,
       replyTo: input.email,
       subject: input.subject

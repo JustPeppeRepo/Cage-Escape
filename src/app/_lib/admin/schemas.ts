@@ -81,6 +81,15 @@ export const contactFormSchema = z.object({
   message: z.string().min(10).max(5000),
 });
 
+export const contactMessageIdSchema = z.object({
+  messageId: z.string().min(1),
+});
+
+export const setContactMessageReadSchema = z.object({
+  messageId: z.string().min(1),
+  read: z.union([z.literal("true"), z.literal("false")]).transform((value) => value === "true"),
+});
+
 export const generateDiscountCodeSchema = z.object({
   puzzleAnswer: z.string().min(1).max(50),
 });
@@ -106,4 +115,6 @@ export type PricingTierFormInput = z.infer<typeof pricingTierFormSchema>;
 export type ScheduleOverrideFormInput = z.infer<typeof scheduleOverrideFormSchema>;
 export type SiteSettingsFormInput = z.infer<typeof siteSettingsFormSchema>;
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
+export type ContactMessageIdInput = z.infer<typeof contactMessageIdSchema>;
+export type SetContactMessageReadInput = z.infer<typeof setContactMessageReadSchema>;
 export type ReviewFormInput = z.infer<typeof reviewFormSchema>;

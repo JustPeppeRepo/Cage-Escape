@@ -30,26 +30,30 @@ export async function getLoginLockStatus(email: string): Promise<{
 export async function recordFailedLoginAttempt(email: string): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, failedLoginAttempts: true },
+    select: { id: true },
   });
 
   if (!user) {
     return;
   }
 
-  const failedLoginAttempts = user.failedLoginAttempts + 1;
-  const lockedUntil =
-    failedLoginAttempts >= MAX_FAILED_ATTEMPTS
-      ? new Date(Date.now() + LOCK_DURATION_MS)
-      : null;
-
-  await prisma.user.update({
+  // Incremento atomico lato DB invece di leggere il contatore e riscriverlo:
+  // sotto tentativi concorrenti (piu' richieste di login fallite in
+  // parallelo, come in un attacco brute-force) un semplice read-then-write
+  // perderebbe incrementi (race condition), indebolendo il lockout proprio
+  // nello scenario che dovrebbe proteggere.
+  const updated = await prisma.user.update({
     where: { id: user.id },
-    data: {
-      failedLoginAttempts,
-      lockedUntil,
-    },
+    data: { failedLoginAttempts: { increment: 1 } },
+    select: { failedLoginAttempts: true },
   });
+
+  if (updated.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lockedUntil: new Date(Date.now() + LOCK_DURATION_MS) },
+    });
+  }
 }
 
 export async function resetLoginAttempts(email: string): Promise<void> {

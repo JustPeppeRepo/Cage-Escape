@@ -12,20 +12,26 @@ export const metadata: Metadata = {
 export default async function AdminPage() {
   const session = await requireAdmin();
 
-  const [pendingBookings, conflictBookings, upcomingBookings, roomCount] =
-    await Promise.all([
-      prisma.booking.count({ where: { status: BookingStatus.PENDING } }),
-      prisma.booking.count({
-        where: { status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED },
-      }),
-      prisma.booking.count({
-        where: {
-          status: { in: [BookingStatus.PAID, BookingStatus.DEPOSIT_PAID] },
-          startTime: { gte: new Date() },
-        },
-      }),
-      prisma.room.count(),
-    ]);
+  const [
+    pendingBookings,
+    conflictBookings,
+    upcomingBookings,
+    roomCount,
+    unreadMessages,
+  ] = await Promise.all([
+    prisma.booking.count({ where: { status: BookingStatus.PENDING } }),
+    prisma.booking.count({
+      where: { status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED },
+    }),
+    prisma.booking.count({
+      where: {
+        status: { in: [BookingStatus.PAID, BookingStatus.DEPOSIT_PAID] },
+        startTime: { gte: new Date() },
+      },
+    }),
+    prisma.room.count(),
+    prisma.contactMessage.count({ where: { read: false } }),
+  ]);
 
   const cards = [
     {
@@ -45,6 +51,12 @@ export default async function AdminPage() {
       href: "/admin/bookings",
     },
     { label: "Stanze", value: roomCount, href: "/admin/rooms" },
+    {
+      label: "Messaggi da leggere",
+      value: unreadMessages,
+      href: "/admin/contatti",
+      alert: unreadMessages > 0,
+    },
   ];
 
   return (
@@ -80,6 +92,12 @@ export default async function AdminPage() {
         </Link>
         <Link href="/admin/bookings" className="text-sm text-blood-bright underline">
           Prenotazioni
+        </Link>
+        <Link href="/admin/reviews" className="text-sm text-blood-bright underline">
+          Recensioni
+        </Link>
+        <Link href="/admin/contatti" className="text-sm text-blood-bright underline">
+          Messaggi
         </Link>
         <Link href="/admin/impostazioni" className="text-sm text-blood-bright underline">
           Impostazioni

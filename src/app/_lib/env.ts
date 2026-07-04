@@ -13,6 +13,12 @@ const envSchema = z
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
     RESEND_API_KEY: z.string().min(1).optional(),
+    // Indirizzo "from" su un dominio verificato Resend. Senza questo, tutte
+    // le email usano il dominio di test "onboarding@resend.dev", che Resend
+    // consegna SOLO all'indirizzo del proprietario dell'account: il reset
+    // password (inviato all'utente reale, non allo staff) non arriverebbe
+    // mai a destinazione. Vedi src/app/_lib/email/shared.ts.
+    RESEND_FROM_EMAIL: z.string().email().optional(),
     CONTACT_EMAIL_TO: z.string().email().optional(),
     STRIPE_OPS_EMAIL_TO: z.string().email().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
