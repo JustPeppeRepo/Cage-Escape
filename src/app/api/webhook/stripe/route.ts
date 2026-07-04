@@ -211,6 +211,39 @@ async function handleCheckoutCompleted(
         return;
       }
 
+      if (booking.status === BookingStatus.CANCELLED) {
+        // L'utente (o l'admin) ha annullato la prenotazione, ma il link di
+        // pagamento Stripe era rimasto apert (es. altra tab) e viene
+        // completato comunque. Senza questo guard il codice sotto
+        // proseguirebbe verso la conferma normale, "resuscitando" una
+        // prenotazione annullata. Il denaro e' comunque stato incassato da
+        // Stripe: lo registriamo per rimborso manuale invece di ignorarlo.
+        const cancelledPaidAmount = (checkoutSession.amount_total ?? 0) / 100;
+        console.error(
+          "[stripe webhook] Pagamento completato su booking gia CANCELLED - rimborso manuale richiesto:",
+          JSON.stringify({ bookingId: booking.id, paymentIntentId, cancelledPaidAmount }),
+        );
+        await recordConflictPayment(tx, {
+          bookingId: booking.id,
+          paymentIntentId,
+          amount: cancelledPaidAmount,
+          type: paymentChoice,
+        });
+        await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+            holdExpiresAt: null,
+          },
+        });
+        queueStripeOpsAlert(opsAlerts, "Pagamento completato su booking annullato", {
+          bookingId: booking.id,
+          paymentIntentId,
+          conflictAmount: cancelledPaidAmount,
+        });
+        return;
+      }
+
       // Booking gia' in conflitto: se e' la stessa consegna webhook rielaborata
       // (stesso payment_intent) il controllo su `existingPayment` sopra ha gia'
       // fatto return. Se invece e' un payment_intent DIVERSO (es. un'altra
@@ -588,12 +621,13 @@ async function handleCheckoutExpired(
     return;
   }
 
-  if (booking.status !== BookingStatus.PENDING) {
-    return;
-  }
-
-  await prisma.booking.update({
-    where: { id: booking.id },
+  // updateMany con guard sullo stato invece di un read-then-update: se
+  // "checkout.session.completed" per lo stesso booking arriva in
+  // concomitanza (evento quasi simultaneo o riordinato), questa write viene
+  // ignorata silenziosamente non appena lo stato non e' piu' PENDING, invece
+  // di rischiare di annullare un booking appena confermato come pagato.
+  await prisma.booking.updateMany({
+    where: { id: booking.id, status: BookingStatus.PENDING },
     data: {
       status: BookingStatus.CANCELLED,
       holdExpiresAt: null,

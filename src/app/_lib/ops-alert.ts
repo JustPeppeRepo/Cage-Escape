@@ -20,10 +20,13 @@ export async function sendOpsAlert(input: {
 
   const recipient = env.STRIPE_OPS_EMAIL_TO ?? env.CONTACT_EMAIL_TO;
   if (!env.RESEND_API_KEY || !recipient) {
+    // Logghiamo solo il subject, non l'intero `details`: puo' contenere
+    // email utente o altri dati sensibili che non devono finire nei log del
+    // provider (Vercel).
     logError(
       "ops-alert",
       "Alert email non configurata: RESEND_API_KEY o STRIPE_OPS_EMAIL_TO/CONTACT_EMAIL_TO mancanti",
-      input,
+      { subject: input.subject, tag },
     );
     return;
   }
@@ -46,9 +49,15 @@ export async function sendOpsAlert(input: {
     });
 
     if (error) {
-      logError("ops-alert", "Resend API error", { message: error.message, input });
+      logError("ops-alert", "Resend API error", {
+        message: error.message,
+        subject: input.subject,
+      });
     }
   } catch (error) {
-    logError("ops-alert", "Unexpected alert email error", error);
+    logError("ops-alert", "Unexpected alert email error", {
+      message: error instanceof Error ? error.message : String(error),
+      subject: input.subject,
+    });
   }
 }

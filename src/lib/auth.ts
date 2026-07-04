@@ -34,6 +34,20 @@ export const auth = betterAuth({
       "/delete-user": { window: 60, max: 3 },
     },
   },
+  // Esplicito invece di affidarsi ai default impliciti di Better Auth
+  // (che sono corretti: httpOnly true, sameSite lax, secure derivato da
+  // BETTER_AUTH_URL): rende la configurazione dei cookie di sessione
+  // auditabile a colpo d'occhio nel repository, invece di dover verificare
+  // il comportamento leggendo i sorgenti della libreria.
+  advanced: {
+    useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://"),
+    defaultCookieAttributes: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.BETTER_AUTH_URL.startsWith("https://"),
+      path: "/",
+    },
+  },
   user: {
     deleteUser: {
       enabled: true,

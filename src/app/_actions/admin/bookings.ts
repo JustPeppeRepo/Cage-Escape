@@ -10,6 +10,8 @@ import {
   type AdminActionResult,
   formDataToObject,
 } from "@/app/_lib/admin/action-result";
+import { logError } from "@/lib/logger";
+import { sendStripeOpsAlert } from "@/app/_lib/stripe/ops-alert";
 
 const REFUNDABLE_STATUSES: BookingStatus[] = [
   BookingStatus.PAID,
@@ -61,7 +63,10 @@ export async function cancelBooking(
       };
     }
 
-    if (REFUNDABLE_STATUSES.includes(booking.status)) {
+    const originalStatus = booking.status;
+    const needsRefund = REFUNDABLE_STATUSES.includes(originalStatus);
+
+    if (needsRefund) {
       if (booking.payments.length === 0) {
         return {
           success: false,
@@ -69,47 +74,100 @@ export async function cancelBooking(
         };
       }
 
+      // Rimborso per-pagamento: ogni pagamento viene rimborsato e marcato
+      // REFUNDED individualmente subito dopo il successo della singola
+      // chiamata Stripe (idempotencyKey previene doppi rimborsi su
+      // doppio-click o retry di rete), cosi' un fallimento su un pagamento
+      // successivo non lascia un rimborso gia' incassato senza traccia nel
+      // nostro sistema.
+      const refundedPaymentIds: string[] = [];
+      const failedPayments: Array<{ paymentId: string; error: string }> = [];
+
       for (const payment of booking.payments) {
         try {
-          await stripe.refunds.create({
-            payment_intent: payment.stripePaymentId,
+          await stripe.refunds.create(
+            { payment_intent: payment.stripePaymentId },
+            { idempotencyKey: `admin-refund-${payment.id}` },
+          );
+          await prisma.payment.update({
+            where: { id: payment.id },
+            data: { status: PaymentStatus.REFUNDED },
           });
+          refundedPaymentIds.push(payment.id);
         } catch (error) {
-          console.error("[admin/cancelBooking] Stripe refund failed", {
+          const message = error instanceof Error ? error.message : String(error);
+          logError("admin/cancelBooking", "Rimborso Stripe fallito per un pagamento", {
             bookingId,
             paymentId: payment.id,
-            error,
+            error: message,
+          });
+          failedPayments.push({ paymentId: payment.id, error: message });
+        }
+      }
+
+      if (failedPayments.length > 0) {
+        if (refundedPaymentIds.length === 0) {
+          // Nessun rimborso e' andato a buon fine: nessun denaro si e'
+          // mosso, la prenotazione resta nello stato originale.
+          await sendStripeOpsAlert({
+            subject: "Rimborso admin fallito",
+            details: { bookingId, originalStatus, failedPayments },
           });
           return {
             success: false,
             error: "Rimborso Stripe non riuscito; prenotazione non annullata",
           };
         }
-      }
 
-      await prisma.payment.updateMany({
-        where: {
-          bookingId: booking.id,
-          status: PaymentStatus.SUCCEEDED,
-        },
-        data: { status: PaymentStatus.REFUNDED },
-      });
+        // Rimborso parziale: almeno un pagamento e' stato restituito da
+        // Stripe, almeno un altro no. Non possiamo annullare la
+        // prenotazione come se tutto fosse andato bene: serve intervento
+        // manuale per riconciliare i pagamenti falliti.
+        await prisma.booking.update({
+          where: { id: bookingId },
+          data: { status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED },
+        });
+        logError(
+          "admin/cancelBooking",
+          "Rimborso parziale: intervento manuale richiesto",
+          { bookingId, refundedPaymentIds, failedPayments },
+        );
+        await sendStripeOpsAlert({
+          subject: "Rimborso admin parziale - intervento manuale richiesto",
+          details: { bookingId, refundedPaymentIds, failedPayments },
+        });
+        return {
+          success: false,
+          error:
+            "Rimborso parzialmente completato: alcuni pagamenti non sono stati rimborsati. Verifica manualmente prima di riprovare.",
+        };
+      }
     }
 
-    await prisma.booking.update({
-      where: { id: bookingId },
+    const claimed = await prisma.booking.updateMany({
+      where: { id: bookingId, status: originalStatus },
       data: {
         status: BookingStatus.CANCELLED,
         holdExpiresAt: null,
       },
     });
 
+    if (claimed.count !== 1 && !needsRefund) {
+      return {
+        success: false,
+        error: "Questa prenotazione è già stata aggiornata altrove",
+      };
+    }
+
     revalidatePath("/admin/bookings");
     revalidatePath("/admin");
 
     return { success: true, message: "Prenotazione annullata" };
   } catch (error) {
-    console.error("[admin/cancelBooking]", error);
+    logError("admin/cancelBooking", "Unexpected error", {
+      bookingId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return { success: false, error: "Errore durante l'annullamento" };
   }
 }

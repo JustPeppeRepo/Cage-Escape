@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { DayAvailabilityStatus } from "@/app/_lib/bookings/slots";
 
 type BookingCalendarProps = {
   selectedDate: string | null;
+  dayAvailability: Record<string, DayAvailabilityStatus>;
   onSelectDate: (date: string) => void;
+  onMonthChange: (year: number, month: number) => void;
 };
 
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -23,9 +26,6 @@ const MONTH_LABELS = [
   "Dicembre",
 ];
 
-// Limite solo presentazionale per non far navigare troppo avanti nel
-// calendario: la validazione reale della data resta interamente lato server
-// (getAvailableSlots/holdSlot).
 const MAX_MONTHS_AHEAD = 2;
 
 type DayCell = {
@@ -50,9 +50,39 @@ function startOfToday(): Date {
   return now;
 }
 
+function getDayButtonClassName({
+  isPast,
+  isSelected,
+  availability,
+}: {
+  isPast: boolean;
+  isSelected: boolean;
+  availability?: DayAvailabilityStatus;
+}): string {
+  if (isSelected) {
+    return "bg-blood text-bone";
+  }
+
+  if (isPast) {
+    return "cursor-not-allowed text-bone/20";
+  }
+
+  if (availability === "unavailable") {
+    return "cursor-not-allowed bg-blood/20 text-bone/30";
+  }
+
+  if (availability === "partial") {
+    return "bg-amber-700/25 text-amber-100/85 hover:bg-amber-700/35 hover:text-amber-50";
+  }
+
+  return "text-bone/80 hover:bg-blood/20 hover:text-bone";
+}
+
 export function BookingCalendar({
   selectedDate,
+  dayAvailability,
   onSelectDate,
+  onMonthChange,
 }: BookingCalendarProps) {
   const today = useMemo(() => startOfToday(), []);
   const minMonth = useMemo(() => startOfMonth(today), [today]);
@@ -64,6 +94,10 @@ export function BookingCalendar({
 
   const [viewedMonth, setViewedMonth] = useState(minMonth);
 
+  useEffect(() => {
+    onMonthChange(viewedMonth.getFullYear(), viewedMonth.getMonth());
+  }, [viewedMonth, onMonthChange]);
+
   const canGoPrev = viewedMonth.getTime() > minMonth.getTime();
   const canGoNext = viewedMonth.getTime() < maxMonth.getTime();
 
@@ -74,7 +108,6 @@ export function BookingCalendar({
       viewedMonth.getMonth() + 1,
       0,
     );
-    // Lunedi = 0 ... Domenica = 6 (getDay() nativo ha Domenica = 0).
     const leadingBlanks = (firstDay.getDay() + 6) % 7;
 
     const cells: Array<DayCell | null> = Array.from(
@@ -109,18 +142,18 @@ export function BookingCalendar({
   }
 
   return (
-    <div className="rounded-md border border-void-mist bg-void-deep p-4">
+    <div className="w-full rounded-md border border-void-mist bg-void-deep p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between">
         <button
           type="button"
           onClick={handlePrev}
           disabled={!canGoPrev}
           aria-label="Mese precedente"
-          className="rounded px-3 py-1 text-bone/70 transition-colors hover:bg-blood/20 hover:text-bone disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded px-2.5 py-1.5 text-sm text-bone/70 transition-colors hover:bg-blood/20 hover:text-bone disabled:cursor-not-allowed disabled:opacity-30"
         >
           ←
         </button>
-        <span className="font-[family-name:var(--font-display)] text-lg text-bone">
+        <span className="font-[family-name:var(--font-display)] text-lg text-bone sm:text-xl">
           {MONTH_LABELS[viewedMonth.getMonth()]} {viewedMonth.getFullYear()}
         </span>
         <button
@@ -128,13 +161,13 @@ export function BookingCalendar({
           onClick={handleNext}
           disabled={!canGoNext}
           aria-label="Mese successivo"
-          className="rounded px-3 py-1 text-bone/70 transition-colors hover:bg-blood/20 hover:text-bone disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded px-2.5 py-1.5 text-sm text-bone/70 transition-colors hover:bg-blood/20 hover:text-bone disabled:cursor-not-allowed disabled:opacity-30"
         >
           →
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-bone/50">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-bone/50 sm:text-sm">
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className="py-1">
             {label}
@@ -149,26 +182,40 @@ export function BookingCalendar({
           }
 
           const isPast = cell.date.getTime() < today.getTime();
+          const availability = dayAvailability[cell.dateStr];
+          const isUnavailable = !isPast && availability === "unavailable";
           const isSelected = cell.dateStr === selectedDate;
+          const isDisabled = isPast || isUnavailable;
 
           return (
             <button
               key={cell.dateStr}
               type="button"
-              disabled={isPast}
+              disabled={isDisabled}
               onClick={() => onSelectDate(cell.dateStr)}
-              className={`aspect-square rounded text-sm transition-colors ${
-                isSelected
-                  ? "bg-blood text-bone"
-                  : isPast
-                    ? "cursor-not-allowed text-bone/20"
-                    : "text-bone/80 hover:bg-blood/20 hover:text-bone"
-              }`}
+              className={`flex aspect-square w-full items-center justify-center rounded text-sm transition-colors sm:text-base ${getDayButtonClassName(
+                {
+                  isPast,
+                  isSelected,
+                  availability,
+                },
+              )}`}
             >
               {cell.date.getDate()}
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-bone/50">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded bg-amber-700/25 ring-1 ring-amber-700/30" />
+          Parzialmente occupato
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded bg-blood/20 ring-1 ring-blood/30" />
+          Non prenotabile
+        </span>
       </div>
     </div>
   );

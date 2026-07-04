@@ -12,13 +12,15 @@ type AdminEditRoomPageProps = {
   params: Promise<{ roomId: string }>;
 };
 
-export async function generateMetadata({
-  params,
-}: AdminEditRoomPageProps): Promise<Metadata> {
-  const { roomId } = await params;
-  const room = await prisma.room.findUnique({ where: { id: roomId } });
+export async function generateMetadata(): Promise<Metadata> {
+  // Titolo statico, senza leggere dati dal DB: il middleware verifica solo
+  // la presenza del cookie di sessione (non il ruolo), quindi un utente
+  // loggato ma non admin puo' comunque far eseguire questa funzione prima
+  // che requireAdmin() nel corpo della pagina blocchi l'accesso. Leggere il
+  // nome della stanza qui farebbe trapelare quel dato nel tag <title> anche
+  // a chi non e' autorizzato a vedere la pagina.
   return {
-    title: room ? `${room.name} | Admin` : "Stanza | Admin",
+    title: "Stanza | Admin",
     robots: { index: false, follow: false },
   };
 }

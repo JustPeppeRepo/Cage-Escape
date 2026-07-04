@@ -11,6 +11,7 @@ export type ValidatedDiscountCode = {
 export async function validateDiscountCodeForUser(
   rawCode: string | undefined,
   userId: string,
+  options?: { excludeBookingId?: string },
 ): Promise<
   | { ok: true; discount: ValidatedDiscountCode | null }
   | { ok: false; error: string }
@@ -49,8 +50,20 @@ export async function validateDiscountCodeForUser(
   const activeBooking = await prisma.booking.findFirst({
     where: {
       discountCodeId: discount.id,
+      ...(options?.excludeBookingId ? { id: { not: options.excludeBookingId } } : {}),
       OR: [
-        { status: { in: [BookingStatus.DEPOSIT_PAID, BookingStatus.PAID] } },
+        {
+          status: {
+            in: [
+              BookingStatus.DEPOSIT_PAID,
+              BookingStatus.PAID,
+              // Un pagamento in conflitto ha comunque incassato il denaro:
+              // il codice non deve essere considerato libero finche' il
+              // conflitto non e' risolto manualmente.
+              BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+            ],
+          },
+        },
         {
           status: BookingStatus.PENDING,
           holdExpiresAt: { gt: now },

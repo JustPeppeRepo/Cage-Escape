@@ -57,7 +57,12 @@ export default async function RootLayout({
   const navUser = session?.user
     ? {
         name: session.user.name,
+        username:
+          typeof session.user.username === "string"
+            ? session.user.username
+            : session.user.name,
         email: session.user.email,
+        image: session.user.image ?? null,
         isAdmin: session.user.role === "ADMIN",
       }
     : null;

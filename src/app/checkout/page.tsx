@@ -6,6 +6,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { BookingStatus } from "@/generated/prisma/client";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
+import { getBookingChargeAmount } from "@/app/_lib/bookings/charge-amount";
 import { CheckoutClient } from "@/components/horror/checkout/CheckoutClient";
 
 export const metadata: Metadata = {
@@ -33,7 +34,10 @@ export default async function CheckoutPage({
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
-    include: { room: { include: { pricingTiers: true } } },
+    include: {
+      room: { include: { pricingTiers: true } },
+      discountCode: true,
+    },
   });
 
   // notFound() invece di un 403 esplicito: non vogliamo confermare a un
@@ -47,10 +51,12 @@ export default async function CheckoutPage({
     booking.room.pricingTiers,
     booking.participantCount,
   );
+  // getBookingChargeAmount applica lo sconto associato al booking: senza
+  // questo l'importo mostrato in pagina non corrispondeva a quello
+  // effettivamente addebitato da Stripe (che lo sconto lo applica sempre
+  // correttamente, vedi createStripeCheckoutSession).
   const chargeAmount = tier
-    ? booking.paymentChoice === "FULL"
-      ? tier.totalPrice
-      : tier.depositPrice
+    ? getBookingChargeAmount(booking, tier)
     : booking.totalAmount;
 
   // Server Component eseguito una sola volta per request (nessun

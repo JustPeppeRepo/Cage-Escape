@@ -54,7 +54,9 @@ export async function safeRedisFixedWindowCount(
   try {
     return await redisFixedWindowCount(key, windowSeconds);
   } catch (error) {
-    logError("rate-limit", "Upstash Redis non disponibile", error);
+    logError("rate-limit", "Upstash Redis non disponibile", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }

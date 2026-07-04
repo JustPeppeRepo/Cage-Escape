@@ -13,15 +13,15 @@ export const changePasswordSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email("Email non valida"),
+  email: z.string().trim().email("Email non valida").max(255),
 });
 
 export const resetPasswordSchema = z.object({
-  token: z.string().min(1, "Token mancante o non valido"),
+  token: z.string().min(1, "Token mancante o non valido").max(512),
   newPassword: z.string().min(8, "La password deve avere almeno 8 caratteri").max(72),
 });
 
 export const deleteAccountSchema = z.object({
-  confirmEmail: z.string().email("Email non valida"),
+  confirmEmail: z.string().trim().email("Email non valida").max(255),
   password: z.string().min(8).max(72),
 });

@@ -262,6 +262,20 @@ export async function deleteAccount(
 ): Promise<AdminActionResult> {
   const session = await requireUser();
 
+  // Senza questo limite un utente autenticato potrebbe tentare ripetutamente
+  // deleteAccount con password diverse per indovinarla via brute-force: i
+  // rate limit nativi di Better Auth su /delete-user non scattano qui
+  // perché la chiamata e' server-side diretta (stesso motivo di login/signup).
+  const rateLimit = await checkRateLimit("deleteAccount", 3, {
+    userId: session.user.id,
+  });
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+    };
+  }
+
   const parsed = deleteAccountSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
     return {
@@ -287,6 +301,22 @@ export async function deleteAccount(
       error:
         "Hai prenotazioni attive o pagate; contattaci prima di eliminare l'account.",
     };
+  }
+
+  // Verifichiamo la password PRIMA di eliminare qualunque dato: se e'
+  // errata, le prenotazioni cancellabili dell'utente restano intatte invece
+  // di essere eliminate inutilmente prima che deleteUser scopra l'errore.
+  try {
+    await auth.api.verifyPassword({
+      body: { password },
+      headers: await headers(),
+    });
+  } catch (error) {
+    if (error instanceof APIError) {
+      return { success: false, error: "Password non corretta" };
+    }
+    console.error("[account/deleteAccount] Password verification failed:", error);
+    return { success: false, error: "Errore durante l'eliminazione dell'account" };
   }
 
   try {

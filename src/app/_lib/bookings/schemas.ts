@@ -15,21 +15,27 @@ function isTodayOrFuture(dateStr: string): boolean {
 }
 
 export const getAvailableSlotsSchema = z.object({
-  roomSlug: z.string().min(1),
+  roomSlug: z.string().trim().min(1).max(64),
   date: z
     .string()
     .regex(dateRegex, "Formato data non valido (YYYY-MM-DD)")
     .refine(isTodayOrFuture, "La data non può essere nel passato"),
 });
 
+export const getMonthAvailabilitySchema = z.object({
+  roomSlug: z.string().trim().min(1).max(64),
+  year: z.coerce.number().int().min(2020).max(2100),
+  month: z.coerce.number().int().min(1).max(12),
+});
+
 export const holdSlotSchema = z
   .object({
-    roomSlug: z.string().min(1),
+    roomSlug: z.string().trim().min(1).max(64),
     startTime: z.string().datetime({ offset: true }),
     participantCount: z.coerce.number().int().min(1),
     minorCount: z.coerce.number().int().min(0).default(0),
     paymentChoice: z.enum([PaymentType.FULL, PaymentType.DEPOSIT]),
-    discountCode: z.string().max(32).optional().or(z.literal("")),
+    discountCode: z.string().trim().max(32).optional().or(z.literal("")),
   })
   .refine((data) => data.minorCount <= data.participantCount, {
     message: "Il numero di minorenni non può superare i partecipanti",
@@ -37,14 +43,15 @@ export const holdSlotSchema = z
   });
 
 export const createStripeCheckoutSessionSchema = z.object({
-  bookingId: z.string().min(1),
+  bookingId: z.string().cuid().max(64),
 });
 
 export const cancelMyBookingSchema = z.object({
-  bookingId: z.string().min(1),
+  bookingId: z.string().cuid().max(64),
 });
 
 export type GetAvailableSlotsInput = z.infer<typeof getAvailableSlotsSchema>;
+export type GetMonthAvailabilityInput = z.infer<typeof getMonthAvailabilitySchema>;
 export type HoldSlotInput = z.infer<typeof holdSlotSchema>;
 export type CreateStripeCheckoutSessionInput = z.infer<
   typeof createStripeCheckoutSessionSchema

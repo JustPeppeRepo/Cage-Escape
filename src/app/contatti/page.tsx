@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/horror/contact/ContactForm";
+import { SocialLinks } from "@/components/horror/contact/SocialLinks";
 
 export const metadata: Metadata = {
   title: "Contatti | Cage Room",
@@ -36,6 +37,8 @@ export default function ContattiPage() {
               10:00–22:00
             </p>
           </div>
+
+          <SocialLinks />
 
           <div
             className="mt-10 flex h-48 items-center justify-center rounded border border-dashed border-void-mist bg-void-deep text-sm text-bone/40"

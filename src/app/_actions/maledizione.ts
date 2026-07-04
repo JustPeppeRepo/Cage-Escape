@@ -104,7 +104,9 @@ export async function generateDiscountCode(
 
     return { error: "Impossibile generare il codice. Riprova." };
   } catch (error) {
-    logError("maledizione", "generateDiscountCode failed", error);
+    logError("maledizione", "generateDiscountCode failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return { error: "Qualcosa è andato storto durante il rito." };
   }
 }

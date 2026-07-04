@@ -80,12 +80,23 @@ export async function checkRateLimit(
       }
       return { allowed: true };
     }
-  } else if (env.NODE_ENV === "production") {
-    logError(
-      "rate-limit",
-      "Upstash Redis non configurato in produzione: rate limit degrado in-memory",
-    );
+
+    // Redis e' configurato ma irraggiungibile (timeout, credenziali
+    // invalide, downtime Upstash). In produzione degradare silenziosamente
+    // a un contatore in-memory per-istanza equivarrebbe a un bypass quasi
+    // totale del rate limit su un ambiente multi-istanza: falliamo chiuso
+    // negando la richiesta, invece di aprire la porta al brute-force.
+    if (env.NODE_ENV === "production") {
+      logError(
+        "rate-limit",
+        "Upstash Redis irraggiungibile in produzione: richiesta negata (fail-closed)",
+      );
+      return { allowed: false, retryAfterSeconds: WINDOW_SECONDS };
+    }
   }
 
+  // env.ts impone UPSTASH_REDIS_REST_URL/TOKEN in produzione: questo
+  // fallback in-memory resta raggiungibile solo in sviluppo/test, dove
+  // un'unica istanza di processo rende il contatore locale sufficiente.
   return checkInMemoryRateLimit(key, maxRequests);
 }

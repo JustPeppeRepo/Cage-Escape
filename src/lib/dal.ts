@@ -13,7 +13,9 @@ export const getCurrentSession = cache(async () => {
   try {
     return await auth.api.getSession({ headers: await headers() });
   } catch (error) {
-    logError("getCurrentSession", "Session lookup failed", error);
+    logError("getCurrentSession", "Session lookup failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 });

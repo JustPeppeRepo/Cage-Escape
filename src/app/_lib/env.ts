@@ -31,6 +31,28 @@ const envSchema = z
         message: "BETTER_AUTH_URL deve coincidere con NEXT_PUBLIC_APP_URL",
       });
     }
+
+    // In produzione (tipicamente su piu' istanze serverless) un rate limiter
+    // in-memory locale al processo equivale a un bypass quasi totale: senza
+    // Upstash Redis configurato ogni istanza tiene un contatore separato.
+    // Rendiamo Redis obbligatorio in produzione invece di degradare
+    // silenziosamente.
+    if (data.NODE_ENV === "production") {
+      if (!data.UPSTASH_REDIS_REST_URL) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["UPSTASH_REDIS_REST_URL"],
+          message: "UPSTASH_REDIS_REST_URL è obbligatorio in produzione per il rate limiting distribuito",
+        });
+      }
+      if (!data.UPSTASH_REDIS_REST_TOKEN) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["UPSTASH_REDIS_REST_TOKEN"],
+          message: "UPSTASH_REDIS_REST_TOKEN è obbligatorio in produzione per il rate limiting distribuito",
+        });
+      }
+    }
   });
 
 const parsed = envSchema.safeParse(process.env);

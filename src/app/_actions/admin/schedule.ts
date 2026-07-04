@@ -5,7 +5,10 @@ import { Prisma } from "@/generated/prisma/client";
 import { ScheduleOverrideType } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
-import { scheduleOverrideFormSchema } from "@/app/_lib/admin/schemas";
+import {
+  deleteScheduleOverrideSchema,
+  scheduleOverrideFormSchema,
+} from "@/app/_lib/admin/schemas";
 import {
   type AdminActionResult,
   formDataToObject,
@@ -78,10 +81,12 @@ export async function deleteScheduleOverride(
 ): Promise<AdminActionResult> {
   await requireAdmin();
 
-  const overrideId = formData.get("overrideId");
-  if (typeof overrideId !== "string" || !overrideId) {
+  const parsed = deleteScheduleOverrideSchema.safeParse(formDataToObject(formData));
+  if (!parsed.success) {
     return { success: false, error: "Override non valido" };
   }
+
+  const { overrideId } = parsed.data;
 
   try {
     await prisma.scheduleOverride.delete({ where: { id: overrideId } });

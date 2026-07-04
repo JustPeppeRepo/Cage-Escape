@@ -77,7 +77,9 @@ export async function sendPasswordResetEmail(input: {
 
     return { ok: true };
   } catch (error) {
-    logError("auth", "Unexpected password reset email error", error);
+    logError("auth", "Unexpected password reset email error", {
+      message: error instanceof Error ? error.message : String(error),
+    });
 
     const { sendOpsAlert } = await import("@/app/_lib/ops-alert");
     await sendOpsAlert({

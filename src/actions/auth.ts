@@ -18,14 +18,14 @@ import { sanitizeCallbackUrl } from "@/lib/safe-redirect"
 // username/password/telefono enormi arriva fino all'hashing/DB prima di
 // essere scartato (costo CPU/storage inutile, vettore di DoS a basso sforzo).
 const signupSchema = z.object({
-  username: z.string().min(2).max(32),
-  email: z.string().email(),
+  username: z.string().trim().min(2).max(32),
+  email: z.string().trim().email().max(255),
   password: z.string().min(8).max(72),
-  phone: z.string().min(10).max(20),
+  phone: z.string().trim().min(10).max(20),
 })
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email().max(255),
   password: z.string().min(8).max(72),
 })
 
@@ -81,7 +81,16 @@ export async function signup(prevState: unknown, formData: FormData) {
     })
   } catch (error) {
     if (isUsernameConflict(error)) {
-      return { errors: { username: ["Username già in uso"] } }
+      // Messaggio generico anche per l'username (non solo per l'email):
+      // confermare esplicitamente "già in uso" e' un oracolo di enumerazione
+      // che permette di scoprire quali username esistono. Il dettaglio resta
+      // solo nel log server-side.
+      console.error("[signup] Username conflict:", error)
+      return {
+        errors: {
+          username: ["Registrazione non riuscita. Verifica i dati o prova ad accedere."],
+        },
+      }
     }
     if (error instanceof APIError) {
       // Messaggio generico anche qui (non solo nel login): il messaggio
@@ -127,14 +136,14 @@ export async function login(prevState: unknown, formData: FormData) {
   const { email, password } = parsed.data
   const callbackUrl = sanitizeCallbackUrl(formData.get("callbackUrl") as string | null)
 
+  // Messaggio identico al caso "credenziali non valide" sotto: un messaggio
+  // distinto per l'account bloccato confermerebbe implicitamente che
+  // quell'email e' registrata (user enumeration). Il blocco resta comunque
+  // effettivo lato server: qui usciamo prima di chiamare signInEmail.
   const lockStatus = await getLoginLockStatus(email)
   if (lockStatus.locked) {
     return {
-      errors: {
-        email: [
-          `Account temporaneamente bloccato. Riprova tra ${lockStatus.retryAfterSeconds} secondi.`,
-        ],
-      },
+      errors: { email: ["Credenziali non valide"] },
     }
   }
 

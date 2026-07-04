@@ -61,9 +61,7 @@ export async function submitContact(
             "Messaggio registrato. Ti risponderemo appena possibile.",
         };
       }
-      logError("contact", "Messaggio salvato ma email non inviata", {
-        email,
-      });
+      logError("contact", "Messaggio salvato ma email non inviata");
       return {
         success: true,
         message:
@@ -78,7 +76,9 @@ export async function submitContact(
       message: "Il tuo messaggio è stato inviato. Ti risponderemo presto… se osi aspettare.",
     };
   } catch (error) {
-    logError("contact", "submitContact failed", error);
+    logError("contact", "submitContact failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return {
       errors: {
         message: ["Qualcosa è andato storto durante l'invio. Riprova più tardi."],

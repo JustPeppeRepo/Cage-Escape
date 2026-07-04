@@ -43,7 +43,9 @@ export async function sendContactNotificationEmail(input: {
 
     return { ok: true };
   } catch (error) {
-    logError("contact", "Unexpected email error", error);
+    logError("contact", "Unexpected email error", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return { ok: false, error: "Invio email non riuscito" };
   }
 }

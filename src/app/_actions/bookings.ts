@@ -21,6 +21,7 @@ import {
   cancelMyBookingSchema,
   createStripeCheckoutSessionSchema,
   getAvailableSlotsSchema,
+  getMonthAvailabilitySchema,
   holdSlotSchema,
 } from "@/app/_lib/bookings/schemas";
 import { getCancellationEligibility } from "@/app/_lib/bookings/refund-policy";
@@ -33,6 +34,7 @@ import {
   generateTimeSlots,
   getAvailableSlotsForRoom,
   getRomeDateString,
+  getRoomMonthAvailability,
   isSlotAvailable,
   releaseExpiredHolds,
   resolveDaySchedule,
@@ -59,6 +61,10 @@ export type BookingActionResult<T> =
 
 type AvailableSlotPayload = {
   slots: Array<{ startTime: string; endTime: string }>;
+};
+
+type MonthAvailabilityPayload = {
+  days: Record<string, "available" | "partial" | "unavailable">;
 };
 
 type HoldSlotPayload = {
@@ -136,6 +142,65 @@ export async function getAvailableSlots(
     return {
       success: false,
       error: "Errore durante il recupero degli slot disponibili",
+      code: "INTERNAL_ERROR",
+    };
+  }
+}
+
+export async function getMonthAvailability(
+  prevState: unknown,
+  formData: FormData,
+): Promise<BookingActionResult<MonthAvailabilityPayload>> {
+  const rateLimit = await checkRateLimit("getMonthAvailability", 30);
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+      code: "RATE_LIMITED",
+    };
+  }
+
+  const parsed = getMonthAvailabilitySchema.safeParse(formDataToObject(formData));
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Input non valido",
+      code: "VALIDATION_ERROR",
+    };
+  }
+
+  const { roomSlug, year, month } = parsed.data;
+
+  try {
+    const room = await prisma.room.findFirst({
+      where: { slug: roomSlug, isActive: true },
+      select: { id: true, durationMinutes: true },
+    });
+
+    if (!room) {
+      return {
+        success: false,
+        error: "Stanza non trovata o non disponibile",
+        code: "ROOM_NOT_FOUND",
+      };
+    }
+
+    const days = await getRoomMonthAvailability(
+      room.id,
+      room.durationMinutes,
+      year,
+      month - 1,
+    );
+
+    return {
+      success: true,
+      data: { days },
+    };
+  } catch (error) {
+    console.error("[getMonthAvailability]", error);
+    return {
+      success: false,
+      error: "Errore durante il recupero della disponibilità del calendario",
       code: "INTERNAL_ERROR",
     };
   }
@@ -488,6 +553,36 @@ export async function createStripeCheckoutSession(
       };
     }
 
+    if (booking.discountCodeId && booking.discountCode) {
+      // Ri-validiamo il codice sconto al momento di creare la sessione di
+      // pagamento: tra l'hold e il checkout un admin potrebbe averlo
+      // disattivato, un'altra prenotazione potrebbe averlo consumato, o
+      // potrebbe essere scaduto. Senza questo controllo l'utente pagherebbe
+      // un importo scontato non piu' autorizzato.
+      const discountRevalidation = await validateDiscountCodeForUser(
+        booking.discountCode.code,
+        session.user.id,
+        { excludeBookingId: booking.id },
+      );
+
+      if (!discountRevalidation.ok) {
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { discountCodeId: null },
+        });
+        logError(
+          "createStripeCheckoutSession",
+          "Codice sconto non più valido al momento del checkout",
+          { bookingId: booking.id, reason: discountRevalidation.error },
+        );
+        return {
+          success: false,
+          error: `Il codice sconto applicato non è più valido (${discountRevalidation.error}). Ricarica la pagina e riprova.`,
+          code: "DISCOUNT_INVALID",
+        };
+      }
+    }
+
     const chargeAmount = getBookingChargeAmount(booking, tier);
 
     const unitAmount = decimalToStripeCents(chargeAmount);
@@ -554,7 +649,10 @@ export async function createStripeCheckoutSession(
       logError(
         "createStripeCheckoutSession",
         "Stripe checkout session creation failed",
-        stripeError,
+        {
+          bookingId: booking.id,
+          message: stripeError instanceof Error ? stripeError.message : String(stripeError),
+        },
       );
 
       const configError = isStripeConfigurationError(stripeError);
@@ -571,9 +669,7 @@ export async function createStripeCheckoutSession(
 
       return {
         success: false,
-        error: configError
-          ? "Pagamento non disponibile: configurazione Stripe non valida. Verifica STRIPE_SECRET_KEY nel file .env."
-          : "Impossibile avviare il pagamento. Riprova.",
+        error: "Pagamento temporaneamente non disponibile. Riprova più tardi o contattaci.",
         code: configError ? "STRIPE_NOT_CONFIGURED" : "STRIPE_ERROR",
       };
     }
@@ -602,7 +698,10 @@ export async function createStripeCheckoutSession(
       data: { url: checkoutSession.url },
     };
   } catch (error) {
-    logError("createStripeCheckoutSession", "Unexpected error", error);
+    logError("createStripeCheckoutSession", "Unexpected error", {
+      bookingId,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
       error: "Errore durante la creazione della sessione di pagamento",
@@ -762,42 +861,53 @@ export async function cancelMyBooking(
       };
     }
 
-    try {
-      for (const payment of booking.payments) {
+    // Rimborso per-pagamento: ogni pagamento viene rimborsato e marcato
+    // REFUNDED individualmente, subito dopo il successo della singola
+    // chiamata Stripe. Non aspettiamo la fine del loop per scrivere sul DB,
+    // cosi' un fallimento su un pagamento successivo non lascia un rimborso
+    // gia' incassato dal cliente senza traccia nel nostro sistema.
+    const refundedPaymentIds: string[] = [];
+    const failedPayments: Array<{ paymentId: string; error: string }> = [];
+
+    for (const payment of booking.payments) {
+      try {
         await stripe.refunds.create(
           { payment_intent: payment.stripePaymentId },
           { idempotencyKey: `refund-${payment.id}` },
         );
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+        refundedPaymentIds.push(payment.id);
+      } catch (stripeError) {
+        const message =
+          stripeError instanceof Error ? stripeError.message : String(stripeError);
+        logError("cancelMyBooking", "Rimborso Stripe fallito per un pagamento", {
+          bookingId,
+          paymentId: payment.id,
+          error: message,
+        });
+        failedPayments.push({ paymentId: payment.id, error: message });
       }
+    }
 
-      await prisma.payment.updateMany({
-        where: { bookingId, status: PaymentStatus.SUCCEEDED },
-        data: { status: PaymentStatus.REFUNDED },
-      });
-
+    if (failedPayments.length === 0) {
       revalidatePath("/account");
       return { success: true, data: { refunded: true } };
-    } catch (stripeError) {
-      // Il rimborso Stripe e' fallito: la prenotazione non deve restare
-      // "annullata" senza che il cliente sia stato rimborsato. Torniamo allo
-      // stato originale cosi' l'utente puo' ritentare, e avvisiamo lo staff.
-      logError(
-        "cancelMyBooking",
-        "Rimborso Stripe fallito, ripristino stato prenotazione",
-        { bookingId, userId: session.user.id, error: stripeError },
-      );
+    }
+
+    if (refundedPaymentIds.length === 0) {
+      // Nessun rimborso e' andato a buon fine: nessun denaro si e' mosso,
+      // quindi e' sicuro ripristinare lo stato originale e far ritentare
+      // l'utente.
       await prisma.booking.update({
         where: { id: bookingId },
         data: { status: originalStatus },
       });
       await sendStripeOpsAlert({
         subject: "Rimborso self-service fallito",
-        details: {
-          bookingId,
-          userId: session.user.id,
-          originalStatus,
-          error: String(stripeError),
-        },
+        details: { bookingId, userId: session.user.id, originalStatus, failedPayments },
       });
       return {
         success: false,
@@ -805,8 +915,36 @@ export async function cancelMyBooking(
         code: "STRIPE_ERROR",
       };
     }
+
+    // Rimborso parziale: almeno un pagamento e' stato restituito da Stripe,
+    // almeno un altro no. Non possiamo ripristinare lo stato originale
+    // (nasconderebbe che parte del denaro e' gia' uscito) né considerare
+    // l'operazione riuscita: serve intervento manuale per riconciliare.
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED },
+    });
+    logError(
+      "cancelMyBooking",
+      "Rimborso parziale: intervento manuale richiesto",
+      { bookingId, userId: session.user.id, refundedPaymentIds, failedPayments },
+    );
+    await sendStripeOpsAlert({
+      subject: "Rimborso self-service parziale - intervento manuale richiesto",
+      details: { bookingId, userId: session.user.id, refundedPaymentIds, failedPayments },
+    });
+    return {
+      success: false,
+      error:
+        "Rimborso parzialmente completato. Il nostro staff verificherà la situazione: contattaci per assistenza.",
+      code: "PARTIAL_REFUND",
+    };
   } catch (error) {
-    logError("cancelMyBooking", "Unexpected error", error);
+    logError(
+      "cancelMyBooking",
+      "Unexpected error",
+      { message: error instanceof Error ? error.message : String(error) },
+    );
     return {
       success: false,
       error: "Errore durante l'annullamento della prenotazione",

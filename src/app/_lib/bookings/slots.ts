@@ -18,6 +18,16 @@ export type DaySchedule = {
   closeHour: number;
 };
 
+export type DayAvailabilityStatus = "available" | "partial" | "unavailable";
+
+type ScheduleOverrideRecord = {
+  date: Date;
+  roomId: string | null;
+  type: ScheduleOverrideType;
+  openHour: number | null;
+  closeHour: number | null;
+};
+
 type TransactionClient = Prisma.TransactionClient;
 
 function pad(value: number): string {
@@ -105,23 +115,23 @@ export async function releaseExpiredHolds(
   return result.count;
 }
 
-export async function resolveDaySchedule(
+function toUtcDateOnly(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+export function resolveDayScheduleFromOverrides(
   dateStr: string,
   roomId: string,
-): Promise<DaySchedule> {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const dateOnly = new Date(Date.UTC(year, month - 1, day));
+  overrides: ScheduleOverrideRecord[],
+): DaySchedule {
+  const dateOnly = toUtcDateOnly(dateStr);
+  const dayOverrides = overrides.filter(
+    (item) => item.date.getTime() === dateOnly.getTime(),
+  );
 
-  const overrides = await prisma.scheduleOverride.findMany({
-    where: {
-      date: dateOnly,
-      OR: [{ roomId: null }, { roomId }],
-    },
-    orderBy: { roomId: "desc" },
-  });
-
-  const roomOverride = overrides.find((item) => item.roomId === roomId);
-  const globalOverride = overrides.find((item) => item.roomId === null);
+  const roomOverride = dayOverrides.find((item) => item.roomId === roomId);
+  const globalOverride = dayOverrides.find((item) => item.roomId === null);
   const override = roomOverride ?? globalOverride;
 
   if (!override) {
@@ -153,6 +163,21 @@ export async function resolveDaySchedule(
     openHour: DEFAULT_OPEN_HOUR,
     closeHour: DEFAULT_CLOSE_HOUR,
   };
+}
+
+export async function resolveDaySchedule(
+  dateStr: string,
+  roomId: string,
+): Promise<DaySchedule> {
+  const overrides = await prisma.scheduleOverride.findMany({
+    where: {
+      date: toUtcDateOnly(dateStr),
+      OR: [{ roomId: null }, { roomId }],
+    },
+    orderBy: { roomId: "desc" },
+  });
+
+  return resolveDayScheduleFromOverrides(dateStr, roomId, overrides);
 }
 
 export function generateTimeSlots(
@@ -272,16 +297,15 @@ export function filterAvailableSlots(
   );
 }
 
-export async function getAvailableSlotsForRoom(
-  roomId: string,
-  durationMinutes: number,
+function getBookableSlotsForDay(
   dateStr: string,
-): Promise<TimeSlot[]> {
-  await releaseExpiredHolds();
-
-  const schedule = await resolveDaySchedule(dateStr, roomId);
+  durationMinutes: number,
+  schedule: DaySchedule,
+  occupied: TimeSlot[],
+  now: Date,
+): { bookable: TimeSlot[]; available: TimeSlot[] } {
   if (schedule.closed) {
-    return [];
+    return { bookable: [], available: [] };
   }
 
   const generated = generateTimeSlots(
@@ -290,9 +314,102 @@ export async function getAvailableSlotsForRoom(
     schedule.openHour,
     schedule.closeHour,
   );
+  const bookable = generated.filter((slot) => slot.startTime > now);
+  const available = filterAvailableSlots(bookable, occupied);
 
+  return { bookable, available };
+}
+
+export async function getAvailableSlotsForRoom(
+  roomId: string,
+  durationMinutes: number,
+  dateStr: string,
+): Promise<TimeSlot[]> {
+  await releaseExpiredHolds();
+
+  const schedule = await resolveDaySchedule(dateStr, roomId);
   const { dayStart, dayEnd } = getDayBounds(dateStr);
   const occupied = await getOccupiedSlots(roomId, dayStart, dayEnd);
 
-  return filterAvailableSlots(generated, occupied);
+  return getBookableSlotsForDay(
+    dateStr,
+    durationMinutes,
+    schedule,
+    occupied,
+    new Date(),
+  ).available;
+}
+
+export async function getRoomMonthAvailability(
+  roomId: string,
+  durationMinutes: number,
+  year: number,
+  month: number,
+): Promise<Record<string, DayAvailabilityStatus>> {
+  await releaseExpiredHolds();
+
+  const todayRome = getRomeDateString(new Date());
+  const now = new Date();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const monthPrefix = `${year}-${pad(month + 1)}`;
+  const startDateStr = `${monthPrefix}-01`;
+  const endDateStr = `${monthPrefix}-${pad(lastDay)}`;
+  const { dayStart: rangeStart } = getDayBounds(startDateStr);
+  const { dayEnd: rangeEnd } = getDayBounds(endDateStr);
+
+  const [overrides, occupied] = await Promise.all([
+    prisma.scheduleOverride.findMany({
+      where: {
+        date: {
+          gte: toUtcDateOnly(startDateStr),
+          lte: toUtcDateOnly(endDateStr),
+        },
+        OR: [{ roomId: null }, { roomId }],
+      },
+      orderBy: { roomId: "desc" },
+    }),
+    getOccupiedSlots(roomId, rangeStart, rangeEnd),
+  ]);
+
+  const availability: Record<string, DayAvailabilityStatus> = {};
+
+  for (let day = 1; day <= lastDay; day += 1) {
+    const dateStr = `${monthPrefix}-${pad(day)}`;
+    if (dateStr < todayRome) {
+      continue;
+    }
+
+    const schedule = resolveDayScheduleFromOverrides(
+      dateStr,
+      roomId,
+      overrides,
+    );
+    const { dayStart, dayEnd } = getDayBounds(dateStr);
+    const dayOccupied = occupied.filter(
+      (booking) =>
+        booking.startTime < dayEnd && booking.endTime > dayStart,
+    );
+    const { bookable, available } = getBookableSlotsForDay(
+      dateStr,
+      durationMinutes,
+      schedule,
+      dayOccupied,
+      now,
+    );
+
+    if (bookable.length === 0) {
+      availability[dateStr] = "unavailable";
+      continue;
+    }
+
+    if (available.length === 0) {
+      availability[dateStr] = "unavailable";
+      continue;
+    }
+
+    availability[dateStr] =
+      dayOccupied.length > 0 ? "partial" : "available";
+  }
+
+  return availability;
 }

@@ -6,6 +6,8 @@ import { BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
 import {
+  deletePricingTierSchema,
+  deleteRoomSchema,
   pricingTierFormSchema,
   roomFormSchema,
 } from "@/app/_lib/admin/schemas";
@@ -120,10 +122,12 @@ export async function deleteRoom(
 ): Promise<AdminActionResult> {
   await requireAdmin();
 
-  const roomId = formData.get("roomId");
-  if (typeof roomId !== "string" || !roomId) {
+  const parsed = deleteRoomSchema.safeParse(formDataToObject(formData));
+  if (!parsed.success) {
     return { success: false, error: "Stanza non valida" };
   }
+
+  const { roomId } = parsed.data;
 
   try {
     const activeBookings = await prisma.booking.count({
@@ -244,18 +248,18 @@ export async function deletePricingTier(
 ): Promise<AdminActionResult> {
   await requireAdmin();
 
-  const tierId = formData.get("tierId");
-  const roomId = formData.get("roomId");
-
-  if (typeof tierId !== "string" || !tierId) {
+  const parsed = deletePricingTierSchema.safeParse(formDataToObject(formData));
+  if (!parsed.success) {
     return { success: false, error: "Fascia non valida" };
   }
+
+  const { tierId, roomId } = parsed.data;
 
   try {
     await prisma.roomPricingTier.delete({ where: { id: tierId } });
 
     revalidatePath("/admin/rooms");
-    if (typeof roomId === "string" && roomId) {
+    if (roomId) {
       revalidatePath(`/admin/rooms/${roomId}`);
     }
 

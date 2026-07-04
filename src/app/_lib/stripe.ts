@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { env } from "@/app/_lib/env";
+import { logError } from "@/lib/logger";
 
 export const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-08-27.basil",
@@ -8,7 +9,10 @@ export const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
 
 const STRIPE_SECRET_KEY_PLACEHOLDERS = new Set(["sk_test_xxxx", "sk_live_xxxx"]);
 
-export function getStripeConfigurationError(): string | null {
+// Dettaglio della misconfigurazione: SOLO per uso server-side (log), non va
+// mai restituito direttamente al client perché cita nomi di variabili
+// d'ambiente e dove trovarle.
+function getStripeConfigurationErrorDetail(): string | null {
   const key = env.STRIPE_SECRET_KEY.trim();
 
   if (
@@ -16,18 +20,30 @@ export function getStripeConfigurationError(): string | null {
     key.includes("xxxx") ||
     key.length < 40
   ) {
-    return "Stripe non è configurato: inserisci una STRIPE_SECRET_KEY valida nel file .env (Dashboard Stripe → Developers → API keys).";
+    return "STRIPE_SECRET_KEY mancante o placeholder";
   }
 
   if (!/^sk_(test|live)_[A-Za-z0-9]+$/.test(key)) {
-    return "STRIPE_SECRET_KEY non ha un formato valido.";
+    return "STRIPE_SECRET_KEY non ha un formato valido";
   }
 
   return null;
 }
 
+// Messaggio generico, sicuro da mostrare all'utente finale. Il dettaglio
+// reale della misconfigurazione viene loggato solo lato server.
+export function getStripeConfigurationError(): string | null {
+  const detail = getStripeConfigurationErrorDetail();
+  if (!detail) {
+    return null;
+  }
+
+  logError("stripe", "Stripe non configurato correttamente", { detail });
+  return "Pagamento temporaneamente non disponibile. Riprova più tardi o contattaci.";
+}
+
 export function isStripeConfigurationError(error: unknown): boolean {
-  if (getStripeConfigurationError()) {
+  if (getStripeConfigurationErrorDetail()) {
     return true;
   }
 

@@ -5,14 +5,15 @@ const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 export const roomFormSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().cuid().optional(),
   slug: z
     .string()
+    .trim()
     .min(2)
     .max(64)
     .regex(slugRegex, "Slug non valido (solo minuscole, numeri e trattini)"),
-  name: z.string().min(2).max(120),
-  description: z.string().min(10).max(2000),
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().min(10).max(2000),
   prezzoTotale: z.coerce.number().positive(),
   prezzoCaparra: z.coerce.number().positive(),
   durationMinutes: z.coerce.number().int().min(30).max(240),
@@ -26,8 +27,8 @@ export const roomFormSchema = z.object({
 });
 
 export const pricingTierFormSchema = z.object({
-  roomId: z.string().min(1),
-  tierId: z.string().optional(),
+  roomId: z.string().cuid(),
+  tierId: z.string().cuid().optional(),
   minParticipants: z.coerce.number().int().min(1).max(20),
   maxParticipants: z.coerce.number().int().min(1).max(20),
   totalPrice: z.coerce.number().positive(),
@@ -36,13 +37,13 @@ export const pricingTierFormSchema = z.object({
 
 export const scheduleOverrideFormSchema = z
   .object({
-    id: z.string().optional(),
+    id: z.string().cuid().optional(),
     date: z.string().regex(dateRegex, "Formato data non valido (YYYY-MM-DD)"),
-    roomId: z.string().optional().or(z.literal("")),
+    roomId: z.string().cuid().optional().or(z.literal("")),
     type: z.enum([ScheduleOverrideType.CLOSED, ScheduleOverrideType.CUSTOM_HOURS]),
     openHour: z.coerce.number().int().min(0).max(23).optional(),
     closeHour: z.coerce.number().int().min(1).max(24).optional(),
-    reason: z.string().max(500).optional(),
+    reason: z.string().trim().max(500).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === ScheduleOverrideType.CUSTOM_HOURS) {
@@ -63,7 +64,20 @@ export const scheduleOverrideFormSchema = z
   });
 
 export const cancelBookingSchema = z.object({
-  bookingId: z.string().min(1),
+  bookingId: z.string().cuid().max(64),
+});
+
+export const deleteRoomSchema = z.object({
+  roomId: z.string().cuid().max(64),
+});
+
+export const deletePricingTierSchema = z.object({
+  tierId: z.string().cuid().max(64),
+  roomId: z.string().cuid().max(64).optional().or(z.literal("")),
+});
+
+export const deleteScheduleOverrideSchema = z.object({
+  overrideId: z.string().cuid().max(64),
 });
 
 export const siteSettingsFormSchema = z.object({
@@ -75,29 +89,29 @@ export const siteSettingsFormSchema = z.object({
 });
 
 export const contactFormSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  subject: z.string().max(200).optional(),
-  message: z.string().min(10).max(5000),
+  name: z.string().trim().min(2).max(100),
+  email: z.string().trim().email(),
+  subject: z.string().trim().max(200).optional(),
+  message: z.string().trim().min(10).max(5000),
 });
 
 export const contactMessageIdSchema = z.object({
-  messageId: z.string().min(1),
+  messageId: z.string().cuid().max(64),
 });
 
 export const setContactMessageReadSchema = z.object({
-  messageId: z.string().min(1),
+  messageId: z.string().cuid().max(64),
   read: z.union([z.literal("true"), z.literal("false")]).transform((value) => value === "true"),
 });
 
 export const generateDiscountCodeSchema = z.object({
-  puzzleAnswer: z.string().min(1).max(50),
+  puzzleAnswer: z.string().trim().min(1).max(50),
 });
 
 export const reviewFormSchema = z.object({
-  id: z.string().optional(),
-  author: z.string().min(1).max(64),
-  quote: z.string().min(5).max(500),
+  id: z.string().cuid().optional(),
+  author: z.string().trim().min(1).max(64),
+  quote: z.string().trim().min(5).max(500),
   rotation: z.coerce.number().int().min(-10).max(10),
   sortOrder: z.coerce.number().int().min(0).max(999),
   isPublished: z
@@ -107,5 +121,5 @@ export const reviewFormSchema = z.object({
 });
 
 export const deleteReviewSchema = z.object({
-  reviewId: z.string().min(1),
+  reviewId: z.string().cuid().max(64),
 });
