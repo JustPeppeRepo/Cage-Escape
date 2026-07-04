@@ -246,3 +246,15 @@ model Review {
 
   @@index([isPublished, sortOrder])
 }
+
+// Contatore condiviso per rate limiting distribuito (finestra fissa 60s).
+// Usa lo stesso Neon Postgres del resto dell'app: niente servizio Redis
+// esterno. Le righe scadute vengono riutilizzate al successivo hit sulla
+// stessa chiave (login, signup, hold, ecc.).
+model RateLimitCounter {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime @db.Timestamptz
+
+  @@index([resetAt])
+}

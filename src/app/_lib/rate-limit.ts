@@ -1,8 +1,5 @@
 import { headers } from "next/headers";
-import {
-  isRedisRateLimitConfigured,
-  safeRedisFixedWindowCount,
-} from "@/app/_lib/rate-limit-redis";
+import { safePostgresFixedWindowCount } from "@/app/_lib/rate-limit-db";
 import { env } from "@/app/_lib/env";
 import { logError } from "@/lib/logger";
 
@@ -72,31 +69,24 @@ export async function checkRateLimit(
   const ip = await resolveClientIp();
   const key = buildRateLimitKey(action, ip, options);
 
-  if (isRedisRateLimitConfigured()) {
-    const count = await safeRedisFixedWindowCount(key, WINDOW_SECONDS);
-    if (count !== null) {
-      if (count > maxRequests) {
-        return { allowed: false, retryAfterSeconds: WINDOW_SECONDS };
-      }
-      return { allowed: true };
-    }
-
-    // Redis e' configurato ma irraggiungibile (timeout, credenziali
-    // invalide, downtime Upstash). In produzione degradare silenziosamente
-    // a un contatore in-memory per-istanza equivarrebbe a un bypass quasi
-    // totale del rate limit su un ambiente multi-istanza: falliamo chiuso
-    // negando la richiesta, invece di aprire la porta al brute-force.
-    if (env.NODE_ENV === "production") {
-      logError(
-        "rate-limit",
-        "Upstash Redis irraggiungibile in produzione: richiesta negata (fail-closed)",
-      );
+  const count = await safePostgresFixedWindowCount(key, WINDOW_SECONDS);
+  if (count !== null) {
+    if (count > maxRequests) {
       return { allowed: false, retryAfterSeconds: WINDOW_SECONDS };
     }
+    return { allowed: true };
   }
 
-  // env.ts impone UPSTASH_REDIS_REST_URL/TOKEN in produzione: questo
-  // fallback in-memory resta raggiungibile solo in sviluppo/test, dove
-  // un'unica istanza di processo rende il contatore locale sufficiente.
+  // Neon irraggiungibile: in produzione falliamo chiuso (degradare a
+  // in-memory per-istanza su Vercel equivarrebbe a un bypass quasi totale
+  // del rate limit). In sviluppo/test resta il fallback locale.
+  if (env.NODE_ENV === "production") {
+    logError(
+      "rate-limit",
+      "Neon Postgres irraggiungibile in produzione: richiesta negata (fail-closed)",
+    );
+    return { allowed: false, retryAfterSeconds: WINDOW_SECONDS };
+  }
+
   return checkInMemoryRateLimit(key, maxRequests);
 }
