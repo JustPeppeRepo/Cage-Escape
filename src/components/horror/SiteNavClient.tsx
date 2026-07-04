@@ -162,10 +162,10 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-void-mist bg-void/95 backdrop-blur-sm">
-      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
         <Link
           href="/"
-          className="justify-self-start font-[family-name:var(--font-display)] text-lg text-blood-bright transition-colors hover:text-blood sm:text-xl"
+          className="font-[family-name:var(--font-display)] text-lg text-blood-bright transition-colors hover:text-blood sm:text-xl md:justify-self-start"
         >
           Cage Room
         </Link>
@@ -191,7 +191,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
 
         <button
           type="button"
-          className="inline-flex h-10 w-10 items-center justify-center justify-self-end rounded border border-void-mist text-bone md:hidden"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded border border-void-mist text-bone md:hidden"
           aria-expanded={menuOpen}
           aria-controls="site-nav-mobile-menu"
           aria-label={menuOpen ? "Chiudi menu di navigazione" : "Apri menu di navigazione"}
