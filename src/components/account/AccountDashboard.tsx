@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   changePassword,
   deleteAccount,
@@ -120,7 +120,10 @@ function ProfileSection({
   user: AccountDashboardProps["user"];
 }) {
   const [state, formAction, pending] = useActionState(updateProfile, null);
-  const selectedAvatarId = resolveAvatarId(user.image);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<AvatarId>(() =>
+    resolveAvatarId(user.image),
+  );
+  const [name, setName] = useState(user.name);
 
   return (
     <AccountSection
@@ -144,7 +147,8 @@ function ProfileSection({
                   type="radio"
                   name="avatarId"
                   value={avatar.id}
-                  defaultChecked={selectedAvatarId === avatar.id}
+                  checked={selectedAvatarId === avatar.id}
+                  onChange={() => setSelectedAvatarId(avatar.id)}
                   className="sr-only"
                 />
                 <Image
@@ -170,7 +174,8 @@ function ProfileSection({
             required
             minLength={2}
             maxLength={32}
-            defaultValue={user.name}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
             className={adminInputClassName}
           />
         </label>
@@ -200,7 +205,7 @@ function ProfileSection({
 
         <div className="flex items-center gap-3 rounded border border-void-mist bg-void px-3 py-3">
           <Image
-            src={getAvatarUrlById(selectedAvatarId as AvatarId)}
+            src={getAvatarUrlById(selectedAvatarId)}
             alt="Anteprima avatar"
             width={48}
             height={48}
@@ -208,7 +213,7 @@ function ProfileSection({
           />
           <div>
             <p className="text-sm text-bone/60">Anteprima</p>
-            <p className="text-bone">{user.name}</p>
+            <p className="text-bone">{name}</p>
           </div>
         </div>
 

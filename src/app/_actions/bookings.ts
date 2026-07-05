@@ -45,6 +45,7 @@ import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 import { getBookingChargeAmount } from "@/app/_lib/bookings/charge-amount";
 import { validateDiscountCodeForUser } from "@/app/_lib/bookings/discount-code";
 import { applyDiscountPercent } from "@/app/_lib/admin/discount";
+import { validateWaiverFiles } from "@/app/_lib/bookings/waiver-upload";
 
 export type BookingActionError = {
   success: false;
@@ -352,6 +353,17 @@ export async function holdSlot(
 
   const { roomSlug, startTime, participantCount, minorCount, paymentChoice, discountCode } =
     parsed.data;
+
+  const waiverValidation = await validateWaiverFiles(formData, minorCount);
+  if (!waiverValidation.ok) {
+    return {
+      success: false,
+      error: waiverValidation.error,
+      code: "VALIDATION_ERROR",
+    };
+  }
+
+  const validatedWaivers = waiverValidation.waivers;
   const slotStart = new Date(startTime);
 
   if (Number.isNaN(slotStart.getTime())) {
@@ -479,7 +491,7 @@ export async function holdSlot(
           throw new Error("SLOT_TAKEN");
         }
 
-        return tx.booking.create({
+        const createdBooking = await tx.booking.create({
           data: {
             userId: session.user.id,
             roomId: room.id,
@@ -494,6 +506,21 @@ export async function holdSlot(
             discountCodeId: discountValidation.discount?.id ?? null,
           },
         });
+
+        if (validatedWaivers.length > 0) {
+          await tx.bookingWaiver.createMany({
+            data: validatedWaivers.map((waiver) => ({
+              bookingId: createdBooking.id,
+              minorIndex: waiver.minorIndex,
+              fileName: waiver.fileName,
+              mimeType: waiver.mimeType,
+              sizeBytes: waiver.sizeBytes,
+              content: new Uint8Array(waiver.content),
+            })),
+          });
+        }
+
+        return createdBooking;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
@@ -643,6 +670,20 @@ export async function createStripeCheckoutSession(
         error: "Il tempo per completare la prenotazione è scaduto",
         code: "HOLD_EXPIRED",
       };
+    }
+
+    if (booking.minorCount > 0) {
+      const waiverCount = await prisma.bookingWaiver.count({
+        where: { bookingId: booking.id },
+      });
+
+      if (waiverCount < booking.minorCount) {
+        return {
+          success: false,
+          error: "Carica tutte le liberatorie obbligatorie prima del pagamento",
+          code: "WAIVER_REQUIRED",
+        };
+      }
     }
 
     const tier = resolvePricingTier(

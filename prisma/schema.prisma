@@ -180,11 +180,27 @@ model Booking {
   discountCodeId  String?
   discountCode    DiscountCode? @relation(fields: [discountCodeId], references: [id])
   payments        Payment[]
+  waivers         BookingWaiver[]
   createdAt       DateTime      @default(now()) @db.Timestamptz
 
   @@index([startTime, endTime])
   @@index([roomId, startTime, endTime])
   @@index([holdExpiresAt])
+}
+
+model BookingWaiver {
+  id         String   @id @default(cuid())
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  minorIndex Int
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  content    Bytes
+  uploadedAt DateTime @default(now()) @db.Timestamptz
+
+  @@unique([bookingId, minorIndex])
+  @@index([bookingId])
 }
 
 model Payment {

@@ -43,6 +43,14 @@ export default async function AdminBookingsPage({
     include: {
       room: { select: { name: true } },
       user: { select: { name: true, email: true } },
+      waivers: {
+        select: {
+          id: true,
+          minorIndex: true,
+          fileName: true,
+        },
+        orderBy: { minorIndex: "asc" },
+      },
     },
   });
 
@@ -74,6 +82,7 @@ export default async function AdminBookingsPage({
               <th className="px-4 py-3">Data/ora</th>
               <th className="px-4 py-3">Stanza</th>
               <th className="px-4 py-3">Cliente</th>
+              <th className="px-4 py-3">Partecipanti</th>
               <th className="px-4 py-3">Importo</th>
               <th className="px-4 py-3">Stato</th>
               <th className="px-4 py-3" />
@@ -82,7 +91,7 @@ export default async function AdminBookingsPage({
           <tbody>
             {bookings.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-bone/50">
+                <td colSpan={7} className="px-4 py-8 text-center text-bone/50">
                   Nessuna prenotazione trovata.
                 </td>
               </tr>
@@ -105,6 +114,34 @@ export default async function AdminBookingsPage({
                   <td className="px-4 py-3 text-bone/70">
                     <span className="block">{booking.user.name}</span>
                     <span className="text-xs">{booking.user.email}</span>
+                  </td>
+                  <td className="px-4 py-3 text-bone/70">
+                    <span className="block">{booking.participantCount} totali</span>
+                    {booking.minorCount > 0 ? (
+                      <>
+                        <span className="block text-xs text-bone/50">
+                          {booking.minorCount} minorenni
+                        </span>
+                        <div className="mt-2 flex flex-col gap-1">
+                          {booking.waivers.map((waiver) => (
+                            <a
+                              key={waiver.id}
+                              href={`/api/admin/waivers/${waiver.id}`}
+                              className="text-xs text-ectoplasm underline underline-offset-2"
+                            >
+                              Liberatoria {waiver.minorIndex}
+                            </a>
+                          ))}
+                          {booking.waivers.length < booking.minorCount ? (
+                            <span className="text-xs text-blood-bright">
+                              Liberatorie mancanti
+                            </span>
+                          ) : null}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-xs text-bone/50">Nessun minorenne</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-bone/70">
                     {formatEuroAmount(booking.totalAmount)} €

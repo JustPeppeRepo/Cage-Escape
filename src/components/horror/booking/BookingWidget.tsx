@@ -17,6 +17,7 @@ import {
 } from "@/app/_actions/bookings";
 import type { DayAvailabilityStatus, SerializedTimeSlot } from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
+import { WAIVER_ACCEPT } from "@/app/_lib/bookings/waiver-upload";
 import { BookingCalendar } from "@/components/horror/booking/BookingCalendar";
 
 type PricingTierPreview = {
@@ -49,6 +50,56 @@ const FULL_MONTH_RESUME_MS = 1_500;
 
 function formatSlotTime(iso: string): string {
   return TIME_FORMATTER.format(new Date(iso));
+}
+
+function clampQuantity(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+type QuantityStepperProps = {
+  name: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+};
+
+function QuantityStepper({
+  name,
+  value,
+  min,
+  max,
+  onChange,
+}: QuantityStepperProps) {
+  const stepperButtonClassName =
+    "flex w-10 shrink-0 items-center justify-center text-lg text-bone/80 transition-colors hover:bg-blood/20 hover:text-bone disabled:cursor-not-allowed disabled:opacity-40";
+
+  return (
+    <div className="flex items-stretch overflow-hidden rounded border border-void-mist bg-void">
+      <button
+        type="button"
+        aria-label="Diminuisci"
+        disabled={value <= min}
+        onClick={() => onChange(clampQuantity(value - 1, min, max))}
+        className={stepperButtonClassName}
+      >
+        −
+      </button>
+      <output className="flex min-w-[3rem] flex-1 items-center justify-center border-x border-void-mist px-3 py-2 text-bone tabular-nums">
+        {value}
+      </output>
+      <input type="hidden" name={name} value={value} readOnly />
+      <button
+        type="button"
+        aria-label="Aumenta"
+        disabled={value >= max}
+        onClick={() => onChange(clampQuantity(value + 1, min, max))}
+        className={stepperButtonClassName}
+      >
+        +
+      </button>
+    </div>
+  );
 }
 
 function padMonth(month: number): string {
@@ -121,6 +172,10 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
   useEffect(() => {
     slotsCacheRef.current = slotsCache;
   }, [slotsCache]);
+
+  useEffect(() => {
+    setMinorCount((current) => Math.min(current, participantCount));
+  }, [participantCount]);
 
   const applyClosedDates = useCallback((closedDates: string[]) => {
     if (closedDates.length === 0) {
@@ -499,6 +554,7 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
         {effectiveSelectedSlot ? (
           <form
             action={holdAction}
+            encType="multipart/form-data"
             className="flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6"
           >
             <h2 className="text-sm font-semibold tracking-wide text-bone/60 uppercase">
@@ -515,31 +571,64 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
 
             <label className="flex flex-col gap-1 text-sm text-bone/80">
               Numero partecipanti ({room.minPlayers}-{room.maxPlayers})
-              <input
-                type="number"
+              <QuantityStepper
                 name="participantCount"
+                value={participantCount}
                 min={room.minPlayers}
                 max={room.maxPlayers}
-                value={participantCount}
-                onChange={(event) =>
-                  setParticipantCount(Number(event.target.value))
-                }
-                className="rounded border border-void-mist bg-void px-3 py-2 text-bone"
+                onChange={setParticipantCount}
               />
             </label>
 
             <label className="flex flex-col gap-1 text-sm text-bone/80">
               Di cui minorenni
-              <input
-                type="number"
+              <QuantityStepper
                 name="minorCount"
+                value={minorCount}
                 min={0}
                 max={participantCount}
-                value={minorCount}
-                onChange={(event) => setMinorCount(Number(event.target.value))}
-                className="rounded border border-void-mist bg-void px-3 py-2 text-bone"
+                onChange={setMinorCount}
               />
             </label>
+
+            {minorCount > 0 ? (
+              <div className="flex flex-col gap-4 rounded border border-blood/40 bg-blood/10 p-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <a
+                    href="/documents/liberatoria.pdf"
+                    download="liberatoria.pdf"
+                    className="rounded border border-void-mist bg-void px-3 py-1.5 text-bone transition-colors hover:border-bone/40"
+                  >
+                    liberatoria
+                  </a>
+                  <span className="font-semibold text-blood-bright">
+                    ATTENZIONE liberatoria obbligatoria
+                  </span>
+                </div>
+                <p className="text-xs text-bone/60">
+                  Scarica il modulo, compilalo e carica una copia per ogni
+                  minorenne (PDF, JPG o PNG, max 900 KB).
+                </p>
+                {Array.from({ length: minorCount }, (_, index) => {
+                  const minorNumber = index + 1;
+                  return (
+                    <label
+                      key={minorNumber}
+                      className="flex flex-col gap-1 text-sm text-bone/80"
+                    >
+                      Liberatoria minorenne {minorNumber}
+                      <input
+                        type="file"
+                        name={`waiver_${minorNumber}`}
+                        accept={WAIVER_ACCEPT}
+                        required
+                        className="rounded border border-void-mist bg-void px-3 py-2 text-sm text-bone file:mr-3 file:rounded file:border-0 file:bg-blood file:px-3 file:py-1 file:text-sm file:text-bone hover:file:bg-blood-bright"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            ) : null}
 
             <fieldset className="flex flex-col gap-2 text-sm text-bone/80">
               <legend className="mb-1">Modalità di pagamento</legend>
