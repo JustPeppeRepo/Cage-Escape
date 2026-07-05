@@ -25,9 +25,12 @@ export const getAvailableSlotsSchema = z.object({
 
 export const getMonthAvailabilitySchema = z.object({
   roomSlug: z.string().trim().min(1).max(64),
+  roomId: z.string().trim().min(1).max(64).optional(),
   year: z.coerce.number().int().min(2020).max(2100),
   month: z.coerce.number().int().min(1).max(12),
 });
+
+export const getMonthClosedDatesSchema = getMonthAvailabilitySchema;
 
 export const holdSlotSchema = z
   .object({

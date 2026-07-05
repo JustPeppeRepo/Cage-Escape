@@ -483,3 +483,47 @@ export async function getRoomMonthAvailability(
 
   return days;
 }
+
+export async function getMonthClosedDates(
+  roomId: string,
+  year: number,
+  month: number,
+): Promise<string[]> {
+  const todayRome = getRomeDateString(new Date());
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const monthPrefix = `${year}-${pad(month + 1)}`;
+  const startDateStr = `${monthPrefix}-01`;
+  const endDateStr = `${monthPrefix}-${pad(lastDay)}`;
+
+  const overrides = await prisma.scheduleOverride.findMany({
+    where: {
+      date: {
+        gte: toUtcDateOnly(startDateStr),
+        lte: toUtcDateOnly(endDateStr),
+      },
+      OR: [{ roomId: null }, { roomId }],
+    },
+    orderBy: { roomId: "desc" },
+  });
+
+  const closedDates: string[] = [];
+
+  for (let day = 1; day <= lastDay; day += 1) {
+    const dateStr = `${monthPrefix}-${pad(day)}`;
+    if (dateStr < todayRome) {
+      continue;
+    }
+
+    const schedule = resolveDayScheduleFromOverrides(
+      dateStr,
+      roomId,
+      overrides,
+    );
+
+    if (schedule.closed) {
+      closedDates.push(dateStr);
+    }
+  }
+
+  return closedDates;
+}

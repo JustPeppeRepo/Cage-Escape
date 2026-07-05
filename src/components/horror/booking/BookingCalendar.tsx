@@ -84,7 +84,8 @@ function getDayButtonClassName({
     return "bg-amber-700/25 text-amber-100/85 hover:bg-amber-700/35 hover:text-amber-50";
   }
 
-  return "text-bone/80 hover:bg-blood/20 hover:text-bone";
+  // Default: neutral and clickable until a status is confirmed.
+  return "text-bone/60 hover:bg-blood/20 hover:text-bone";
 }
 
 export function BookingCalendar({
@@ -146,8 +147,8 @@ export function BookingCalendar({
   }
 
   return (
-    <div className="w-full rounded-md border border-void-mist bg-void-deep p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="w-full rounded-md border border-void-mist bg-void-deep p-3 lg:p-4 xl:p-5">
+      <div className="mb-3 flex items-center justify-between lg:mb-4">
         <button
           type="button"
           onClick={handlePrev}
@@ -157,7 +158,7 @@ export function BookingCalendar({
         >
           ←
         </button>
-        <span className="font-[family-name:var(--font-display)] text-lg text-bone sm:text-xl">
+        <span className="font-[family-name:var(--font-display)] text-base text-bone lg:text-lg xl:text-xl">
           {MONTH_LABELS[viewedMonth.getMonth()]} {viewedMonth.getFullYear()}
         </span>
         <button
@@ -172,10 +173,10 @@ export function BookingCalendar({
       </div>
 
       {isLoadingAvailability ? (
-        <p className="mb-2 text-xs text-bone/40">Caricamento disponibilità…</p>
+        <p className="mb-2 text-xs text-bone/40">Aggiornamento colori…</p>
       ) : null}
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-bone/50 sm:text-sm">
+      <div className="grid grid-cols-7 gap-0.5 text-center text-[0.65rem] text-bone/50 min-[550px]:gap-1 min-[550px]:text-xs lg:text-sm">
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className="py-1">
             {label}
@@ -183,7 +184,7 @@ export function BookingCalendar({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 min-[550px]:gap-1">
         {days.map((cell, index) => {
           if (!cell) {
             return <span key={`blank-${index}`} aria-hidden="true" />;
@@ -205,7 +206,7 @@ export function BookingCalendar({
               onClick={() => onSelectDate(cell.dateStr)}
               onMouseEnter={() => { if (!isDisabled) onDayHover?.(cell.dateStr); }}
               onFocus={() => { if (!isDisabled) onDayHover?.(cell.dateStr); }}
-              className={`flex aspect-square w-full items-center justify-center rounded text-sm transition-colors sm:text-base ${getDayButtonClassName(
+              className={`flex aspect-square w-full items-center justify-center rounded text-xs transition-colors min-[550px]:text-xs lg:text-sm xl:text-base ${getDayButtonClassName(
                 { isPast, isSelected, availability, isLoading: isLoadingAvailability },
               )}`}
             >
@@ -215,7 +216,7 @@ export function BookingCalendar({
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-bone/50">
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-bone/50 min-[550px]:gap-x-4 min-[550px]:text-xs lg:mt-4">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded bg-amber-700/25 ring-1 ring-amber-700/30" />
           Parzialmente occupato

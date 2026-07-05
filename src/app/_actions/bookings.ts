@@ -22,6 +22,7 @@ import {
   createStripeCheckoutSessionSchema,
   getAvailableSlotsSchema,
   getMonthAvailabilitySchema,
+  getMonthClosedDatesSchema,
   holdSlotSchema,
 } from "@/app/_lib/bookings/schemas";
 import { getCancellationEligibility } from "@/app/_lib/bookings/refund-policy";
@@ -35,6 +36,7 @@ import {
   getAvailableSlotsForRoom,
   getRomeDateString,
   getRoomMonthAvailability,
+  getMonthClosedDates as getMonthClosedDatesForRoom,
   isSlotAvailable,
   releaseExpiredHolds,
   resolveDaySchedule,
@@ -62,6 +64,10 @@ export type BookingActionResult<T> =
 type AvailableSlotPayload = {
   date: string;
   slots: Array<{ startTime: string; endTime: string }>;
+};
+
+type MonthClosedDatesPayload = {
+  closedDates: string[];
 };
 
 type MonthAvailabilityPayload = {
@@ -172,19 +178,78 @@ export async function getAvailableSlots(
   }
 }
 
+export async function getMonthClosedDates(
+  prevState: unknown,
+  formData: FormData,
+): Promise<BookingActionResult<MonthClosedDatesPayload>> {
+  const parsed = getMonthClosedDatesSchema.safeParse(formDataToObject(formData));
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Input non valido",
+      code: "VALIDATION_ERROR",
+    };
+  }
+
+  const { roomSlug, roomId: providedRoomId, year, month } = parsed.data;
+
+  try {
+    let roomId = providedRoomId;
+
+    if (roomId) {
+      const room = await prisma.room.findFirst({
+        where: { id: roomId, slug: roomSlug, isActive: true },
+        select: { id: true },
+      });
+
+      if (!room) {
+        return {
+          success: false,
+          error: "Stanza non trovata o non disponibile",
+          code: "ROOM_NOT_FOUND",
+        };
+      }
+    } else {
+      const room = await prisma.room.findFirst({
+        where: { slug: roomSlug, isActive: true },
+        select: { id: true },
+      });
+
+      if (!room) {
+        return {
+          success: false,
+          error: "Stanza non trovata o non disponibile",
+          code: "ROOM_NOT_FOUND",
+        };
+      }
+
+      roomId = room.id;
+    }
+
+    const closedDates = await getMonthClosedDatesForRoom(
+      roomId,
+      year,
+      month - 1,
+    );
+
+    return {
+      success: true,
+      data: { closedDates },
+    };
+  } catch (error) {
+    console.error("[getMonthClosedDates]", error);
+    return {
+      success: false,
+      error: "Errore durante il recupero delle chiusure del calendario",
+      code: "INTERNAL_ERROR",
+    };
+  }
+}
+
 export async function getMonthAvailability(
   prevState: unknown,
   formData: FormData,
 ): Promise<BookingActionResult<MonthAvailabilityPayload>> {
-  const rateLimit = await checkRateLimit("getMonthAvailability", 30);
-  if (!rateLimit.allowed) {
-    return {
-      success: false,
-      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
-      code: "RATE_LIMITED",
-    };
-  }
-
   const parsed = getMonthAvailabilitySchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
     return {
@@ -194,25 +259,48 @@ export async function getMonthAvailability(
     };
   }
 
-  const { roomSlug, year, month } = parsed.data;
+  const { roomSlug, roomId: providedRoomId, year, month } = parsed.data;
 
   try {
-    const room = await prisma.room.findFirst({
-      where: { slug: roomSlug, isActive: true },
-      select: { id: true, durationMinutes: true },
-    });
+    let roomId = providedRoomId;
+    let durationMinutes: number;
 
-    if (!room) {
-      return {
-        success: false,
-        error: "Stanza non trovata o non disponibile",
-        code: "ROOM_NOT_FOUND",
-      };
+    if (roomId) {
+      const room = await prisma.room.findFirst({
+        where: { id: roomId, slug: roomSlug, isActive: true },
+        select: { id: true, durationMinutes: true },
+      });
+
+      if (!room) {
+        return {
+          success: false,
+          error: "Stanza non trovata o non disponibile",
+          code: "ROOM_NOT_FOUND",
+        };
+      }
+
+      durationMinutes = room.durationMinutes;
+    } else {
+      const room = await prisma.room.findFirst({
+        where: { slug: roomSlug, isActive: true },
+        select: { id: true, durationMinutes: true },
+      });
+
+      if (!room) {
+        return {
+          success: false,
+          error: "Stanza non trovata o non disponibile",
+          code: "ROOM_NOT_FOUND",
+        };
+      }
+
+      roomId = room.id;
+      durationMinutes = room.durationMinutes;
     }
 
     const days = await getRoomMonthAvailability(
-      room.id,
-      room.durationMinutes,
+      roomId,
+      durationMinutes,
       year,
       month - 1,
     );
