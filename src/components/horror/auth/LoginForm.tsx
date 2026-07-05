@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { login } from "@/actions/auth";
+import { PasswordInput } from "@/components/horror/auth/PasswordInput";
 
 type LoginFormProps = {
   callbackUrl: string;
@@ -38,12 +39,10 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
 
       <label className="flex flex-col gap-1 text-sm text-bone/80">
         Password
-        <input
-          type="password"
+        <PasswordInput
           name="password"
           required
           autoComplete="current-password"
-          className="rounded border border-void-mist bg-void px-3 py-2 text-bone"
         />
         {state?.errors?.password ? (
           <span className="text-sm text-blood-bright">

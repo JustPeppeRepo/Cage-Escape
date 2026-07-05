@@ -21,7 +21,6 @@ import {
   cancelMyBookingSchema,
   createStripeCheckoutSessionSchema,
   getAvailableSlotsSchema,
-  getMonthAvailabilitySchema,
   getMonthClosedDatesSchema,
   holdSlotSchema,
 } from "@/app/_lib/bookings/schemas";
@@ -35,7 +34,6 @@ import {
   generateTimeSlots,
   getAvailableSlotsForRoom,
   getRomeDateString,
-  getRoomMonthAvailability,
   getMonthClosedDates as getMonthClosedDatesForRoom,
   isSlotAvailable,
   releaseExpiredHolds,
@@ -71,10 +69,6 @@ type MonthClosedDatesPayload = {
   closedDates: string[];
 };
 
-type MonthAvailabilityPayload = {
-  days: Record<string, "available" | "partial" | "unavailable">;
-};
-
 type HoldSlotPayload = {
   bookingId: string;
   holdExpiresAt: string;
@@ -100,15 +94,6 @@ export async function getAvailableSlots(
   prevState: unknown,
   formData: FormData,
 ): Promise<BookingActionResult<AvailableSlotPayload>> {
-  const rateLimit = await checkRateLimit("getAvailableSlots", 30);
-  if (!rateLimit.allowed) {
-    return {
-      success: false,
-      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
-      code: "RATE_LIMITED",
-    };
-  }
-
   const parsed = getAvailableSlotsSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
     return {
@@ -118,13 +103,31 @@ export async function getAvailableSlots(
     };
   }
 
-  const { roomSlug, roomId: providedRoomId, date } = parsed.data;
+  const {
+    roomSlug,
+    roomId: providedRoomId,
+    durationMinutes: providedDurationMinutes,
+    date,
+  } = parsed.data;
 
   try {
     let roomId = providedRoomId;
-    let durationMinutes: number;
+    let durationMinutes = providedDurationMinutes;
 
-    if (roomId) {
+    if (roomId && durationMinutes !== undefined) {
+      const room = await prisma.room.findFirst({
+        where: { id: roomId, slug: roomSlug, isActive: true },
+        select: { id: true, durationMinutes: true },
+      });
+
+      if (!room || room.durationMinutes !== durationMinutes) {
+        return {
+          success: false,
+          error: "Stanza non trovata o non disponibile",
+          code: "ROOM_NOT_FOUND",
+        };
+      }
+    } else if (roomId) {
       const room = await prisma.room.findFirst({
         where: { id: roomId, slug: roomSlug, isActive: true },
         select: { id: true, durationMinutes: true },
@@ -242,79 +245,6 @@ export async function getMonthClosedDates(
     return {
       success: false,
       error: "Errore durante il recupero delle chiusure del calendario",
-      code: "INTERNAL_ERROR",
-    };
-  }
-}
-
-export async function getMonthAvailability(
-  prevState: unknown,
-  formData: FormData,
-): Promise<BookingActionResult<MonthAvailabilityPayload>> {
-  const parsed = getMonthAvailabilitySchema.safeParse(formDataToObject(formData));
-  if (!parsed.success) {
-    return {
-      success: false,
-      error: parsed.error.issues[0]?.message ?? "Input non valido",
-      code: "VALIDATION_ERROR",
-    };
-  }
-
-  const { roomSlug, roomId: providedRoomId, year, month } = parsed.data;
-
-  try {
-    let roomId = providedRoomId;
-    let durationMinutes: number;
-
-    if (roomId) {
-      const room = await prisma.room.findFirst({
-        where: { id: roomId, slug: roomSlug, isActive: true },
-        select: { id: true, durationMinutes: true },
-      });
-
-      if (!room) {
-        return {
-          success: false,
-          error: "Stanza non trovata o non disponibile",
-          code: "ROOM_NOT_FOUND",
-        };
-      }
-
-      durationMinutes = room.durationMinutes;
-    } else {
-      const room = await prisma.room.findFirst({
-        where: { slug: roomSlug, isActive: true },
-        select: { id: true, durationMinutes: true },
-      });
-
-      if (!room) {
-        return {
-          success: false,
-          error: "Stanza non trovata o non disponibile",
-          code: "ROOM_NOT_FOUND",
-        };
-      }
-
-      roomId = room.id;
-      durationMinutes = room.durationMinutes;
-    }
-
-    const days = await getRoomMonthAvailability(
-      roomId,
-      durationMinutes,
-      year,
-      month - 1,
-    );
-
-    return {
-      success: true,
-      data: { days },
-    };
-  } catch (error) {
-    console.error("[getMonthAvailability]", error);
-    return {
-      success: false,
-      error: "Errore durante il recupero della disponibilità del calendario",
       code: "INTERNAL_ERROR",
     };
   }

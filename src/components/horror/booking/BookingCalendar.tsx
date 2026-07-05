@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DayAvailabilityStatus } from "@/app/_lib/bookings/slots";
 
 type BookingCalendarProps = {
   selectedDate: string | null;
-  dayAvailability: Record<string, DayAvailabilityStatus>;
-  isLoadingAvailability?: boolean;
+  closedDates: Set<string>;
   onSelectDate: (date: string) => void;
   onMonthChange: (year: number, month: number) => void;
   onDayHover?: (date: string) => void;
@@ -54,44 +52,27 @@ function startOfToday(): Date {
 
 function getDayButtonClassName({
   isPast,
+  isClosed,
   isSelected,
-  availability,
-  isLoading,
 }: {
   isPast: boolean;
+  isClosed: boolean;
   isSelected: boolean;
-  availability?: DayAvailabilityStatus;
-  isLoading: boolean;
 }): string {
   if (isSelected) {
     return "bg-blood text-bone";
   }
 
-  if (isPast) {
+  if (isPast || isClosed) {
     return "cursor-not-allowed text-bone/20";
   }
 
-  // While loading availability data, future days are styled neutrally and clickable
-  if (isLoading && availability === undefined) {
-    return "text-bone/60 hover:bg-blood/20 hover:text-bone";
-  }
-
-  if (availability === "unavailable") {
-    return "cursor-not-allowed bg-blood/20 text-bone/30";
-  }
-
-  if (availability === "partial") {
-    return "bg-amber-700/25 text-amber-100/85 hover:bg-amber-700/35 hover:text-amber-50";
-  }
-
-  // Default: neutral and clickable until a status is confirmed.
   return "text-bone/60 hover:bg-blood/20 hover:text-bone";
 }
 
 export function BookingCalendar({
   selectedDate,
-  dayAvailability,
-  isLoadingAvailability = false,
+  closedDates,
   onSelectDate,
   onMonthChange,
   onDayHover,
@@ -106,7 +87,6 @@ export function BookingCalendar({
 
   const [viewedMonth, setViewedMonth] = useState(minMonth);
 
-  // Always notify parent when viewed month changes so it can lazy-load availability
   useEffect(() => {
     onMonthChange(viewedMonth.getFullYear(), viewedMonth.getMonth());
   }, [viewedMonth, onMonthChange]);
@@ -172,10 +152,6 @@ export function BookingCalendar({
         </button>
       </div>
 
-      {isLoadingAvailability ? (
-        <p className="mb-2 text-xs text-bone/40">Aggiornamento colori…</p>
-      ) : null}
-
       <div className="grid grid-cols-7 gap-0.5 text-center text-[0.65rem] text-bone/50 min-[550px]:gap-1 min-[550px]:text-xs lg:text-sm">
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className="py-1">
@@ -191,12 +167,9 @@ export function BookingCalendar({
           }
 
           const isPast = cell.date.getTime() < today.getTime();
-          const availability = dayAvailability[cell.dateStr];
-          // Only disable as unavailable once we have loaded data confirming it;
-          // while loading, future days remain clickable with a neutral style.
-          const isUnavailable = !isPast && !isLoadingAvailability && availability === "unavailable";
+          const isClosed = closedDates.has(cell.dateStr);
           const isSelected = cell.dateStr === selectedDate;
-          const isDisabled = isPast || isUnavailable;
+          const isDisabled = isPast || isClosed;
 
           return (
             <button
@@ -204,27 +177,20 @@ export function BookingCalendar({
               type="button"
               disabled={isDisabled}
               onClick={() => onSelectDate(cell.dateStr)}
-              onMouseEnter={() => { if (!isDisabled) onDayHover?.(cell.dateStr); }}
-              onFocus={() => { if (!isDisabled) onDayHover?.(cell.dateStr); }}
+              onMouseEnter={() => {
+                if (!isDisabled) onDayHover?.(cell.dateStr);
+              }}
+              onFocus={() => {
+                if (!isDisabled) onDayHover?.(cell.dateStr);
+              }}
               className={`flex aspect-square w-full items-center justify-center rounded text-xs transition-colors min-[550px]:text-xs lg:text-sm xl:text-base ${getDayButtonClassName(
-                { isPast, isSelected, availability, isLoading: isLoadingAvailability },
+                { isPast, isClosed, isSelected },
               )}`}
             >
               {cell.date.getDate()}
             </button>
           );
         })}
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-bone/50 min-[550px]:gap-x-4 min-[550px]:text-xs lg:mt-4">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded bg-amber-700/25 ring-1 ring-amber-700/30" />
-          Parzialmente occupato
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded bg-blood/20 ring-1 ring-blood/30" />
-          Non prenotabile
-        </span>
       </div>
     </div>
   );

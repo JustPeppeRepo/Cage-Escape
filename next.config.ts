@@ -20,12 +20,6 @@ const cspHeader = `
 `;
 
 const nextConfig: NextConfig = {
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "4mb",
-    },
-    proxyClientMaxBodySize: "4mb",
-  },
   async headers() {
     return [
       {

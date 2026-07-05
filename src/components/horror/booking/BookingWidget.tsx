@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  startTransition,
   useActionState,
   useCallback,
   useEffect,
@@ -11,11 +10,11 @@ import {
 import { useRouter } from "next/navigation";
 import {
   getAvailableSlots,
-  getMonthAvailability,
   getMonthClosedDates,
   holdSlot,
 } from "@/app/_actions/bookings";
-import type { DayAvailabilityStatus, SerializedTimeSlot } from "@/app/_lib/bookings/slots";
+import type { BookingActionResult } from "@/app/_actions/bookings";
+import type { SerializedTimeSlot } from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 import { WAIVER_ACCEPT } from "@/app/_lib/bookings/waiver-upload";
 import { BookingCalendar } from "@/components/horror/booking/BookingCalendar";
@@ -38,15 +37,22 @@ type BookingWidgetProps = {
   pricingTiers: PricingTierPreview[];
 };
 
+type HoldSlotPayload = {
+  bookingId: string;
+  holdExpiresAt: string;
+  totalAmount: string;
+  depositAmount: string;
+};
+
+type HoldActionState = BookingActionResult<HoldSlotPayload> | null;
+
 const TIME_FORMATTER = new Intl.DateTimeFormat("it-IT", {
   timeZone: "Europe/Rome",
   hour: "2-digit",
   minute: "2-digit",
 });
 
-const HOVER_PREFETCH_DELAY_MS = 150;
-const FULL_MONTH_DEFER_MS = 2_500;
-const FULL_MONTH_RESUME_MS = 1_500;
+const HOVER_PREFETCH_DELAY_MS = 80;
 
 function formatSlotTime(iso: string): string {
   return TIME_FORMATTER.format(new Date(iso));
@@ -106,6 +112,36 @@ function padMonth(month: number): string {
   return String(month + 1).padStart(2, "0");
 }
 
+const DEPOSIT_PAYMENT_HINT =
+  "Paghi ora solo la caparra per bloccare lo slot. Il saldo restante va saldato prima dell'ingresso in stanza.";
+
+type InfoHintProps = {
+  label: string;
+  text: string;
+};
+
+function InfoHint({ label, text }: InfoHintProps) {
+  return (
+    <span className="group/info relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-label={label}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={(event) => event.stopPropagation()}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-bone/30 text-[10px] font-semibold leading-none text-bone/50 transition-colors hover:border-bone/50 hover:text-bone/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-bone/50"
+      >
+        i
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-56 -translate-x-1/2 rounded border border-void-mist bg-void px-3 py-2 text-left text-xs leading-snug text-bone/80 opacity-0 shadow-lg transition-opacity group-hover/info:opacity-100 group-focus-within/info:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
 function monthKey(year: number, month: number): string {
   return `${year}-${padMonth(month)}`;
 }
@@ -123,21 +159,16 @@ function buildMonthFormData(
   return formData;
 }
 
-function mergeFullMonthAvailability(
-  prev: Record<string, DayAvailabilityStatus>,
-  incoming: Record<string, DayAvailabilityStatus>,
-): Record<string, DayAvailabilityStatus> {
-  const next = { ...prev };
-
-  for (const [date, status] of Object.entries(incoming)) {
-    if (status === "unavailable") {
-      next[date] = "unavailable";
-    } else if (prev[date] !== "unavailable") {
-      next[date] = status;
-    }
-  }
-
-  return next;
+function buildSlotsFormData(
+  room: BookingWidgetProps["room"],
+  date: string,
+): FormData {
+  const formData = new FormData();
+  formData.set("roomSlug", room.slug);
+  formData.set("roomId", room.id);
+  formData.set("durationMinutes", String(room.durationMinutes));
+  formData.set("date", date);
+  return formData;
 }
 
 export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
@@ -145,51 +176,126 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [dayAvailability, setDayAvailability] = useState<
-    Record<string, DayAvailabilityStatus>
-  >({});
-  const [isRefiningAvailability, setIsRefiningAvailability] = useState(false);
+  const [closedDates, setClosedDates] = useState<Set<string>>(() => new Set());
   const [slotsCache, setSlotsCache] = useState<Record<string, SerializedTimeSlot[]>>({});
   const [slotsRequestDate, setSlotsRequestDate] = useState<string | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState(room.minPlayers);
   const [minorCount, setMinorCount] = useState(0);
   const [discountCode, setDiscountCode] = useState("");
   const [paymentChoice, setPaymentChoice] = useState<"FULL" | "DEPOSIT">("FULL");
 
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  const slotsFormRef = useRef<HTMLFormElement>(null);
   const closedMonthsLoadedRef = useRef(new Set<string>());
-  const fullMonthsLoadedRef = useRef(new Set<string>());
   const monthInFlightRef = useRef(new Set<string>());
   const closedRequestRef = useRef(0);
-  const fullMonthRequestRef = useRef(0);
-  const fullMonthTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pauseFullMonthRef = useRef(false);
-  const viewedMonthRef = useRef({ year: new Date().getFullYear(), month: new Date().getMonth() });
-  const hoverPrefetchInFlightRef = useRef(new Set<string>());
-  const hoverPrefetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slotsRequestRef = useRef(0);
   const slotsCacheRef = useRef(slotsCache);
+  const slotsInFlightRef = useRef(new Set<string>());
+  const hoverPrefetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     slotsCacheRef.current = slotsCache;
   }, [slotsCache]);
 
-  useEffect(() => {
-    setMinorCount((current) => Math.min(current, participantCount));
-  }, [participantCount]);
-
-  const applyClosedDates = useCallback((closedDates: string[]) => {
-    if (closedDates.length === 0) {
-      return;
-    }
-
-    setDayAvailability((prev) => {
-      const next = { ...prev };
-      for (const date of closedDates) {
-        next[date] = "unavailable";
+  const fetchSlotsForDate = useCallback(
+    async (date: string, options?: { background?: boolean }) => {
+      if (slotsInFlightRef.current.has(date)) {
+        return;
       }
-      return next;
-    });
-  }, []);
+
+      const background = options?.background ?? false;
+      const requestId = background ? null : ++slotsRequestRef.current;
+
+      if (!background) {
+        setSlotsRequestDate(date);
+        setSlotsError(null);
+        if (slotsCacheRef.current[date] === undefined) {
+          setSlotsLoading(true);
+        }
+      }
+
+      slotsInFlightRef.current.add(date);
+
+      try {
+        const result = await getAvailableSlots(null, buildSlotsFormData(room, date));
+
+        if (requestId !== null && requestId !== slotsRequestRef.current) {
+          return;
+        }
+
+        if (!background) {
+          setSlotsLoading(false);
+        }
+
+        if (!result.success) {
+          if (!background) {
+            setSlotsError(result.error);
+          }
+          return;
+        }
+
+        if (result.data.date !== date) {
+          return;
+        }
+
+        setSlotsCache((prev) => {
+          const incoming = result.data.slots;
+          const existing = prev[date];
+          if (
+            existing &&
+            existing.length === incoming.length &&
+            existing.every(
+              (slot, index) => slot.startTime === incoming[index]?.startTime,
+            )
+          ) {
+            return prev;
+          }
+          return { ...prev, [date]: incoming };
+        });
+
+        if (!background) {
+          setSelectedSlot((current) => {
+            if (!current) {
+              return current;
+            }
+            const stillAvailable = result.data.slots.some(
+              (slot) => slot.startTime === current,
+            );
+            return stillAvailable ? current : null;
+          });
+        }
+      } finally {
+        slotsInFlightRef.current.delete(date);
+      }
+    },
+    [room],
+  );
+
+  const holdSlotClientAction = useCallback(
+    async (
+      prevState: HoldActionState,
+      formData: FormData,
+    ): Promise<HoldActionState> => {
+      const result = await holdSlot(prevState, formData);
+
+      if (!result.success && result.code === "SLOT_TAKEN" && selectedDate) {
+        await fetchSlotsForDate(selectedDate);
+      }
+
+      if (result.success) {
+        router.push(`/checkout?bookingId=${result.data.bookingId}`);
+      }
+
+      return result;
+    },
+    [fetchSlotsForDate, router, selectedDate],
+  );
+
+  const [holdState, holdAction, holdPending] = useActionState(
+    holdSlotClientAction,
+    null,
+  );
 
   const loadClosedDatesForMonth = useCallback(
     async (year: number, month: number) => {
@@ -217,118 +323,25 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
         }
 
         closedMonthsLoadedRef.current.add(key);
-        applyClosedDates(result.data.closedDates);
+        setClosedDates((prev) => {
+          const next = new Set(prev);
+          for (const date of result.data.closedDates) {
+            next.add(date);
+          }
+          return next;
+        });
       } finally {
         monthInFlightRef.current.delete(`closed:${key}`);
-      }
-    },
-    [applyClosedDates, room],
-  );
-
-  const loadFullMonthAvailability = useCallback(
-    async (year: number, month: number) => {
-      if (pauseFullMonthRef.current) {
-        return;
-      }
-
-      const key = monthKey(year, month);
-      if (fullMonthsLoadedRef.current.has(key)) {
-        return;
-      }
-
-      if (monthInFlightRef.current.has(`full:${key}`)) {
-        return;
-      }
-
-      monthInFlightRef.current.add(`full:${key}`);
-      const requestId = fullMonthRequestRef.current + 1;
-      fullMonthRequestRef.current = requestId;
-      setIsRefiningAvailability(true);
-
-      try {
-        const result = await getMonthAvailability(
-          null,
-          buildMonthFormData(room, year, month),
-        );
-
-        if (
-          fullMonthRequestRef.current !== requestId ||
-          !result.success ||
-          pauseFullMonthRef.current
-        ) {
-          return;
-        }
-
-        fullMonthsLoadedRef.current.add(key);
-        setDayAvailability((prev) =>
-          mergeFullMonthAvailability(prev, result.data.days),
-        );
-      } finally {
-        monthInFlightRef.current.delete(`full:${key}`);
-        if (fullMonthRequestRef.current === requestId) {
-          setIsRefiningAvailability(false);
-        }
       }
     },
     [room],
   );
 
-  const scheduleFullMonthLoad = useCallback(
-    (year: number, month: number, delayMs = FULL_MONTH_DEFER_MS) => {
-      if (fullMonthTimeoutRef.current) {
-        clearTimeout(fullMonthTimeoutRef.current);
-      }
-
-      fullMonthTimeoutRef.current = setTimeout(() => {
-        void loadFullMonthAvailability(year, month);
-      }, delayMs);
-    },
-    [loadFullMonthAvailability],
-  );
-
   const handleMonthChange = useCallback(
     (year: number, month: number) => {
-      viewedMonthRef.current = { year, month };
       void loadClosedDatesForMonth(year, month);
-      scheduleFullMonthLoad(year, month);
     },
-    [loadClosedDatesForMonth, scheduleFullMonthLoad],
-  );
-
-  const prefetchSlotsForDate = useCallback(
-    async (date: string) => {
-      if (slotsCacheRef.current[date] !== undefined) {
-        return;
-      }
-
-      if (hoverPrefetchInFlightRef.current.has(date)) {
-        return;
-      }
-
-      hoverPrefetchInFlightRef.current.add(date);
-
-      const formData = new FormData();
-      formData.set("roomSlug", room.slug);
-      formData.set("roomId", room.id);
-      formData.set("date", date);
-
-      try {
-        const result = await getAvailableSlots(null, formData);
-        if (!result.success || result.data.date !== date) {
-          return;
-        }
-
-        setSlotsCache((prev) => {
-          if (prev[date] !== undefined) {
-            return prev;
-          }
-          return { ...prev, [date]: result.data.slots };
-        });
-      } finally {
-        hoverPrefetchInFlightRef.current.delete(date);
-      }
-    },
-    [room.id, room.slug],
+    [loadClosedDatesForMonth],
   );
 
   const handleDayHover = useCallback(
@@ -338,102 +351,38 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
       }
 
       hoverPrefetchTimeoutRef.current = setTimeout(() => {
-        void prefetchSlotsForDate(date);
+        if (slotsCacheRef.current[date] !== undefined) {
+          return;
+        }
+        void fetchSlotsForDate(date, { background: true });
       }, HOVER_PREFETCH_DELAY_MS);
     },
-    [prefetchSlotsForDate],
+    [fetchSlotsForDate],
   );
-
-  const [slotsState, slotsAction, slotsPending] = useActionState(
-    getAvailableSlots,
-    null,
-  );
-  const [holdState, holdAction, holdPending] = useActionState(holdSlot, null);
-
-  function refreshSlotsForDate(date: string) {
-    setSlotsRequestDate(date);
-    if (dateInputRef.current) {
-      dateInputRef.current.value = date;
-    }
-    slotsFormRef.current?.requestSubmit();
-  }
 
   function handleSelectDate(date: string) {
     setSelectedDate(date);
     setSelectedSlot(null);
-
-    pauseFullMonthRef.current = true;
-    if (fullMonthTimeoutRef.current) {
-      clearTimeout(fullMonthTimeoutRef.current);
-      fullMonthTimeoutRef.current = null;
-    }
+    setSlotsRequestDate(date);
+    setSlotsError(null);
 
     if (slotsCacheRef.current[date] !== undefined) {
-      startTransition(() => {
-        refreshSlotsForDate(date);
-      });
-    } else {
-      refreshSlotsForDate(date);
+      void fetchSlotsForDate(date, { background: true });
+      return;
     }
+
+    void fetchSlotsForDate(date);
   }
 
-  useEffect(() => {
-    if (!slotsRequestDate || slotsPending) {
-      return;
-    }
-
-    const settledForRequest =
-      (slotsState?.success && slotsState.data.date === slotsRequestDate) ||
-      (slotsState !== null && !slotsState.success);
-
-    if (!settledForRequest) {
-      return;
-    }
-
-    pauseFullMonthRef.current = false;
-
-    if (slotsState?.success && slotsState.data.date === slotsRequestDate) {
-      setSlotsCache((prev) => {
-        const incoming = slotsState.data.slots;
-        const existing = prev[slotsRequestDate];
-        if (
-          existing &&
-          existing.length === incoming.length &&
-          existing.every((slot, index) => slot.startTime === incoming[index]?.startTime)
-        ) {
-          return prev;
-        }
-        return { ...prev, [slotsRequestDate]: incoming };
-      });
-
-      setDayAvailability((prev) => ({
-        ...prev,
-        [slotsRequestDate]:
-          slotsState.data.slots.length === 0 ? "unavailable" : "available",
-      }));
-
-      setSelectedSlot((current) => {
-        if (!current) {
-          return current;
-        }
-        const stillAvailable = slotsState.data.slots.some(
-          (slot) => slot.startTime === current,
-        );
-        return stillAvailable ? current : null;
-      });
-    }
-
-    const { year, month } = viewedMonthRef.current;
-    scheduleFullMonthLoad(year, month, FULL_MONTH_RESUME_MS);
-  }, [slotsRequestDate, slotsPending, slotsState, scheduleFullMonthLoad]);
+  function handleParticipantCountChange(value: number) {
+    setParticipantCount(value);
+    setMinorCount((current) => Math.min(current, value));
+  }
 
   useEffect(() => {
     return () => {
       if (hoverPrefetchTimeoutRef.current) {
         clearTimeout(hoverPrefetchTimeoutRef.current);
-      }
-      if (fullMonthTimeoutRef.current) {
-        clearTimeout(fullMonthTimeoutRef.current);
       }
     };
   }, []);
@@ -441,23 +390,6 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
   const isSlotTaken =
     !!holdState && !holdState.success && holdState.code === "SLOT_TAKEN";
   const effectiveSelectedSlot = isSlotTaken ? null : selectedSlot;
-
-  useEffect(() => {
-    if (isSlotTaken && selectedDate) {
-      refreshSlotsForDate(selectedDate);
-      const [year, month] = selectedDate.split("-").map(Number);
-      void loadClosedDatesForMonth(year, month - 1);
-      scheduleFullMonthLoad(year, month - 1, 0);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdState]);
-
-  useEffect(() => {
-    if (holdState?.success) {
-      router.push(`/checkout?bookingId=${holdState.data.bookingId}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdState]);
 
   const previewTier = resolvePricingTier(pricingTiers, participantCount);
 
@@ -471,13 +403,12 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
     selectedDate !== null &&
     slotsRequestDate === selectedDate &&
     cachedSlotsForSelectedDate === undefined &&
-    slotsPending;
+    slotsLoading;
   const showSlotsError =
     selectedDate !== null &&
     slotsRequestDate === selectedDate &&
-    !slotsPending &&
-    !!slotsState &&
-    !slotsState.success;
+    !slotsLoading &&
+    slotsError !== null;
 
   if (holdState?.success) {
     return (
@@ -492,20 +423,13 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
 
   return (
     <div className="flex flex-col gap-6 min-[550px]:grid min-[550px]:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] min-[550px]:items-start min-[550px]:gap-x-6 min-[550px]:gap-y-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-x-10">
-      <form ref={slotsFormRef} action={slotsAction} className="hidden">
-        <input type="hidden" name="roomSlug" defaultValue={room.slug} />
-        <input type="hidden" name="roomId" defaultValue={room.id} />
-        <input ref={dateInputRef} type="hidden" name="date" defaultValue="" />
-      </form>
-
       <div className="min-w-0 w-full min-[550px]:max-w-[17rem] lg:max-w-none">
         <h2 className="mb-3 text-sm font-semibold tracking-wide text-bone/60 uppercase">
           1. Scegli una data
         </h2>
         <BookingCalendar
           selectedDate={selectedDate}
-          dayAvailability={dayAvailability}
-          isLoadingAvailability={isRefiningAvailability}
+          closedDates={closedDates}
           onSelectDate={handleSelectDate}
           onMonthChange={handleMonthChange}
           onDayHover={handleDayHover}
@@ -518,7 +442,7 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
         ) : null}
 
         {showSlotsError ? (
-          <p className="text-sm text-blood-bright">{slotsState.error}</p>
+          <p className="text-sm text-blood-bright">{slotsError}</p>
         ) : null}
 
         {showSlotsSection ? (
@@ -576,7 +500,7 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
                 value={participantCount}
                 min={room.minPlayers}
                 max={room.maxPlayers}
-                onChange={setParticipantCount}
+                onChange={handleParticipantCountChange}
               />
             </label>
 
@@ -657,6 +581,10 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
                     onChange={() => setPaymentChoice("DEPOSIT")}
                   />
                   Solo caparra
+                  <InfoHint
+                    label="Cosa significa solo caparra"
+                    text={DEPOSIT_PAYMENT_HINT}
+                  />
                 </span>
                 <span className="text-ectoplasm">
                   {previewTier ? `${previewTier.depositPrice} €` : "—"}

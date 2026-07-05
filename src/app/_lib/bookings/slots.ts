@@ -18,16 +18,9 @@ export type DaySchedule = {
   closeHour: number;
 };
 
-export type DayAvailabilityStatus = "available" | "partial" | "unavailable";
-
 export type SerializedTimeSlot = {
   startTime: string;
   endTime: string;
-};
-
-export type RoomAvailabilityRangeResult = {
-  days: Record<string, DayAvailabilityStatus>;
-  slotsByDate: Record<string, SerializedTimeSlot[]>;
 };
 
 type ScheduleOverrideRecord = {
@@ -330,13 +323,6 @@ function getBookableSlotsForDay(
   return { bookable, available };
 }
 
-function serializeTimeSlots(slots: TimeSlot[]): SerializedTimeSlot[] {
-  return slots.map((slot) => ({
-    startTime: slot.startTime.toISOString(),
-    endTime: slot.endTime.toISOString(),
-  }));
-}
-
 export async function getAvailableSlotsForRoom(
   roomId: string,
   durationMinutes: number,
@@ -355,133 +341,6 @@ export async function getAvailableSlotsForRoom(
     occupied,
     new Date(),
   ).available;
-}
-
-export function getDefaultPrefetchRangeBounds(): {
-  startDateStr: string;
-  endDateStr: string;
-} {
-  const todayRome = getRomeDateString(new Date());
-  const [year, month] = todayRome.split("-").map(Number);
-  const monthStart = `${year}-${pad(month)}-01`;
-  const startDateStr = todayRome > monthStart ? todayRome : monthStart;
-
-  let nextMonth = month + 1;
-  let nextYear = year;
-  if (nextMonth > 12) {
-    nextMonth = 1;
-    nextYear += 1;
-  }
-
-  const lastDay = new Date(nextYear, nextMonth, 0).getDate();
-  const endDateStr = `${nextYear}-${pad(nextMonth)}-${pad(lastDay)}`;
-
-  return { startDateStr, endDateStr };
-}
-
-function addDaysToDateStr(dateStr: string, days: number): string {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const next = new Date(Date.UTC(year, month - 1, day + days));
-  return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`;
-}
-
-export async function getRoomAvailabilityRange(
-  roomId: string,
-  durationMinutes: number,
-  startDateStr: string,
-  endDateStr: string,
-  options?: { includeSlotsByDate?: boolean },
-): Promise<RoomAvailabilityRangeResult> {
-  const includeSlots = options?.includeSlotsByDate ?? false;
-
-  const todayRome = getRomeDateString(new Date());
-  const now = new Date();
-  const { dayStart: rangeStart } = getDayBounds(startDateStr);
-  const { dayEnd: rangeEnd } = getDayBounds(endDateStr);
-
-  const [overrides, occupied] = await Promise.all([
-    prisma.scheduleOverride.findMany({
-      where: {
-        date: {
-          gte: toUtcDateOnly(startDateStr),
-          lte: toUtcDateOnly(endDateStr),
-        },
-        OR: [{ roomId: null }, { roomId }],
-      },
-      orderBy: { roomId: "desc" },
-    }),
-    getOccupiedSlots(roomId, rangeStart, rangeEnd),
-  ]);
-
-  const days: Record<string, DayAvailabilityStatus> = {};
-  const slotsByDate: Record<string, SerializedTimeSlot[]> = {};
-
-  for (
-    let dateStr = startDateStr;
-    dateStr <= endDateStr;
-    dateStr = addDaysToDateStr(dateStr, 1)
-  ) {
-    if (dateStr < todayRome) {
-      continue;
-    }
-
-    const schedule = resolveDayScheduleFromOverrides(
-      dateStr,
-      roomId,
-      overrides,
-    );
-    const { dayStart, dayEnd } = getDayBounds(dateStr);
-    const dayOccupied = occupied.filter(
-      (booking) =>
-        booking.startTime < dayEnd && booking.endTime > dayStart,
-    );
-    const { bookable, available } = getBookableSlotsForDay(
-      dateStr,
-      durationMinutes,
-      schedule,
-      dayOccupied,
-      now,
-    );
-
-    if (includeSlots) {
-      slotsByDate[dateStr] = serializeTimeSlots(available);
-    }
-
-    if (bookable.length === 0) {
-      days[dateStr] = "unavailable";
-      continue;
-    }
-
-    if (available.length === 0) {
-      days[dateStr] = "unavailable";
-      continue;
-    }
-
-    days[dateStr] = dayOccupied.length > 0 ? "partial" : "available";
-  }
-
-  return { days, slotsByDate };
-}
-
-export async function getRoomMonthAvailability(
-  roomId: string,
-  durationMinutes: number,
-  year: number,
-  month: number,
-): Promise<Record<string, DayAvailabilityStatus>> {
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  const monthPrefix = `${year}-${pad(month + 1)}`;
-  const startDateStr = `${monthPrefix}-01`;
-  const endDateStr = `${monthPrefix}-${pad(lastDay)}`;
-
-  const { days } = await getRoomAvailabilityRange(
-    roomId,
-    durationMinutes,
-    startDateStr,
-    endDateStr,
-  );
-
-  return days;
 }
 
 export async function getMonthClosedDates(

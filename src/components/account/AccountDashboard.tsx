@@ -267,7 +267,7 @@ function CancellationAction({ booking }: { booking: AccountBooking }) {
 }
 
 function OrdersSection({ bookings }: { bookings: AccountBooking[] }) {
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
 
   return (
     <AccountSection

@@ -17,20 +17,19 @@ function isTodayOrFuture(dateStr: string): boolean {
 export const getAvailableSlotsSchema = z.object({
   roomSlug: z.string().trim().min(1).max(64),
   roomId: z.string().trim().min(1).max(64).optional(),
+  durationMinutes: z.coerce.number().int().min(1).max(480).optional(),
   date: z
     .string()
     .regex(dateRegex, "Formato data non valido (YYYY-MM-DD)")
     .refine(isTodayOrFuture, "La data non può essere nel passato"),
 });
 
-export const getMonthAvailabilitySchema = z.object({
+export const getMonthClosedDatesSchema = z.object({
   roomSlug: z.string().trim().min(1).max(64),
   roomId: z.string().trim().min(1).max(64).optional(),
   year: z.coerce.number().int().min(2020).max(2100),
   month: z.coerce.number().int().min(1).max(12),
 });
-
-export const getMonthClosedDatesSchema = getMonthAvailabilitySchema;
 
 export const holdSlotSchema = z
   .object({
@@ -55,7 +54,7 @@ export const cancelMyBookingSchema = z.object({
 });
 
 export type GetAvailableSlotsInput = z.infer<typeof getAvailableSlotsSchema>;
-export type GetMonthAvailabilityInput = z.infer<typeof getMonthAvailabilitySchema>;
+export type GetMonthClosedDatesInput = z.infer<typeof getMonthClosedDatesSchema>;
 export type HoldSlotInput = z.infer<typeof holdSlotSchema>;
 export type CreateStripeCheckoutSessionInput = z.infer<
   typeof createStripeCheckoutSessionSchema

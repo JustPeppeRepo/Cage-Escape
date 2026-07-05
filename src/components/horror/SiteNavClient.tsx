@@ -144,12 +144,16 @@ function NavAuthSection({
 }
 
 export function SiteNavClient({ user }: SiteNavClientProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const [menuOpenByPath, setMenuOpenByPath] = useState<Record<string, boolean>>(
+    {},
+  );
 
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
+  const menuOpen = menuOpenByPath[pathname] ?? false;
+
+  function setMenuOpen(open: boolean) {
+    setMenuOpenByPath((prev) => ({ ...prev, [pathname]: open }));
+  }
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -195,7 +199,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
           aria-expanded={menuOpen}
           aria-controls="site-nav-mobile-menu"
           aria-label={menuOpen ? "Chiudi menu di navigazione" : "Apri menu di navigazione"}
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={() => setMenuOpen(!menuOpen)}
         >
           <span className="sr-only">
             {menuOpen ? "Chiudi menu" : "Apri menu"}

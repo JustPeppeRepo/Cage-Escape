@@ -35,6 +35,10 @@
 - Nessun accesso diretto a process.env fuori da lib/env.ts.
 - Importare sempre da env (lib/env.ts), mai process.env.NOME_VAR sparso nel codice.
 
+## Next.js config
+- Non usare `experimental.*` in `next.config.ts`: flag instabili o deprecate (authInterrupts, proxyClientMaxBodySize, ecc.).
+- Se serve alzare il body limit delle Server Action, non reintrodurre `experimental` — valutare Route Handler dedicato (vedi ROADMAP.md).
+
 ## Stile generale
 - Preferire soluzioni semplici e dirette. Evitare astrazioni premature o pattern enterprise non richiesti dal contesto (no repository pattern, no DI container, no layer superflui).
 - Commenti solo dove la logica non è ovvia, non ripetere in italiano quello che il codice già dice in inglese.

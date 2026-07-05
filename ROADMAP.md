@@ -11,7 +11,7 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] Stripe Checkout + webhook con verifica firma, controllo importo/valuta/metadata, gestione pagamenti duplicati, stato `PAYMENT_CONFLICT_REFUND_REQUIRED`, sconto easter egg
 - [x] Prevenzione doppie prenotazioni: transazioni `Serializable` + vincolo `EXCLUDE` a DB
 - [x] Rilascio automatico hold scaduti (`releaseExpiredHolds`) + cap prenotazioni pendenti per utente
-- [x] Rate limiting su login, signup, contact, getAvailableSlots, holdSlot, createStripeCheckoutSession, generateDiscountCode
+- [x] Rate limiting su login, signup, contact, holdSlot, createStripeCheckoutSession, generateDiscountCode
 - [x] Validazione Zod su tutte le Server Action; nessun calcolo prezzo lato client
 - [x] Due round di security review (open redirect, enumerazione utenti, ecc.)
 - [x] Pannello Admin completo (`/admin`, rooms, schedule, bookings, impostazioni)
@@ -67,3 +67,9 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 
 - In caso di conflitto col prompt architetturale, vince lo stato attuale funzionante.
 - Resend approvato per Fase B; variabili email opzionali finché non configurate.
+
+## Convenzioni progetto (sempre valide)
+
+- **Niente `experimental.*` in `next.config.ts`**: niente flag sperimentali (né `authInterrupts`, né `proxyClientMaxBodySize`, né altre). Next.js 16 espone ancora `bodySizeLimit` delle Server Action solo sotto `experimental`; preferiamo il default (1MB) finché non esiste una chiave stabile — sufficiente per una liberatoria per hold. Se serviranno upload multipli più grandi, spostare l'hold con file su Route Handler dedicato.
+- **Calendario booking**: niente precarico colori/disponibilità mese; solo chiusure admin (`getMonthClosedDates`) + slot on-demand (`getAvailableSlots`) con cache client e prefetch al hover.
+- **Server Actions read-only** (es. `getAvailableSlots`, `getMonthClosedDates`): niente rate limit; il rate limit resta sulle mutazioni (`holdSlot`, checkout, ecc.).

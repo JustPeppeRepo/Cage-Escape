@@ -14,6 +14,11 @@ export const SOCIAL_LINKS = [
     label: "TikTok",
     href: "https://www.tiktok.com/@cageroom",
   },
+  {
+    id: "whatsapp",
+    label: "WhatsApp",
+    href: "https://wa.me/393000000000",
+  },
 ] as const;
 
 export type SocialLinkId = (typeof SOCIAL_LINKS)[number]["id"];
