@@ -390,11 +390,9 @@ export async function getRoomAvailabilityRange(
   durationMinutes: number,
   startDateStr: string,
   endDateStr: string,
-  options?: { skipReleaseExpiredHolds?: boolean },
+  options?: { includeSlotsByDate?: boolean },
 ): Promise<RoomAvailabilityRangeResult> {
-  if (!options?.skipReleaseExpiredHolds) {
-    await releaseExpiredHolds();
-  }
+  const includeSlots = options?.includeSlotsByDate ?? false;
 
   const todayRome = getRomeDateString(new Date());
   const now = new Date();
@@ -445,7 +443,9 @@ export async function getRoomAvailabilityRange(
       now,
     );
 
-    slotsByDate[dateStr] = serializeTimeSlots(available);
+    if (includeSlots) {
+      slotsByDate[dateStr] = serializeTimeSlots(available);
+    }
 
     if (bookable.length === 0) {
       days[dateStr] = "unavailable";

@@ -3,11 +3,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/app/_lib/prisma";
 import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
-import {
-  getDefaultPrefetchRangeBounds,
-  getRoomAvailabilityRange,
-  releaseExpiredHolds,
-} from "@/app/_lib/bookings/slots";
 import { SkullRating } from "@/components/horror/SkullRating";
 import { BookingWidget } from "@/components/horror/booking/BookingWidget";
 
@@ -64,17 +59,6 @@ export default async function RoomDetailPage({
     depositPrice: formatEuroAmount(tier.depositPrice),
   }));
 
-  const { startDateStr, endDateStr } = getDefaultPrefetchRangeBounds();
-  await releaseExpiredHolds();
-  const { days: initialDayAvailability, slotsByDate: initialSlotsByDate } =
-    await getRoomAvailabilityRange(
-      room.id,
-      room.durationMinutes,
-      startDateStr,
-      endDateStr,
-      { skipReleaseExpiredHolds: true },
-    );
-
   return (
     <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto flex max-w-4xl flex-col gap-10">
@@ -102,10 +86,6 @@ export default async function RoomDetailPage({
             durationMinutes: roomSummary.durationMinutes,
           }}
           pricingTiers={pricingTiers}
-          initialDayAvailability={initialDayAvailability}
-          initialSlotsByDate={initialSlotsByDate}
-          prefetchedRangeStart={startDateStr}
-          prefetchedRangeEnd={endDateStr}
         />
       </div>
     </main>

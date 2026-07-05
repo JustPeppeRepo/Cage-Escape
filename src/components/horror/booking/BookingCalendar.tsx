@@ -52,23 +52,16 @@ function startOfToday(): Date {
   return now;
 }
 
-function monthHasAvailabilityData(
-  dayAvailability: Record<string, DayAvailabilityStatus>,
-  year: number,
-  month: number,
-): boolean {
-  const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
-  return Object.keys(dayAvailability).some((date) => date.startsWith(prefix));
-}
-
 function getDayButtonClassName({
   isPast,
   isSelected,
   availability,
+  isLoading,
 }: {
   isPast: boolean;
   isSelected: boolean;
   availability?: DayAvailabilityStatus;
+  isLoading: boolean;
 }): string {
   if (isSelected) {
     return "bg-blood text-bone";
@@ -76,6 +69,11 @@ function getDayButtonClassName({
 
   if (isPast) {
     return "cursor-not-allowed text-bone/20";
+  }
+
+  // While loading availability data, future days are styled neutrally and clickable
+  if (isLoading && availability === undefined) {
+    return "text-bone/60 hover:bg-blood/20 hover:text-bone";
   }
 
   if (availability === "unavailable") {
@@ -107,16 +105,10 @@ export function BookingCalendar({
 
   const [viewedMonth, setViewedMonth] = useState(minMonth);
 
+  // Always notify parent when viewed month changes so it can lazy-load availability
   useEffect(() => {
-    const year = viewedMonth.getFullYear();
-    const month = viewedMonth.getMonth();
-
-    if (monthHasAvailabilityData(dayAvailability, year, month)) {
-      return;
-    }
-
-    onMonthChange(year, month);
-  }, [viewedMonth, onMonthChange, dayAvailability]);
+    onMonthChange(viewedMonth.getFullYear(), viewedMonth.getMonth());
+  }, [viewedMonth, onMonthChange]);
 
   const canGoPrev = viewedMonth.getTime() > minMonth.getTime();
   const canGoNext = viewedMonth.getTime() < maxMonth.getTime();
@@ -136,11 +128,7 @@ export function BookingCalendar({
     );
 
     for (let day = 1; day <= lastDay.getDate(); day += 1) {
-      const date = new Date(
-        viewedMonth.getFullYear(),
-        viewedMonth.getMonth(),
-        day,
-      );
+      const date = new Date(viewedMonth.getFullYear(), viewedMonth.getMonth(), day);
       cells.push({ date, dateStr: toDateString(date) });
     }
 
@@ -149,16 +137,12 @@ export function BookingCalendar({
 
   function handlePrev() {
     if (!canGoPrev) return;
-    setViewedMonth(
-      (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1),
-    );
+    setViewedMonth((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1));
   }
 
   function handleNext() {
     if (!canGoNext) return;
-    setViewedMonth(
-      (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1),
-    );
+    setViewedMonth((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1));
   }
 
   return (
@@ -188,7 +172,7 @@ export function BookingCalendar({
       </div>
 
       {isLoadingAvailability ? (
-        <p className="mb-3 text-xs text-bone/50">Aggiornamento disponibilità…</p>
+        <p className="mb-2 text-xs text-bone/40">Caricamento disponibilità…</p>
       ) : null}
 
       <div className="grid grid-cols-7 gap-1 text-center text-xs text-bone/50 sm:text-sm">
@@ -207,7 +191,9 @@ export function BookingCalendar({
 
           const isPast = cell.date.getTime() < today.getTime();
           const availability = dayAvailability[cell.dateStr];
-          const isUnavailable = !isPast && availability === "unavailable";
+          // Only disable as unavailable once we have loaded data confirming it;
+          // while loading, future days remain clickable with a neutral style.
+          const isUnavailable = !isPast && !isLoadingAvailability && availability === "unavailable";
           const isSelected = cell.dateStr === selectedDate;
           const isDisabled = isPast || isUnavailable;
 
@@ -217,22 +203,10 @@ export function BookingCalendar({
               type="button"
               disabled={isDisabled}
               onClick={() => onSelectDate(cell.dateStr)}
-              onMouseEnter={() => {
-                if (!isDisabled) {
-                  onDayHover?.(cell.dateStr);
-                }
-              }}
-              onFocus={() => {
-                if (!isDisabled) {
-                  onDayHover?.(cell.dateStr);
-                }
-              }}
+              onMouseEnter={() => { if (!isDisabled) onDayHover?.(cell.dateStr); }}
+              onFocus={() => { if (!isDisabled) onDayHover?.(cell.dateStr); }}
               className={`flex aspect-square w-full items-center justify-center rounded text-sm transition-colors sm:text-base ${getDayButtonClassName(
-                {
-                  isPast,
-                  isSelected,
-                  availability,
-                },
+                { isPast, isSelected, availability, isLoading: isLoadingAvailability },
               )}`}
             >
               {cell.date.getDate()}
