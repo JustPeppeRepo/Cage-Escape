@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Creepster } from "next/font/google";
 import { env } from "@/app/_lib/env";
 import { getCurrentSession } from "@/lib/dal";
@@ -74,6 +76,8 @@ export default async function RootLayout({
           <SiteNav user={navUser} />
         </SiteNavShell>
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
