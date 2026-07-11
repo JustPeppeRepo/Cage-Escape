@@ -8,7 +8,7 @@ import { SiteNav } from "@/components/horror/SiteNav";
 import { SiteNavShell } from "@/components/horror/SiteNavShell";
 import "./globals.css";
 
-const displayFont = Bebas_Neue({
+const displayFont = Anton({
   weight: "400",
   subsets: ["latin"],
   variable: "--font-display-heading",
