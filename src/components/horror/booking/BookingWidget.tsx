@@ -521,9 +521,9 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
                   <a
                     href="/documents/liberatoria.pdf"
                     download="liberatoria.pdf"
-                    className="rounded border border-void-mist bg-void px-3 py-1.5 text-bone transition-colors hover:border-bone/40"
+                    className="rounded border border-ectoplasm bg-ectoplasm px-3 py-1.5 font-semibold text-void transition-colors hover:bg-ectoplasm/90"
                   >
-                    liberatoria
+                    Liberatoria
                   </a>
                   <span className="font-semibold text-blood-bright">
                     ATTENZIONE liberatoria obbligatoria
