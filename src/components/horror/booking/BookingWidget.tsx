@@ -520,18 +520,20 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <a
                     href="/documents/liberatoria.pdf"
-                    download="liberatoria.pdf"
+                    download="liberatoria-cageroom.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="rounded border border-ectoplasm bg-ectoplasm px-3 py-1.5 font-semibold text-void transition-colors hover:bg-ectoplasm/90"
                   >
-                    Liberatoria
+                    Scarica PDF
                   </a>
                   <span className="font-semibold text-blood-bright">
                     ATTENZIONE liberatoria obbligatoria
                   </span>
                 </div>
                 <p className="text-xs text-bone/60">
-                  Scarica il modulo, compilalo e carica una copia per ogni
-                  minorenne (PDF, JPG o PNG, max 900 KB).
+                  1. Scarica il modulo PDF · 2. Stampalo e compilalo · 3. Caricalo
+                  qui sotto per ogni minorenne (PDF, JPG o PNG, max 900 KB).
                 </p>
                 {Array.from({ length: minorCount }, (_, index) => {
                   const minorNumber = index + 1;
@@ -540,7 +542,7 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
                       key={minorNumber}
                       className="flex flex-col gap-1 text-sm text-bone/80"
                     >
-                      Liberatoria minorenne {minorNumber}
+                      Carica liberatoria minorenne {minorNumber}
                       <input
                         type="file"
                         name={`waiver_${minorNumber}`}

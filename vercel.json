@@ -1,9 +1,0 @@
-{
-    "redirects": [
-      {
-        "source": "/:path*",
-        "destination": "https://www.instagram.com/cageroom.it",
-        "permanent": false
-      }
-    ]
-  }
