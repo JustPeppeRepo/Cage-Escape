@@ -413,7 +413,7 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
   if (holdState?.success) {
     return (
       <div className="rounded-md border border-ectoplasm/40 bg-void-deep p-6 text-bone">
-        <h3 className="mb-2 font-[family-name:var(--font-display)] text-2xl text-ectoplasm">
+        <h3 className="mb-2 font-heading text-2xl text-blood-bright">
           Slot bloccato
         </h3>
         <p className="text-sm text-bone/70">Reindirizzamento al pagamento…</p>

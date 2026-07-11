@@ -18,7 +18,7 @@ export default function ContattiPage() {
           <Link href="/" className="text-sm text-bone/50 hover:text-bone">
             ← Torna alla home
           </Link>
-          <h1 className="mt-6 font-[family-name:var(--font-display)] text-4xl text-blood-bright">
+          <h1 className="mt-6 font-heading text-4xl text-blood-bright">
             Contatti
           </h1>
           <p className="mt-4 text-bone/70">
@@ -49,7 +49,7 @@ export default function ContattiPage() {
         </div>
 
         <div className="rounded-md border border-void-mist bg-void-deep p-6">
-          <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl text-bone">
+          <h2 className="mb-4 font-heading text-xl text-blood-bright">
             Form spettrale
           </h2>
           <ContactForm />

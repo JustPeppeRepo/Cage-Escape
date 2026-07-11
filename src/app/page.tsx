@@ -3,7 +3,6 @@ import { prisma } from "@/app/_lib/prisma";
 import { env } from "@/app/_lib/env";
 import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { HeroClient } from "@/components/horror/HeroClient";
-import { JumpScare } from "@/components/horror/JumpScare";
 import { RoomsGrid } from "@/components/horror/RoomsGrid";
 import { ReviewPolaroid } from "@/components/horror/ReviewPolaroid";
 import { FaqAccordion } from "@/components/horror/FaqAccordion";
@@ -68,8 +67,6 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-
-      <JumpScare />
 
       <main>
         <HeroClient />

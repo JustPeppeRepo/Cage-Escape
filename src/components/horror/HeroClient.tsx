@@ -14,7 +14,7 @@ export function HeroClient() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: "easeOut" }}
-          className="animate-flicker font-[family-name:var(--font-display)] text-5xl text-blood-bright sm:text-7xl"
+          className="font-heading text-5xl text-blood-bright sm:text-7xl"
         >
           Riuscirai a uscirne vivo?
         </motion.h1>

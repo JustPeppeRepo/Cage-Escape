@@ -49,7 +49,7 @@ function UserAccountLink({
           className="h-9 w-9 rounded-full bg-void-mist"
         />
         <span className="min-w-0">
-          <span className="block truncate text-sm text-bone">{user.username}</span>
+          <span className="block truncate text-sm text-bone">{user.name}</span>
           <span className="block truncate text-xs text-bone/50">{user.email}</span>
         </span>
       </Link>
@@ -60,7 +60,7 @@ function UserAccountLink({
     <Link
       href="/account"
       onClick={onNavigate}
-      title={`${user.username} · ${user.email}`}
+      title={`${user.name} · ${user.email}`}
       className="group flex min-w-0 flex-col items-center gap-0.5 rounded border border-void-mist px-2 py-1 transition-colors hover:border-blood/50"
     >
       <img
@@ -69,7 +69,7 @@ function UserAccountLink({
         className="h-8 w-8 rounded-full bg-void-mist"
       />
       <span className="max-w-[4.5rem] truncate text-[10px] leading-tight text-bone/60 group-hover:text-bone/80">
-        {user.username}
+        {user.name}
       </span>
     </Link>
   );
@@ -169,7 +169,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
         <Link
           href="/"
-          className="font-[family-name:var(--font-display)] text-lg text-blood-bright transition-colors hover:text-blood sm:text-xl md:justify-self-start"
+          className="font-heading text-lg text-blood-bright transition-colors hover:text-blood sm:text-xl md:justify-self-start"
         >
           Cage Room
         </Link>

@@ -63,7 +63,7 @@ export default async function RoomDetailPage({
     <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto flex max-w-4xl flex-col gap-10">
         <header className="flex flex-col gap-4 border-b border-void-mist pb-8">
-          <h1 className="font-[family-name:var(--font-display)] text-4xl text-blood-bright sm:text-5xl">
+          <h1 className="font-heading text-4xl text-blood-bright sm:text-5xl">
             {roomSummary.name}
           </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-bone/80">

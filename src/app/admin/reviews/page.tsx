@@ -17,7 +17,7 @@ export default async function AdminReviewsPage() {
 
   return (
     <main>
-      <h1 className="font-[family-name:var(--font-display)] text-3xl text-blood-bright">
+      <h1 className="font-heading text-3xl text-blood-bright">
         Recensioni
       </h1>
       <p className="mt-2 text-sm text-bone/60">

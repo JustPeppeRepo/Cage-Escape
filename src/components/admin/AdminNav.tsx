@@ -14,7 +14,7 @@ const links = [
 export function AdminNav() {
   return (
     <nav className="flex flex-col gap-1 border-r border-void-mist bg-void-deep p-4">
-      <p className="mb-4 font-[family-name:var(--font-display)] text-xl text-blood-bright">
+      <p className="mb-4 font-heading text-xl text-blood-bright">
         Admin
       </p>
       {links.map((link) => (

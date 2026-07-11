@@ -88,7 +88,7 @@ export default async function CheckoutSuccessPage({
       <div className="mx-auto flex max-w-xl flex-col gap-6">
         {isConfirmed ? (
           <div className="rounded-md border border-ectoplasm/40 bg-void-deep p-6">
-            <h1 className="mb-2 font-[family-name:var(--font-display)] text-3xl text-ectoplasm">
+            <h1 className="mb-2 font-heading text-3xl text-blood-bright">
               Prenotazione confermata
             </h1>
             <p className="mb-4 text-sm text-bone/70">
@@ -115,7 +115,7 @@ export default async function CheckoutSuccessPage({
           </div>
         ) : isConflict ? (
           <div className="rounded-md border border-blood/60 bg-void-deep p-6">
-            <h1 className="mb-2 font-[family-name:var(--font-display)] text-2xl text-blood-bright">
+            <h1 className="mb-2 font-heading text-2xl text-blood-bright">
               Pagamento ricevuto, slot non più disponibile
             </h1>
             <p className="text-sm text-bone/70">
@@ -127,7 +127,7 @@ export default async function CheckoutSuccessPage({
           </div>
         ) : isCancelled ? (
           <div className="rounded-md border border-blood/60 bg-void-deep p-6">
-            <h1 className="mb-2 font-[family-name:var(--font-display)] text-2xl text-blood-bright">
+            <h1 className="mb-2 font-heading text-2xl text-blood-bright">
               Prenotazione annullata
             </h1>
             <p className="mb-4 text-sm text-bone/70">

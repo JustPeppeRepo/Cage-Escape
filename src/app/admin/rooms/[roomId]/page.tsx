@@ -47,7 +47,7 @@ export default async function AdminEditRoomPage({
       <Link href="/admin/rooms" className="text-sm text-bone/60 hover:text-bone">
         ← Torna alle stanze
       </Link>
-      <h1 className="mt-4 font-[family-name:var(--font-display)] text-3xl text-blood-bright">
+      <h1 className="mt-4 font-heading text-3xl text-blood-bright">
         {room.name}
       </h1>
 

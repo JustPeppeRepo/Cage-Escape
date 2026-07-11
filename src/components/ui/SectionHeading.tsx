@@ -11,7 +11,7 @@ export function SectionHeading({ eyebrow, title }: SectionHeadingProps) {
           {eyebrow}
         </span>
       ) : null}
-      <h2 className="relative font-[family-name:var(--font-display)] text-3xl text-bone sm:text-4xl">
+      <h2 className="relative font-heading text-3xl text-blood-bright sm:text-4xl">
         {title}
         <span
           aria-hidden="true"

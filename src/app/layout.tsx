@@ -1,17 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Creepster } from "next/font/google";
+import { Anton } from "next/font/google";
 import { env } from "@/app/_lib/env";
 import { getCurrentSession } from "@/lib/dal";
 import { SiteNav } from "@/components/horror/SiteNav";
 import { SiteNavShell } from "@/components/horror/SiteNavShell";
 import "./globals.css";
 
-const gothicDisplay = Creepster({
+const displayFont = Bebas_Neue({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-gothic-display",
+  variable: "--font-display-heading",
   display: "swap",
 });
 
@@ -70,7 +70,7 @@ export default async function RootLayout({
     : null;
 
   return (
-    <html lang="it" className={gothicDisplay.variable}>
+    <html lang="it" className={displayFont.variable}>
       <body>
         <SiteNavShell>
           <SiteNav user={navUser} />

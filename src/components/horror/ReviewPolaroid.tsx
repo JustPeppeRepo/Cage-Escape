@@ -15,7 +15,7 @@ export function ReviewPolaroid({ author, quote, rotation }: ReviewPolaroidProps)
           🩸
         </span>
       </div>
-      <blockquote className="font-[family-name:var(--font-display)] text-sm leading-snug">
+      <blockquote className="font-[family-name:var(--font-body)] text-sm leading-snug">
         &ldquo;{quote}&rdquo;
       </blockquote>
       <figcaption className="text-right text-xs uppercase tracking-wide text-void-deep/70">

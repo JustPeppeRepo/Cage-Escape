@@ -21,7 +21,7 @@ export default function AboutPage() {
           <p className="text-sm uppercase tracking-widest text-blood/80">
             La nostra storia
           </p>
-          <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl text-blood-bright sm:text-5xl">
+          <h1 className="mt-4 font-heading text-4xl text-blood-bright sm:text-5xl">
             Chi siamo
           </h1>
           <p className="mt-6 text-lg text-bone/70">

@@ -17,7 +17,7 @@ export function LoreSection({ title, children, index }: LoreSectionProps) {
       transition={{ duration: 0.7, delay: index * 0.05 }}
       className="border-l-2 border-blood/40 pl-6"
     >
-      <h2 className="font-[family-name:var(--font-display)] text-2xl text-blood-bright sm:text-3xl">
+      <h2 className="font-heading text-2xl text-blood-bright sm:text-3xl">
         {title}
       </h2>
       <div className="mt-4 space-y-4 text-bone/75 leading-relaxed">{children}</div>

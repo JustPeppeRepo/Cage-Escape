@@ -138,7 +138,7 @@ export function BookingCalendar({
         >
           ←
         </button>
-        <span className="font-[family-name:var(--font-display)] text-base text-bone lg:text-lg xl:text-xl">
+        <span className="font-heading text-base text-blood-bright lg:text-lg xl:text-xl">
           {MONTH_LABELS[viewedMonth.getMonth()]} {viewedMonth.getFullYear()}
         </span>
         <button

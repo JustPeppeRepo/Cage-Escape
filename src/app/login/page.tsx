@@ -18,7 +18,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-void px-6 py-24 text-bone">
       <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center font-[family-name:var(--font-display)] text-3xl text-blood-bright">
+        <h1 className="mb-6 text-center font-heading text-3xl text-blood-bright">
           Accedi
         </h1>
         <LoginForm callbackUrl={safeCallbackUrl} />

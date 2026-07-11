@@ -64,7 +64,7 @@ export function CheckoutClient({
   if (expired) {
     return (
       <div className="rounded-md border border-blood/60 bg-void-deep p-6 text-bone">
-        <h2 className="mb-2 font-[family-name:var(--font-display)] text-xl text-blood-bright">
+        <h2 className="mb-2 font-heading text-xl text-blood-bright">
           Tempo scaduto
         </h2>
         <p className="mb-4 text-sm text-bone/70">

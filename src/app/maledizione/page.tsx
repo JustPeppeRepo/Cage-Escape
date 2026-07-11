@@ -19,7 +19,7 @@ export default async function MaledizionePage() {
         <Link href="/" className="text-sm text-bone/50 hover:text-bone">
           ← Torna alla home
         </Link>
-        <h1 className="mt-6 font-[family-name:var(--font-display)] text-4xl text-blood-bright">
+        <h1 className="mt-6 font-heading text-4xl text-blood-bright">
           Il Rito della Maledizione
         </h1>
         <p className="mt-4 text-bone/70">

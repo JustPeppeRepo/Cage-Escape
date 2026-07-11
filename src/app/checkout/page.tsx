@@ -72,7 +72,7 @@ export default async function CheckoutPage({
   return (
     <main className="min-h-screen bg-void px-6 py-24 text-bone">
       <div className="mx-auto flex max-w-xl flex-col gap-6">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl text-blood-bright">
+        <h1 className="font-heading text-3xl text-blood-bright">
           Completa la prenotazione
         </h1>
 
@@ -88,7 +88,7 @@ export default async function CheckoutPage({
         ) : booking.status === BookingStatus.PAID ||
           booking.status === BookingStatus.DEPOSIT_PAID ? (
           <div className="rounded-md border border-ectoplasm/40 bg-void-deep p-6">
-            <h2 className="mb-2 font-[family-name:var(--font-display)] text-xl text-ectoplasm">
+            <h2 className="mb-2 font-heading text-xl text-blood-bright">
               Hai già completato questo pagamento
             </h2>
             <Link href="/rooms" className="underline decoration-blood underline-offset-4">
@@ -97,7 +97,7 @@ export default async function CheckoutPage({
           </div>
         ) : (
           <div className="rounded-md border border-blood/60 bg-void-deep p-6">
-            <h2 className="mb-2 font-[family-name:var(--font-display)] text-xl text-blood-bright">
+            <h2 className="mb-2 font-heading text-xl text-blood-bright">
               Questa prenotazione non è più valida
             </h2>
             <p className="mb-4 text-sm text-bone/70">

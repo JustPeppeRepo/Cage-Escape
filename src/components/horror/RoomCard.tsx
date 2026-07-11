@@ -49,7 +49,7 @@ export function RoomCard({ room }: RoomCardProps) {
         style={{ rotateX, rotateY, transformPerspective: 800 }}
         className="hover:animate-glitch-hover flex h-full flex-col gap-3 rounded-md border border-void-mist bg-void-deep p-6 shadow-[0_0_20px_rgba(0,0,0,0.6)] transition-shadow hover:shadow-[0_0_30px_rgba(153,0,0,0.4)]"
       >
-        <h3 className="font-[family-name:var(--font-display)] text-2xl text-blood-bright">
+        <h3 className="font-heading text-2xl text-blood-bright">
           {room.name}
         </h3>
         <p className="flex-1 text-sm text-bone/70">{room.description}</p>

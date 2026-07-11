@@ -9,7 +9,7 @@
   --color-ectoplasm: #39ff88;
   --color-bone: #e8e2d6;
 
-  --font-display: var(--font-gothic-display), "Georgia", serif;
+  --font-display: var(--font-display-heading), "Impact", "Haettenschweiler", sans-serif;
   --font-body: var(--font-body-sans), system-ui, sans-serif;
 }
 
@@ -90,6 +90,12 @@ body {
   100% {
     transform: translateX(-10%) translateY(0);
   }
+}
+
+@utility font-heading {
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 @utility animate-flicker {

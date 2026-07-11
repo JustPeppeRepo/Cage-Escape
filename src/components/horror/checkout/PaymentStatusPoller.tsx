@@ -32,7 +32,7 @@ export function PaymentStatusPoller() {
 
   return (
     <div className="rounded-md border border-void-mist bg-void-deep p-6 text-bone">
-      <h2 className="mb-2 font-[family-name:var(--font-display)] text-xl text-bone">
+      <h2 className="mb-2 font-heading text-xl text-blood-bright">
         {timedOut ? "Verifica in corso" : "Stiamo confermando il pagamento…"}
       </h2>
       <p className="text-sm text-bone/70">

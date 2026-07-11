@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   changePassword,
   deleteAccount,
@@ -12,6 +12,7 @@ import {
   AVATARS,
   type AvatarId,
   getAvatarUrlById,
+  isValidAvatarId,
   resolveAvatarId,
 } from "@/app/_lib/account/avatars";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
@@ -100,7 +101,7 @@ function AccountSection({
       }`}
     >
       <h2
-        className={`font-[family-name:var(--font-display)] text-2xl ${
+        className={`font-heading text-2xl ${
           danger ? "text-blood-bright" : "text-blood-bright"
         }`}
       >
@@ -125,6 +126,12 @@ function ProfileSection({
   );
   const [name, setName] = useState(user.name);
 
+  useEffect(() => {
+    if (!isValidAvatarId(selectedAvatarId)) {
+      setSelectedAvatarId(resolveAvatarId(user.image));
+    }
+  }, [selectedAvatarId, user.image]);
+
   return (
     <AccountSection
       title="Profilo"
@@ -133,7 +140,7 @@ function ProfileSection({
       <form action={formAction} className="flex flex-col gap-4">
         <fieldset>
           <legend className="mb-3 text-sm text-bone/80">Avatar</legend>
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {AVATARS.map((avatar) => (
               <label
                 key={avatar.id}
@@ -151,13 +158,15 @@ function ProfileSection({
                   onChange={() => setSelectedAvatarId(avatar.id)}
                   className="sr-only"
                 />
-                <Image
-                  src={avatar.url}
-                  alt={avatar.label}
-                  width={56}
-                  height={56}
-                  className="h-14 w-14 rounded"
-                />
+                <div className="flex h-14 items-center justify-center">
+                  <Image
+                    src={avatar.url}
+                    alt={avatar.label}
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 rounded object-contain"
+                  />
+                </div>
                 <span className="mt-1 block text-center text-[10px] text-bone/60">
                   {avatar.label}
                 </span>
