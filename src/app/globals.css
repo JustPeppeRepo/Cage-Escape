@@ -148,9 +148,24 @@ body {
   .hero-subtitle,
   .hero-cta {
     animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-fog-drift {
+    animation: none;
   }
 
   .room-card:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .hero-subtitle,
+  .hero-cta {
+    animation: none;
+    opacity: 1;
     transform: none;
   }
 }

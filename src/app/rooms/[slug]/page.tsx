@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { prisma } from "@/app/_lib/prisma";
+import { getActiveRooms, getRoomWithPricing } from "@/app/_lib/site/content";
 import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
 import { SkullRating } from "@/components/horror/SkullRating";
-import { BookingWidget } from "@/components/horror/booking/BookingWidget";
+import { BookingWidget } from "@/components/horror/booking/BookingWidgetLoader";
+
+export const revalidate = 3600;
 
 type RoomDetailPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-async function getRoomWithPricing(slug: string) {
-  return prisma.room.findFirst({
-    where: { slug, isActive: true },
-    include: { pricingTiers: { orderBy: { minParticipants: "asc" } } },
-  });
+export async function generateStaticParams() {
+  const rooms = await getActiveRooms();
+  return rooms.map((room) => ({ slug: room.slug }));
 }
 
 export async function generateMetadata({

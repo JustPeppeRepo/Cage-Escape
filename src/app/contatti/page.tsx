@@ -1,7 +1,26 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ContactForm } from "@/components/horror/contact/ContactForm";
 import { SocialLinks } from "@/components/horror/contact/SocialLinks";
+
+const ContactForm = dynamic(
+  () =>
+    import("@/components/horror/contact/ContactForm").then(
+      (mod) => mod.ContactForm,
+    ),
+  {
+    loading: () => (
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-10 animate-pulse rounded bg-void-mist/40" />
+        ))}
+        <div className="h-10 w-32 animate-pulse rounded bg-void-mist/40" />
+      </div>
+    ),
+  },
+);
+
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "Contatti | Cage Room",

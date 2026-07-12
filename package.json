@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-preflight.mjs && next dev",
+    "dev:webpack": "node scripts/dev-preflight.mjs && next dev --webpack",
+    "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && npm run dev",
     "build": "next build",
     "postinstall": "prisma generate",
     "start": "next start",

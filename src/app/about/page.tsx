@@ -12,6 +12,8 @@ const LoreSection = dynamic(
   },
 );
 
+export const revalidate = 86400;
+
 export const metadata: Metadata = {
   title: "Chi siamo | Cage Room",
   description:

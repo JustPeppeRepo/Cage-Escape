@@ -165,7 +165,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-void-mist bg-void/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-void-mist bg-void">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
         <Link
           href="/"
@@ -221,7 +221,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
       <div
         id="site-nav-mobile-menu"
         hidden={!menuOpen}
-        className="border-t border-void-mist bg-void/98 px-4 py-4 md:hidden"
+        className="border-t border-void-mist bg-void px-4 py-4 md:hidden"
       >
         <nav
           aria-label="Navigazione principale mobile"
