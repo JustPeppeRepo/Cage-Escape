@@ -3,7 +3,6 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Anton } from "next/font/google";
 import { env } from "@/app/_lib/env";
-import { getCurrentSession } from "@/lib/dal";
 import { SiteNav } from "@/components/horror/SiteNav";
 import { SiteNavShell } from "@/components/horror/SiteNavShell";
 import "./globals.css";
@@ -52,28 +51,14 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0a",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const session = await getCurrentSession();
-  const navUser = session?.user
-    ? {
-        name: session.user.name,
-        username:
-          typeof session.user.username === "string"
-            ? session.user.username
-            : session.user.name,
-        email: session.user.email,
-        image: session.user.image ?? null,
-        isAdmin: session.user.role === "ADMIN",
-      }
-    : null;
-
   return (
     <html lang="it" className={displayFont.variable}>
       <body>
         <SiteNavShell>
-          <SiteNav user={navUser} />
+          <SiteNav />
         </SiteNavShell>
         {children}
         <Analytics />

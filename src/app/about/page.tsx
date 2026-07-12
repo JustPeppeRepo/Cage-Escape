@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { LoreSection } from "@/components/horror/about/LoreSection";
+
+const LoreSection = dynamic(
+  () =>
+    import("@/components/horror/about/LoreSection").then((mod) => mod.LoreSection),
+  {
+    loading: () => (
+      <div className="h-40 animate-pulse rounded border-l-2 border-void-mist pl-6" />
+    ),
+  },
+);
 
 export const metadata: Metadata = {
   title: "Chi siamo | Cage Room",

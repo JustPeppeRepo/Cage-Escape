@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
@@ -102,6 +102,7 @@ export async function upsertRoom(
     revalidatePath("/admin/rooms");
     revalidatePath("/");
     revalidatePath("/rooms");
+    revalidateTag("rooms", "max");
 
     return {
       success: true,
@@ -155,6 +156,7 @@ export async function deleteRoom(
     revalidatePath("/admin/rooms");
     revalidatePath("/");
     revalidatePath("/rooms");
+    revalidateTag("rooms", "max");
 
     return { success: true, message: "Stanza eliminata" };
   } catch (error) {

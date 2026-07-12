@@ -1,4 +1,4 @@
-import { SiteNavClient } from "@/components/horror/SiteNavClient";
+import { SiteNavAuth } from "@/components/horror/SiteNavAuth";
 
 export type SiteNavUser = {
   name: string;
@@ -8,10 +8,6 @@ export type SiteNavUser = {
   isAdmin: boolean;
 };
 
-type SiteNavProps = {
-  user: SiteNavUser | null;
-};
-
-export function SiteNav({ user }: SiteNavProps) {
-  return <SiteNavClient user={user} />;
+export function SiteNav() {
+  return <SiteNavAuth />;
 }

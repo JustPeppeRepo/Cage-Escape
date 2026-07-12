@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { prisma } from "@/app/_lib/prisma";
+import { getActiveRooms } from "@/app/_lib/site/content";
 import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { RoomsGrid } from "@/components/horror/RoomsGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Le nostre stanze horror | Cage Room",
@@ -12,10 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RoomsPage() {
-  const rooms = await prisma.room.findMany({
-    where: { isActive: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const rooms = await getActiveRooms();
   const roomSummaries = rooms.map(toRoomSummary);
 
   return (

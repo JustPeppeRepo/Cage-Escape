@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import { prisma } from "@/app/_lib/prisma";
+import { Suspense } from "react";
 import { env } from "@/app/_lib/env";
-import { toRoomSummary } from "@/app/_lib/bookings/mappers";
-import { HeroClient } from "@/components/horror/HeroClient";
-import { RoomsGrid } from "@/components/horror/RoomsGrid";
-import { ReviewPolaroid } from "@/components/horror/ReviewPolaroid";
+import { Hero } from "@/components/horror/Hero";
+import { HomeRoomsSection } from "@/components/horror/HomeRoomsSection";
+import { HomeReviewsSection } from "@/components/horror/HomeReviewsSection";
+import {
+  ReviewsSectionSkeleton,
+  RoomsSectionSkeleton,
+} from "@/components/horror/HomeSkeletons";
 import { FaqAccordion } from "@/components/horror/FaqAccordion";
 import { SiteFooter } from "@/components/horror/SiteFooter";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Cage Room — Escape Room Horror | Prenota il tuo incubo",
@@ -38,19 +43,7 @@ const FAQ_ITEMS = [
   },
 ];
 
-export default async function Home() {
-  const [rooms, reviews] = await Promise.all([
-    prisma.room.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.review.findMany({
-      where: { isPublished: true },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    }),
-  ]);
-  const roomSummaries = rooms.map(toRoomSummary);
-
+export default function Home() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -69,28 +62,15 @@ export default async function Home() {
       />
 
       <main>
-        <HeroClient />
+        <Hero />
 
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <SectionHeading eyebrow="Scegli il tuo destino" title="Le nostre stanze" />
-          <RoomsGrid rooms={roomSummaries} />
-        </section>
+        <Suspense fallback={<RoomsSectionSkeleton />}>
+          <HomeRoomsSection />
+        </Suspense>
 
-        {reviews.length > 0 ? (
-          <section className="bg-void-deep px-4 py-16 sm:px-6 sm:py-24">
-            <SectionHeading eyebrow="Non fidarti di noi" title="Chi è sopravvissuto racconta" />
-            <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-8">
-              {reviews.map((review) => (
-                <ReviewPolaroid
-                  key={review.id}
-                  author={review.author}
-                  quote={review.quote}
-                  rotation={review.rotation}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <Suspense fallback={<ReviewsSectionSkeleton />}>
+          <HomeReviewsSection />
+        </Suspense>
 
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
           <SectionHeading eyebrow="Prima di prenotare" title="Domande frequenti" />

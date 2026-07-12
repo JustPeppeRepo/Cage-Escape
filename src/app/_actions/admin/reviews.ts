@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
 import {
@@ -42,6 +42,7 @@ export async function upsertReview(
 
     revalidatePath("/admin/reviews");
     revalidatePath("/");
+    revalidateTag("reviews", "max");
 
     return {
       success: true,
@@ -71,6 +72,7 @@ export async function deleteReview(
     await prisma.review.delete({ where: { id: parsed.data.reviewId } });
     revalidatePath("/admin/reviews");
     revalidatePath("/");
+    revalidateTag("reviews", "max");
 
     return { success: true, message: "Recensione eliminata" };
   } catch (error) {
