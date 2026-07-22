@@ -1,8 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { login } from "@/actions/auth";
+import {
+  prepareLogin,
+  reportLoginFailure,
+  reportLoginSuccess,
+  type AuthFormState,
+} from "@/actions/auth";
+import { authClient } from "@/lib/auth-client";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
 
 type LoginFormProps = {
@@ -10,11 +16,39 @@ type LoginFormProps = {
 };
 
 export function LoginForm({ callbackUrl }: LoginFormProps) {
-  const [state, formAction, pending] = useActionState(login, null);
+  const [state, setState] = useState<AuthFormState>(null);
+  const [pending, startTransition] = useTransition();
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      const prepared = await prepareLogin(null, formData);
+      if (!prepared?.success || prepared.errors) {
+        setState(prepared);
+        return;
+      }
+
+      const { error } = await authClient.signIn.email({
+        email: String(formData.get("email") ?? ""),
+        password: String(formData.get("password") ?? ""),
+      });
+
+      if (error) {
+        await reportLoginFailure(formData);
+        setState({ errors: { email: ["Credenziali non valide"] } });
+        return;
+      }
+
+      await reportLoginSuccess(formData);
+      window.location.assign(prepared.callbackUrl ?? callbackUrl);
+    });
+  }
 
   return (
     <form
-      action={formAction}
+      onSubmit={onSubmit}
       className={`flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6 text-bone ${
         state?.errors ? "animate-shake" : ""
       }`}

@@ -12,7 +12,14 @@ export const auth = betterAuth({
   // fidato da baseURL): rende la configurazione auditabile e blocca richieste
   // cross-origin verso gli endpoint sensibili di Better Auth (CSRF/origin
   // check) anche se in futuro baseURL dovesse essere derivato diversamente.
-  trustedOrigins: [env.BETTER_AUTH_URL],
+  // In dev includiamo anche l'origin di rete (es. http://192.168.x.x:3000)
+  // cosi' il login da telefono sulla LAN non fallisce il check CSRF.
+  trustedOrigins: [
+    env.BETTER_AUTH_URL,
+    ...(env.NODE_ENV === "development"
+      ? ["http://localhost:3000", "http://127.0.0.1:3000"]
+      : []),
+  ],
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { signup } from "@/actions/auth";
+import { prepareSignup, type AuthFormState } from "@/actions/auth";
+import { authClient } from "@/lib/auth-client";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
 
 type SignupFormProps = {
@@ -10,11 +11,47 @@ type SignupFormProps = {
 };
 
 export function SignupForm({ callbackUrl }: SignupFormProps) {
-  const [state, formAction, pending] = useActionState(signup, null);
+  const [state, setState] = useState<AuthFormState>(null);
+  const [pending, startTransition] = useTransition();
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      const prepared = await prepareSignup(null, formData);
+      if (!prepared?.success || prepared.errors) {
+        setState(prepared);
+        return;
+      }
+
+      const username = String(formData.get("username") ?? "");
+      const { error } = await authClient.signUp.email({
+        email: String(formData.get("email") ?? ""),
+        password: String(formData.get("password") ?? ""),
+        name: username,
+        username,
+        phone: String(formData.get("phone") ?? ""),
+      });
+
+      if (error) {
+        setState({
+          errors: {
+            email: [
+              "Registrazione non riuscita. Verifica i dati o prova ad accedere.",
+            ],
+          },
+        });
+        return;
+      }
+
+      window.location.assign(prepared.callbackUrl ?? callbackUrl);
+    });
+  }
 
   return (
     <form
-      action={formAction}
+      onSubmit={onSubmit}
       className={`flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6 text-bone ${
         state?.errors ? "animate-shake" : ""
       }`}
