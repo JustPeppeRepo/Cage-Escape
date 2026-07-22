@@ -1,9 +1,31 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prisma } from "@/app/_lib/prisma";
 import { env } from "@/app/_lib/env";
-import { sendPasswordResetEmail } from "@/app/_lib/auth/email";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "@/app/_lib/auth/email";
+import {
+  getLoginLockStatus,
+  recordFailedLoginAttempt,
+  resetLoginAttempts,
+} from "@/app/_lib/auth/lockout";
+
+function emailFromBody(body: unknown): string {
+  if (!body || typeof body !== "object") return "";
+  const email = (body as { email?: unknown }).email;
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+function isCredentialAuthFailure(returned: unknown): boolean {
+  if (!(returned instanceof APIError)) return false;
+  // Solo fallimenti credenziali (password errata). Non contare 403
+  // (email non verificata) né 429 (rate limit) come tentativi di lockout.
+  return returned.statusCode === 401 || returned.status === "UNAUTHORIZED";
+}
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -24,10 +46,18 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    requireEmailVerification: false,
+    requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail({ email: user.email, url });
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendVerificationEmail({ email: user.email, url });
     },
   },
   rateLimit: {
@@ -40,6 +70,39 @@ export const auth = betterAuth({
       "/change-password": { window: 60, max: 5 },
       "/delete-user": { window: 60, max: 3 },
     },
+  },
+  // Lockout account sul path Better Auth (/api/auth/sign-in/email), non solo
+  // sul form UI: altrimenti un POST diretto bypasserebbe prepareLogin e le
+  // Server Action reportLogin* (che erano anche abusabili da terzi).
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-in/email") return;
+
+      const email = emailFromBody(ctx.body);
+      if (!email) return;
+
+      const lockStatus = await getLoginLockStatus(email);
+      if (lockStatus.locked) {
+        throw new APIError("TOO_MANY_REQUESTS", {
+          message: "Credenziali non valide",
+        });
+      }
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-in/email") return;
+
+      const email = emailFromBody(ctx.body);
+      if (!email) return;
+
+      if (ctx.context.newSession) {
+        await resetLoginAttempts(email);
+        return;
+      }
+
+      if (isCredentialAuthFailure(ctx.context.returned)) {
+        await recordFailedLoginAttempt(email);
+      }
+    }),
   },
   // Esplicito invece di affidarsi ai default impliciti di Better Auth
   // (che sono corretti: httpOnly true, sameSite lax, secure derivato da

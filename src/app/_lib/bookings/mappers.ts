@@ -12,6 +12,7 @@ type RoomLike = {
   minPlayers: number;
   maxPlayers: number;
   terrorLevel: number;
+  isActive: boolean;
 };
 
 export function toRoomSummary(room: RoomLike): RoomSummary {
@@ -26,5 +27,6 @@ export function toRoomSummary(room: RoomLike): RoomSummary {
     minPlayers: room.minPlayers,
     maxPlayers: room.maxPlayers,
     terrorLevel: room.terrorLevel,
+    isActive: room.isActive,
   };
 }

@@ -9,4 +9,5 @@ export type RoomSummary = {
   minPlayers: number;
   maxPlayers: number;
   terrorLevel: number;
+  isActive: boolean;
 };

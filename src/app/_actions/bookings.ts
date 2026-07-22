@@ -94,6 +94,15 @@ export async function getAvailableSlots(
   prevState: unknown,
   formData: FormData,
 ): Promise<BookingActionResult<AvailableSlotPayload>> {
+  const rateLimit = await checkRateLimit("available-slots", 30);
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+      code: "RATE_LIMITED",
+    };
+  }
+
   const parsed = getAvailableSlotsSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
     return {
@@ -186,6 +195,15 @@ export async function getMonthClosedDates(
   prevState: unknown,
   formData: FormData,
 ): Promise<BookingActionResult<MonthClosedDatesPayload>> {
+  const rateLimit = await checkRateLimit("month-closed-dates", 30);
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+      code: "RATE_LIMITED",
+    };
+  }
+
   const parsed = getMonthClosedDatesSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
     return {

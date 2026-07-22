@@ -1,10 +1,10 @@
-import { getActiveRooms } from "@/app/_lib/site/content";
+import { getPublicRooms } from "@/app/_lib/site/content";
 import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { RoomsGrid } from "@/components/horror/RoomsGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
 export async function HomeRoomsSection() {
-  const rooms = await getActiveRooms();
+  const rooms = await getPublicRooms();
   const roomSummaries = rooms.map(toRoomSummary);
 
   return (

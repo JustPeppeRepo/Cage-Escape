@@ -4,8 +4,6 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   prepareLogin,
-  reportLoginFailure,
-  reportLoginSuccess,
   type AuthFormState,
 } from "@/actions/auth";
 import { authClient } from "@/lib/auth-client";
@@ -36,12 +34,23 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       });
 
       if (error) {
-        await reportLoginFailure(formData);
+        // 403: email non verificata (Better Auth reinvia il link se sendOnSignIn).
+        // Lockout/contatori sono gestiti solo server-side negli hook Better Auth.
+        if (error.status === 403) {
+          setState({
+            errors: {
+              email: [
+                "Verifica la tua email prima di accedere. Controlla la casella di posta (e lo spam).",
+              ],
+            },
+          });
+          return;
+        }
+
         setState({ errors: { email: ["Credenziali non valide"] } });
         return;
       }
 
-      await reportLoginSuccess(formData);
       window.location.assign(prepared.callbackUrl ?? callbackUrl);
     });
   }

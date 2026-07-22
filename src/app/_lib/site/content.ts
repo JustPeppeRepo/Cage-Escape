@@ -12,6 +12,16 @@ export const getActiveRooms = unstable_cache(
   { revalidate: 3600, tags: ["rooms"] },
 );
 
+/** Tutte le stanze pubbliche (attive e coming soon), ordinate per creazione. */
+export const getPublicRooms = unstable_cache(
+  () =>
+    prisma.room.findMany({
+      orderBy: [{ isActive: "desc" }, { createdAt: "asc" }],
+    }),
+  ["public-rooms"],
+  { revalidate: 3600, tags: ["rooms"] },
+);
+
 export const getPublishedReviews = unstable_cache(
   () =>
     prisma.review.findMany({

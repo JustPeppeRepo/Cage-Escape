@@ -170,8 +170,15 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
         <Link
           href="/"
-          className="font-heading text-lg text-blood-bright transition-colors hover:text-blood sm:text-xl md:justify-self-start"
+          className="inline-flex items-center gap-2 font-heading text-lg text-blood-bright transition-colors hover:text-blood sm:gap-2.5 sm:text-xl md:justify-self-start"
         >
+          <img
+            src="/Icon.png"
+            alt=""
+            width={32}
+            height={32}
+            className="h-7 w-7 sm:h-8 sm:w-8"
+          />
           Cage Room
         </Link>
 

@@ -3,13 +3,18 @@ import { prisma } from "@/app/_lib/prisma";
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 export async function getLoginLockStatus(email: string): Promise<{
   locked: boolean;
   retryAfterSeconds?: number;
 }> {
+  const normalized = normalizeEmail(email);
   const user = await prisma.user.findUnique({
-    where: { email },
-    select: { lockedUntil: true },
+    where: { email: normalized },
+    select: { id: true, lockedUntil: true },
   });
 
   if (!user?.lockedUntil) {
@@ -18,6 +23,15 @@ export async function getLoginLockStatus(email: string): Promise<{
 
   const now = Date.now();
   if (user.lockedUntil.getTime() <= now) {
+    // Lock scaduto: azzera contatore e lockedUntil, altrimenti il tentativo
+    // successivo risalirebbe subito il tetto e ri-bloccherebbe l'account.
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
     return { locked: false };
   }
 
@@ -28,8 +42,9 @@ export async function getLoginLockStatus(email: string): Promise<{
 }
 
 export async function recordFailedLoginAttempt(email: string): Promise<void> {
+  const normalized = normalizeEmail(email);
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalized },
     select: { id: true },
   });
 
@@ -57,8 +72,9 @@ export async function recordFailedLoginAttempt(email: string): Promise<void> {
 }
 
 export async function resetLoginAttempts(email: string): Promise<void> {
+  const normalized = normalizeEmail(email);
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalized },
     select: { id: true, failedLoginAttempts: true, lockedUntil: true },
   });
 

@@ -32,6 +32,7 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
         name: username,
         username,
         phone: String(formData.get("phone") ?? ""),
+        callbackURL: prepared.callbackUrl ?? callbackUrl,
       });
 
       if (error) {
@@ -45,8 +46,32 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
         return;
       }
 
-      window.location.assign(prepared.callbackUrl ?? callbackUrl);
+      // Con requireEmailVerification non c'e' sessione: l'utente deve
+      // confermare il link via email prima di poter accedere.
+      setState({
+        success: true,
+        needsEmailVerification: true,
+        callbackUrl: prepared.callbackUrl ?? callbackUrl,
+      });
     });
+  }
+
+  if (state?.needsEmailVerification) {
+    return (
+      <div className="flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6 text-bone">
+        <h2 className="font-display text-xl text-bone">Controlla la tua email</h2>
+        <p className="text-sm text-bone/80">
+          Ti abbiamo inviato un link per verificare l&apos;account. Apri la
+          casella di posta (e lo spam), conferma l&apos;indirizzo e poi accedi.
+        </p>
+        <Link
+          href="/login"
+          className="rounded bg-blood px-4 py-2 text-center text-bone transition-colors hover:bg-blood-bright"
+        >
+          Vai al login
+        </Link>
+      </div>
+    );
   }
 
   return (

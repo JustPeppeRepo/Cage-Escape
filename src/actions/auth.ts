@@ -5,11 +5,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { checkRateLimit } from "@/app/_lib/rate-limit"
-import {
-  getLoginLockStatus,
-  recordFailedLoginAttempt,
-  resetLoginAttempts,
-} from "@/app/_lib/auth/lockout"
+import { getLoginLockStatus } from "@/app/_lib/auth/lockout"
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect"
 
 export type AuthFormState = {
@@ -21,6 +17,8 @@ export type AuthFormState = {
   }
   success?: boolean
   callbackUrl?: string
+  /** Signup: account creato, in attesa di verifica email. */
+  needsEmailVerification?: boolean
 } | null
 
 const signupSchema = z.object({
@@ -35,13 +33,11 @@ const loginSchema = z.object({
   password: z.string().min(8).max(72),
 })
 
-const emailOnlySchema = z.object({
-  email: z.string().trim().email().max(255),
-})
-
 /**
  * Controlli server prima del sign-in client (rate limit, Zod, lockout).
  * Il cookie di sessione lo imposta authClient.signIn.email sul browser.
+ * Il lockout e' anche enforced in Better Auth hooks (src/lib/auth.ts):
+ * questo check resta difesa in profondita' sul path UI.
  */
 export async function prepareLogin(
   _prevState: AuthFormState,
@@ -116,22 +112,6 @@ export async function prepareSignup(
   )
 
   return { success: true, callbackUrl }
-}
-
-export async function reportLoginFailure(formData: FormData): Promise<void> {
-  const parsed = emailOnlySchema.safeParse({
-    email: formData.get("email"),
-  })
-  if (!parsed.success) return
-  await recordFailedLoginAttempt(parsed.data.email)
-}
-
-export async function reportLoginSuccess(formData: FormData): Promise<void> {
-  const parsed = emailOnlySchema.safeParse({
-    email: formData.get("email"),
-  })
-  if (!parsed.success) return
-  await resetLoginAttempts(parsed.data.email)
 }
 
 export async function logout() {

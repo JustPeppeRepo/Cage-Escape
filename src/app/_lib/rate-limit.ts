@@ -19,12 +19,18 @@ export type RateLimitOptions = {
 
 async function resolveClientIp(): Promise<string> {
   const headerStore = await headers();
+  // Su Vercel/proxy trusted l'IP client e' in x-real-ip oppure e' il PRIMO
+  // hop di x-forwarded-for (leftmost). Usare l'ultimo hop rate-limitava il
+  // proxy interno, non l'attaccante.
+  const realIp = headerStore.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
   const forwarded = headerStore.get("x-forwarded-for");
   const forwardedIps = forwarded
     ?.split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  return forwardedIps?.at(-1) ?? headerStore.get("x-real-ip") ?? "unknown";
+  return forwardedIps?.[0] ?? "unknown";
 }
 
 function buildRateLimitKey(
