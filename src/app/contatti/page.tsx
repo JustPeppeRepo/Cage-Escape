@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { SocialLinks } from "@/components/horror/contact/SocialLinks";
 
 const ContactForm = dynamic(
@@ -34,10 +33,10 @@ export default function ContattiPage() {
     <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto grid max-w-5xl gap-12 lg:grid-cols-2">
         <div>
-          <Link href="/" className="text-sm text-bone/50 hover:text-bone">
-            ← Torna alla home
-          </Link>
-          <h1 className="mt-6 font-heading text-4xl text-blood-bright">
+          <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">
+            Scopri come trovarci
+          </span>
+          <h1 className="mt-2 font-heading text-4xl text-blood-bright">
             Contatti
           </h1>
           <p className="mt-4 text-bone/70">

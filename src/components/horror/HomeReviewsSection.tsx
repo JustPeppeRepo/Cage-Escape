@@ -4,6 +4,10 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const IMAGE_POSITIONS = ["center", "left center", "right center"] as const;
 
+/** Card (~320px) + gap: enough copies so one strip ≥ ~ultrawide viewport. */
+const CARD_STRIDE_PX = 344;
+const MIN_STRIP_WIDTH_PX = 2560;
+
 export async function HomeReviewsSection() {
   const reviews = await getPublishedReviews();
 
@@ -11,15 +15,22 @@ export async function HomeReviewsSection() {
     return null;
   }
 
+  const repeats = Math.max(
+    1,
+    Math.ceil(MIN_STRIP_WIDTH_PX / (reviews.length * CARD_STRIDE_PX)),
+  );
+
   const cards = (keyPrefix: string) =>
-    reviews.map((review, index) => (
-      <ReviewCard
-        key={`${keyPrefix}-${review.id}`}
-        author={review.author}
-        quote={review.quote}
-        imagePosition={IMAGE_POSITIONS[index % IMAGE_POSITIONS.length]}
-      />
-    ));
+    Array.from({ length: repeats }, (_, copyIndex) =>
+      reviews.map((review, index) => (
+        <ReviewCard
+          key={`${keyPrefix}-${copyIndex}-${review.id}`}
+          author={review.author}
+          quote={review.quote}
+          imagePosition={IMAGE_POSITIONS[index % IMAGE_POSITIONS.length]}
+        />
+      )),
+    );
 
   return (
     <section className="overflow-hidden bg-void-deep py-16 sm:py-24">
@@ -41,8 +52,13 @@ export async function HomeReviewsSection() {
         />
 
         <div className="reviews-marquee-track flex w-max py-2 hover:[animation-play-state:paused]">
-          <div className="flex gap-5 pr-5 sm:gap-6 sm:pr-6">{cards("a")}</div>
-          <div aria-hidden="true" className="flex gap-5 pr-5 sm:gap-6 sm:pr-6">
+          <div className="reviews-marquee-group flex gap-5 pr-5 sm:gap-6 sm:pr-6">
+            {cards("a")}
+          </div>
+          <div
+            aria-hidden="true"
+            className="reviews-marquee-group flex gap-5 pr-5 sm:gap-6 sm:pr-6"
+          >
             {cards("b")}
           </div>
         </div>

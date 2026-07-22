@@ -118,16 +118,20 @@ body {
 
 @keyframes reviews-marquee {
   from {
-    transform: translateX(-50%);
+    transform: translateX(0);
   }
   to {
-    transform: translateX(0);
+    transform: translateX(-50%);
   }
 }
 
 .reviews-marquee-track {
-  animation: reviews-marquee 28s linear infinite;
+  animation: reviews-marquee 60s linear infinite;
   will-change: transform;
+}
+
+.reviews-marquee-group {
+  flex-shrink: 0;
 }
 
 @keyframes hero-fade-in {
