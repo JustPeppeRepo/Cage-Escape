@@ -9,6 +9,7 @@ const cspHeader = `
   script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data:;
+  media-src 'self';
   font-src 'self';
   connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com;
   object-src 'none';

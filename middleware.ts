@@ -4,7 +4,15 @@ import { getSessionCookie } from "better-auth/cookies"
 // Route pubbliche (accessibili senza login)
 const publicRoutes = ["/", "/login", "/signup", "/about", "/contatti", "/maledizione", "/forgot-password", "/reset-password"]
 
+/** Asset in /public (logo, video, immagini stanze, PDF, …): non devono passare dal gate auth. */
+const STATIC_FILE_EXT =
+  /\.(?:avif|css|gif|ico|jpeg|jpg|js|json|map|mp4|pdf|png|svg|txt|webm|webp|woff2?)$/i
+
 function isPublicPath(pathname: string): boolean {
+  if (STATIC_FILE_EXT.test(pathname)) {
+    return true
+  }
+
   if (publicRoutes.includes(pathname)) {
     return true
   }
@@ -27,6 +35,13 @@ function isPublicPath(pathname: string): boolean {
 // dopo ogni tentativo di migrazione).
 export default function middleware(req: NextRequest) {
   const { nextUrl } = req
+
+  // Asset statici: short-circuit prima di qualsiasi redirect auth.
+  // Senza questo, /icon-trasparent.png e /video/*.mp4 finiscono su /login
+  // (browser riceve HTML al posto di PNG/MP4 → logo rotto, solo poster hero).
+  if (STATIC_FILE_EXT.test(nextUrl.pathname)) {
+    return NextResponse.next()
+  }
 
   // Controllo "ottimistico": verifica solo la presenza del cookie di sessione,
   // senza toccare il DB (Prisma non e' eseguibile in questo runtime). Questo
@@ -61,7 +76,11 @@ export default function middleware(req: NextRequest) {
   return NextResponse.next()
 }
 
-// Esclude asset statici, immagini, api routes di auth e il webhook Stripe
+// Esclude API auth/webhook, bundle Next e qualsiasi path con estensione file
+// (public/: png, mp4, pdf, …). Il matcher e' la prima linea; isPublicPath e'
+// difesa in profondita' se il pattern venisse allargato.
 export const config = {
-  matcher: ["/((?!api/auth|api/webhook|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api/auth|api/webhook|_next/static|_next/image|favicon.ico|.*\\..*).*)",
+  ],
 }
