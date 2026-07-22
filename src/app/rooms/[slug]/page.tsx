@@ -46,27 +46,11 @@ export default async function RoomDetailPage({
 }: RoomDetailPageProps) {
   const { slug } = await params;
 
-  // #region agent log
-  {
-    const looksLikeAsset = /\.(jpe?g|png|webp|gif|svg)$/i.test(slug);
-    fetch("http://127.0.0.1:7653/ingest/b95a8c87-326d-496a-8bbf-ad6c9410be8d", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "4d555f",
-      },
-      body: JSON.stringify({
-        sessionId: "4d555f",
-        runId: "pre-fix",
-        hypothesisId: "B",
-        location: "rooms/[slug]/page.tsx:entry",
-        message: "Dynamic room route hit",
-        data: { slug, looksLikeAsset },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+  // Evita che /rooms/foo.jpg (file assente in public/) venga trattato come slug
+  // e restituisca HTML 200 a next/image.
+  if (/\.(jpe?g|png|webp|gif|svg)$/i.test(slug)) {
+    notFound();
   }
-  // #endregion
 
   const room = await getRoomWithPricing(slug);
 

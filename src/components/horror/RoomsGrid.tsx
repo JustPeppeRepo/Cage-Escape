@@ -14,10 +14,16 @@ export function RoomsGrid({ rooms }: RoomsGridProps) {
     );
   }
 
+  const lcpSlug = rooms.find((room) => room.isActive)?.slug ?? rooms[0]?.slug;
+
   return (
     <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
       {rooms.map((room) => (
-        <RoomCard key={room.id} room={room} />
+        <RoomCard
+          key={room.id}
+          room={room}
+          priority={room.slug === lcpSlug}
+        />
       ))}
     </div>
   );

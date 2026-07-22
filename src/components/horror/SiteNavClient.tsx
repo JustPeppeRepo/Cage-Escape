@@ -173,7 +173,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
           className="inline-flex items-center gap-2 font-heading text-lg text-blood-bright transition-colors hover:text-blood sm:gap-2.5 sm:text-xl md:justify-self-start"
         >
           <img
-            src="/Icon.png"
+            src="/icon-trasparent.png"
             alt=""
             width={32}
             height={32}

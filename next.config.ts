@@ -2,16 +2,15 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// Nessuno script/iframe di terze parti e' caricato lato client (Stripe Checkout
-// e' hosted: si naviga via redirect a checkout.stripe.com, non si carica
-// js.stripe.com in pagina), quindi la CSP puo' restare stretta su 'self'.
+// Stripe Checkout e' hosted (redirect), ma Analytics/Speed Insights caricano
+// script da va.vercel-scripts.com — vanno allowlistati esplicitamente.
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""};
+  script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data:;
   font-src 'self';
-  connect-src 'self' https://vitals.vercel-insights.com;
+  connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';

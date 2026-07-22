@@ -1,11 +1,12 @@
 @import "tailwindcss";
 
 @theme {
+  /* Brand red = exact logo fill (mode RGB 133,32,38) */
   --color-void: #0a0a0a;
   --color-void-deep: #030303;
   --color-void-mist: #161616;
-  --color-blood: #990000;
-  --color-blood-bright: #cc1a1a;
+  --color-blood: #701a20;
+  --color-blood-bright: #852026;
   --color-ectoplasm: #39ff88;
   --color-bone: #e8e2d6;
 
