@@ -21,7 +21,7 @@ export default async function AdminReviewsPage() {
         Recensioni
       </h1>
       <p className="mt-2 text-sm text-bone/60">
-        Testimonial polaroid mostrati in homepage. Solo le recensioni pubblicate
+        Testimonial mostrati in homepage. Solo le recensioni pubblicate
         sono visibili al pubblico.
       </p>
 

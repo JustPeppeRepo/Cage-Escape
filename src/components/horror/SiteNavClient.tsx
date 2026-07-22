@@ -15,6 +15,7 @@ type SiteNavClientProps = {
 };
 
 const navLinks = [
+  { href: "/", label: "Home" },
   { href: "/rooms", label: "Stanze" },
   { href: "/about", label: "Chi siamo" },
   { href: "/contatti", label: "Contatti" },
