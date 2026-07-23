@@ -36,9 +36,9 @@ export default function ContattiPage() {
           <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">
             Scopri come trovarci
           </span>
-          <h1 className="mt-2 font-heading text-4xl text-blood-bright">
+          <h2 className="mt-2 font-heading text-4xl text-blood-bright">
             Contatti
-          </h1>
+          </h2>
           <p className="mt-4 text-bone/70">
             Scrivici per qualsiasi dubbio. Il recupero dei corpi non è incluso
             nel prezzo della prenotazione, ma possiamo indicarti un servizio

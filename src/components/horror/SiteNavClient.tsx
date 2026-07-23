@@ -177,7 +177,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 font-heading text-lg text-blood-bright transition-colors hover:text-blood sm:gap-2.5 sm:text-xl md:justify-self-start"
+          className="inline-flex min-w-0 items-center gap-2 text-blood-bright transition-colors hover:text-blood sm:gap-2.5 md:justify-self-start"
         >
           <Image
             src="/icon-trasparent.png"
@@ -185,9 +185,11 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
             width={32}
             height={32}
             unoptimized
-            className="h-7 w-7 sm:h-8 sm:w-8"
+            className="h-7 w-7 shrink-0 sm:h-8 sm:w-8"
           />
-          Cage Room
+          <h1 className="font-heading m-0 text-sm leading-none sm:text-base md:text-lg">
+            Escape Room Cage
+          </h1>
         </Link>
 
         <nav

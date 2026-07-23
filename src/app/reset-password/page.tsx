@@ -19,9 +19,9 @@ export default async function ResetPasswordPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-void px-6 py-24 text-bone">
       <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center font-heading text-3xl text-blood-bright">
+        <h2 className="mb-6 text-center font-heading text-3xl text-blood-bright">
           Reimposta password
-        </h1>
+        </h2>
         <ResetPasswordForm token={token ?? null} invalidToken={invalidToken} />
       </div>
     </main>

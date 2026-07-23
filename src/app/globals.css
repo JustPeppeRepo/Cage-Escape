@@ -62,17 +62,33 @@ body {
   }
 }
 
-/* Variante leggera per CTA hero: attira l'attenzione senza rovinare la lettura */
+/* Idle CTA: stessi keyframe/steps dell'hover, ma offset e shadow più lievi + ciclo più lento */
 @keyframes glitch-shift-soft {
-  0%,
-  100% {
-    text-shadow: 0 0 transparent;
+  0% {
+    text-shadow: 0 0 color-mix(in srgb, var(--color-blood-bright) 55%, transparent);
     transform: translate(0);
   }
-  50% {
-    text-shadow: -0.5px 0 color-mix(in srgb, var(--color-blood-bright) 55%, transparent),
-      0.5px 0 color-mix(in srgb, var(--color-ectoplasm) 40%, transparent);
-    transform: translate(0.4px, 0);
+  20% {
+    text-shadow:
+      -1.25px 0 color-mix(in srgb, var(--color-blood-bright) 70%, transparent),
+      1.25px 0 color-mix(in srgb, var(--color-ectoplasm) 60%, transparent);
+    transform: translate(-4px, 3px);
+  }
+  40% {
+    text-shadow:
+      1.25px 0 color-mix(in srgb, var(--color-blood-bright) 70%, transparent),
+      -1.25px 0 color-mix(in srgb, var(--color-ectoplasm) 60%, transparent);
+    transform: translate(4px, -3px);
+  }
+  60% {
+    text-shadow:
+      -0.75px 0 color-mix(in srgb, var(--color-blood-bright) 65%, transparent),
+      0.75px 0 color-mix(in srgb, var(--color-ectoplasm) 55%, transparent);
+    transform: translate(-3px, 2px);
+  }
+  100% {
+    text-shadow: 0 0 color-mix(in srgb, var(--color-blood-bright) 55%, transparent);
+    transform: translate(0);
   }
 }
 
@@ -122,10 +138,6 @@ body {
   animation: glitch-shift 0.3s steps(2, end) infinite;
 }
 
-@utility animate-glitch-soft {
-  animation: glitch-shift-soft 1.6s ease-in-out infinite;
-}
-
 @utility animate-shake {
   animation: shake 0.4s ease-in-out;
 }
@@ -171,10 +183,13 @@ body {
   animation: hero-fade-in 0.6s ease-out 0.8s both;
 }
 
-.hero-cta a:hover {
-  animation: none;
-  text-shadow: none;
-  transform: none;
+/* Classe plain (non @utility): Tailwind non stava emettendo animate-glitch-soft */
+.animate-glitch-soft {
+  animation: glitch-shift-soft 1s steps(2, end) infinite;
+}
+
+.animate-glitch-soft:hover {
+  animation: glitch-shift 0.3s steps(2, end) infinite;
 }
 
 .room-card {
@@ -192,13 +207,6 @@ body {
   .hero-cta {
     animation: none;
     opacity: 1;
-    transform: none;
-  }
-
-  .hero-cta a,
-  .animate-glitch-soft {
-    animation: none;
-    text-shadow: none;
     transform: none;
   }
 

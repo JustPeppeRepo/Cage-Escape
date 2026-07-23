@@ -55,16 +55,16 @@ export default function AboutPage() {
           <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">
             Scopri l&apos;esperienza CAGE
           </span>
-          <h1 className="relative inline-block font-heading text-4xl text-blood-bright sm:text-5xl">
+          <h2 className="relative inline-block font-heading text-4xl text-blood-bright sm:text-5xl">
             Chi siamo
             <span
               aria-hidden="true"
               className="absolute -bottom-2 left-1/2 h-[2px] w-24 -translate-x-1/2 bg-blood"
             />
-          </h1>
+          </h2>
         </header>
 
-        <div className="flex flex-col gap-6 sm:gap-8">
+        <div className="flex flex-col gap-10 sm:gap-8">
           <AboutSection title="Missione" index={0} align="left">
             <p>
               CAGE nasce dal desiderio di trasformare le avventure che esistono

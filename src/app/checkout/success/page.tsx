@@ -88,9 +88,9 @@ export default async function CheckoutSuccessPage({
       <div className="mx-auto flex max-w-xl flex-col gap-6">
         {isConfirmed ? (
           <div className="rounded-md border border-ectoplasm/40 bg-void-deep p-6">
-            <h1 className="mb-2 font-heading text-3xl text-blood-bright">
+            <h2 className="mb-2 font-heading text-3xl text-blood-bright">
               Prenotazione confermata
-            </h1>
+            </h2>
             <p className="mb-4 text-sm text-bone/70">
               Ti aspettiamo, se hai il coraggio di presentarti.
             </p>
@@ -115,9 +115,9 @@ export default async function CheckoutSuccessPage({
           </div>
         ) : isConflict ? (
           <div className="rounded-md border border-blood/60 bg-void-deep p-6">
-            <h1 className="mb-2 font-heading text-2xl text-blood-bright">
+            <h2 className="mb-2 font-heading text-2xl text-blood-bright">
               Pagamento ricevuto, slot non più disponibile
-            </h1>
+            </h2>
             <p className="text-sm text-bone/70">
               Il tuo pagamento è stato ricevuto ma nel frattempo lo slot è
               stato occupato da un&apos;altra prenotazione. Ti rimborseremo
@@ -127,9 +127,9 @@ export default async function CheckoutSuccessPage({
           </div>
         ) : isCancelled ? (
           <div className="rounded-md border border-blood/60 bg-void-deep p-6">
-            <h1 className="mb-2 font-heading text-2xl text-blood-bright">
+            <h2 className="mb-2 font-heading text-2xl text-blood-bright">
               Prenotazione annullata
-            </h1>
+            </h2>
             <p className="mb-4 text-sm text-bone/70">
               Questa prenotazione non è andata a buon fine. Se hai effettuato
               un pagamento, verrà rimborsato automaticamente da Stripe.

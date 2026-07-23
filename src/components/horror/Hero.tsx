@@ -18,9 +18,9 @@ export function Hero() {
           }}
         />
 
-        <h1 className="relative font-heading text-5xl text-blood-bright sm:text-7xl">
+        <h2 className="relative font-heading text-5xl text-blood-bright sm:text-7xl">
           Riuscirai a uscirne vivo?
-        </h1>
+        </h2>
 
         <p className="hero-subtitle relative max-w-xl text-lg text-bone/80">
           Non sei qui per guardare una storia.
@@ -36,7 +36,7 @@ export function Hero() {
         <div className="hero-cta relative">
           <Link
             href="/rooms"
-            className="animate-glitch-soft inline-block rounded bg-blood px-6 py-3 text-base font-semibold uppercase tracking-widest text-bone transition-colors hover:bg-blood-bright sm:px-10 sm:py-4 sm:text-lg"
+            className="animate-glitch-soft hover:animate-glitch-hover inline-block rounded bg-blood px-6 py-3 text-base font-semibold uppercase tracking-widest text-bone transition-colors hover:bg-blood-bright sm:px-10 sm:py-4 sm:text-lg"
           >
             Prenota l&apos;esperienza
           </Link>

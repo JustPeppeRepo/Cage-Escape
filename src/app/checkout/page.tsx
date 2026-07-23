@@ -72,9 +72,9 @@ export default async function CheckoutPage({
   return (
     <main className="min-h-screen bg-void px-6 py-24 text-bone">
       <div className="mx-auto flex max-w-xl flex-col gap-6">
-        <h1 className="font-heading text-3xl text-blood-bright">
+        <h2 className="font-heading text-3xl text-blood-bright">
           Completa la prenotazione
-        </h1>
+        </h2>
 
         {isHoldActive ? (
           <CheckoutClient
