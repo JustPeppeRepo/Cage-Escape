@@ -4,20 +4,21 @@
 // ogni singolo modulo.
 
 /**
- * Il dominio di test "onboarding@resend.dev" fornito di default da Resend può
- * consegnare email SOLO all'indirizzo del proprietario dell'account Resend:
- * qualsiasi invio verso un destinatario diverso (es. l'email di un cliente
- * reale che richiede il reset password) viene rifiutato con un 403.
- * Impostando RESEND_FROM_EMAIL con un indirizzo del dominio verificato su
- * Resend, questo limite sparisce per tutti i moduli che usano questo helper.
+ * Il from-address deve essere su un dominio verificato in Resend
+ * (RESEND_FROM_EMAIL). Senza, non si può consegnare agli utenti reali:
+ * il dominio di test onboarding@resend.dev consegna solo all'owner
+ * dell'account Resend.
  */
 export function getResendFromAddress(
   displayName: string,
   fromEmail: string | undefined,
 ): string {
-  const address =
-    fromEmail && fromEmail.length > 0 ? fromEmail : "onboarding@resend.dev";
-  return `${displayName} <${address}>`;
+  if (!fromEmail || fromEmail.length === 0) {
+    throw new Error(
+      "RESEND_FROM_EMAIL mancante: imposta un indirizzo su dominio verificato Resend",
+    );
+  }
+  return `${displayName} <${fromEmail}>`;
 }
 
 /**

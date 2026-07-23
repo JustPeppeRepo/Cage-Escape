@@ -18,7 +18,7 @@ Presupposto: database Neon, migrate, admin e avatar profilo sono già a posto.
 
 - [ ] **Email Resend in produzione** (se reset password / contatti devono funzionare per tutti)  
   - Verifica dominio su Resend (DNS)  
-  - Vercel env: `RESEND_FROM_EMAIL` (es. `noreply@cageroom.it`) — senza, resta il fallback `onboarding@resend.dev` che **non** consegna agli utenti reali  
+  - Vercel env: `RESEND_FROM_EMAIL` (es. `noreply@cageroom.it`) — obbligatorio se c’è `RESEND_API_KEY`; senza, le email auth non partono
   - Vercel env: `CONTACT_EMAIL_TO`, opzionale `STRIPE_OPS_EMAIL_TO`
 
 - [ ] **URL produzione** su Vercel  

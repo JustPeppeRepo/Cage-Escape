@@ -47,6 +47,17 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
           return;
         }
 
+        if (error.status === 500) {
+          setState({
+            errors: {
+              email: [
+                "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
+              ],
+            },
+          });
+          return;
+        }
+
         setState({ errors: { email: ["Credenziali non valide"] } });
         return;
       }

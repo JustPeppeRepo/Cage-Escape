@@ -49,7 +49,12 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendPasswordResetEmail({ email: user.email, url });
+      const result = await sendPasswordResetEmail({ email: user.email, url });
+      if (!result.ok) {
+        throw new APIError("INTERNAL_SERVER_ERROR", {
+          message: result.error,
+        });
+      }
     },
   },
   emailVerification: {
@@ -57,7 +62,12 @@ export const auth = betterAuth({
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      await sendVerificationEmail({ email: user.email, url });
+      const result = await sendVerificationEmail({ email: user.email, url });
+      if (!result.ok) {
+        throw new APIError("INTERNAL_SERVER_ERROR", {
+          message: result.error,
+        });
+      }
     },
   },
   rateLimit: {

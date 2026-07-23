@@ -11,11 +11,9 @@ const envSchema = z
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     NEXT_PUBLIC_APP_URL: z.string().url(),
     RESEND_API_KEY: z.string().min(1).optional(),
-    // Indirizzo "from" su un dominio verificato Resend. Senza questo, tutte
-    // le email usano il dominio di test "onboarding@resend.dev", che Resend
-    // consegna SOLO all'indirizzo del proprietario dell'account: il reset
-    // password (inviato all'utente reale, non allo staff) non arriverebbe
-    // mai a destinazione. Vedi src/app/_lib/email/shared.ts.
+    // Indirizzo "from" su un dominio verificato Resend. Obbligatorio se
+    // RESEND_API_KEY è impostata: senza, Resend non consegna agli utenti
+    // reali. Vedi src/app/_lib/email/shared.ts.
     RESEND_FROM_EMAIL: z.string().email().optional(),
     CONTACT_EMAIL_TO: z.string().email().optional(),
     STRIPE_OPS_EMAIL_TO: z.string().email().optional(),
@@ -27,6 +25,18 @@ const envSchema = z
         code: "custom",
         path: ["BETTER_AUTH_URL"],
         message: "BETTER_AUTH_URL deve coincidere con NEXT_PUBLIC_APP_URL",
+      });
+    }
+
+    // Con sola API key e senza from su dominio verificato, Resend accetta la
+    // richiesta ma usa onboarding@resend.dev → consegna SOLO all'owner
+    // dell'account. Le email di verifica/reset agli utenti reali non arrivano.
+    if (data.RESEND_API_KEY && !data.RESEND_FROM_EMAIL) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["RESEND_FROM_EMAIL"],
+        message:
+          "RESEND_FROM_EMAIL obbligatorio quando RESEND_API_KEY è impostata (indirizzo su dominio verificato Resend, es. noreply@cageroom.it)",
       });
     }
   });
