@@ -1,6 +1,7 @@
 import sharp from "sharp";
+import { MEDIA_MAX_UPLOAD_BYTES } from "@/app/_lib/media/constants";
 
-export const MEDIA_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+export { MEDIA_ACCEPT, MEDIA_MAX_UPLOAD_BYTES } from "@/app/_lib/media/constants";
 
 const ALLOWED_IMAGE_MIMES = [
   "image/jpeg",
@@ -9,8 +10,6 @@ const ALLOWED_IMAGE_MIMES = [
 ] as const;
 
 type AllowedImageMime = (typeof ALLOWED_IMAGE_MIMES)[number];
-
-export const MEDIA_ACCEPT = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
 
 function isAllowedDeclaredMime(type: string): type is AllowedImageMime {
   return (ALLOWED_IMAGE_MIMES as readonly string[]).includes(type);

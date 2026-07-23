@@ -5,7 +5,7 @@ import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import {
   MEDIA_ACCEPT,
   MEDIA_MAX_UPLOAD_BYTES,
-} from "@/app/_lib/media/optimize-image";
+} from "@/app/_lib/media/constants";
 import {
   adminButtonClassName,
   adminLabelClassName,
