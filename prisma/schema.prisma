@@ -124,6 +124,9 @@ model Room {
   maxPlayers      Int
   terrorLevel     Int                @default(3)
   isActive        Boolean            @default(true)
+  // Cover ottimizzata (WebP via Sharp in upload). Non selezionare in listing.
+  imageWebp       Bytes?
+  imageUpdatedAt  DateTime?          @db.Timestamptz
   createdAt       DateTime           @default(now()) @db.Timestamptz
   updatedAt       DateTime           @updatedAt @db.Timestamptz
   bookings        Booking[]
@@ -251,14 +254,17 @@ model DiscountCode {
 }
 
 model Review {
-  id          String   @id @default(cuid())
-  author      String
-  quote       String
-  rotation    Int      @default(0)
-  sortOrder   Int      @default(0)
-  isPublished Boolean  @default(true)
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
+  id             String    @id @default(cuid())
+  author         String
+  quote          String
+  rotation       Int       @default(0)
+  sortOrder      Int       @default(0)
+  isPublished    Boolean   @default(true)
+  // Cover ottimizzata (WebP via Sharp in upload). Non selezionare in listing.
+  imageWebp      Bytes?
+  imageUpdatedAt DateTime? @db.Timestamptz
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @db.Timestamptz
 
   @@index([isPublished, sortOrder])
 }

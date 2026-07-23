@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getRoomImageSrc } from "@/app/_lib/site/room-image";
 import { SkullRating } from "@/components/horror/SkullRating";
 import type { RoomSummary } from "@/types";
 
@@ -11,7 +10,7 @@ type RoomCardProps = {
 };
 
 export function RoomCard({ room, priority = false }: RoomCardProps) {
-  const imageSrc = getRoomImageSrc(room.slug);
+  const imageSrc = room.imageUrl;
   const unavailable = !room.isActive;
 
   const card = (
@@ -28,6 +27,7 @@ export function RoomCard({ room, priority = false }: RoomCardProps) {
             src={imageSrc}
             alt=""
             fill
+            unoptimized
             priority={priority}
             className={`object-cover ${unavailable ? "grayscale-40" : ""}`}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

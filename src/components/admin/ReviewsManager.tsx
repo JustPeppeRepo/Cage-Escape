@@ -10,6 +10,7 @@ import {
   adminLabelClassName,
   adminSecondaryButtonClassName,
 } from "@/components/admin/AdminFormFeedback";
+import { MediaUploadField } from "@/components/admin/MediaUploadField";
 
 type ReviewRow = {
   id: string;
@@ -18,6 +19,7 @@ type ReviewRow = {
   rotation: number;
   sortOrder: number;
   isPublished: boolean;
+  imageUrl: string | null;
 };
 
 type ReviewsManagerProps = {
@@ -38,6 +40,9 @@ export function ReviewsManager({ reviews }: ReviewsManagerProps) {
       >
         <AdminFormFeedback state={createState} />
         <h3 className="text-lg text-bone">Nuova recensione</h3>
+        <p className="text-sm text-bone/60">
+          Dopo la creazione potrai caricare la foto della card.
+        </p>
 
         <label className={adminLabelClassName}>
           Autore
@@ -122,6 +127,12 @@ function ReviewRowItem({ review }: { review: ReviewRow }) {
       <form action={updateAction} className="flex flex-col gap-4">
         <input type="hidden" name="id" value={review.id} readOnly />
         <AdminFormFeedback state={updateState} />
+
+        <MediaUploadField
+          uploadUrl={`/api/admin/media/reviews/${review.id}`}
+          currentImageUrl={review.imageUrl}
+          label="Foto recensione"
+        />
 
         <label className={adminLabelClassName}>
           Autore

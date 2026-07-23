@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
+import { getRoomCoverUrl } from "@/app/_lib/media/urls";
 import { DeleteRoomButton } from "@/components/admin/DeleteRoomButton";
 import { PricingTierManager } from "@/components/admin/PricingTierManager";
 import { RoomForm } from "@/components/admin/RoomForm";
@@ -33,7 +34,19 @@ export default async function AdminEditRoomPage({
 
   const room = await prisma.room.findUnique({
     where: { id: roomId },
-    include: {
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      description: true,
+      prezzoTotale: true,
+      prezzoCaparra: true,
+      durationMinutes: true,
+      minPlayers: true,
+      maxPlayers: true,
+      terrorLevel: true,
+      isActive: true,
+      imageUpdatedAt: true,
       pricingTiers: { orderBy: { minParticipants: "asc" } },
     },
   });
@@ -67,6 +80,7 @@ export default async function AdminEditRoomPage({
               maxPlayers: room.maxPlayers,
               terrorLevel: room.terrorLevel,
               isActive: room.isActive,
+              imageUrl: getRoomCoverUrl(room),
             }}
           />
           <DeleteRoomButton roomId={room.id} />

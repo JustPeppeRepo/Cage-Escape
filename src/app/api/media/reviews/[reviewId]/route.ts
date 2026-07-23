@@ -1,0 +1,35 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/app/_lib/prisma";
+
+type RouteContext = {
+  params: Promise<{ reviewId: string }>;
+};
+
+export async function GET(_request: Request, context: RouteContext) {
+  const { reviewId } = await context.params;
+
+  if (!/^[a-z0-9]+$/i.test(reviewId) || reviewId.length > 64) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const review = await prisma.review.findUnique({
+    where: { id: reviewId },
+    select: {
+      imageWebp: true,
+      imageUpdatedAt: true,
+    },
+  });
+
+  if (!review?.imageWebp || !review.imageUpdatedAt) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return new NextResponse(Buffer.from(review.imageWebp), {
+    status: 200,
+    headers: {
+      "Content-Type": "image/webp",
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}

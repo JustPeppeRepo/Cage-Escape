@@ -2,11 +2,29 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
 
+const roomPublicSelect = {
+  id: true,
+  slug: true,
+  name: true,
+  description: true,
+  prezzoTotale: true,
+  prezzoCaparra: true,
+  durationMinutes: true,
+  minPlayers: true,
+  maxPlayers: true,
+  terrorLevel: true,
+  isActive: true,
+  imageUpdatedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 export const getActiveRooms = unstable_cache(
   () =>
     prisma.room.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "asc" },
+      select: roomPublicSelect,
     }),
   ["active-rooms"],
   { revalidate: 3600, tags: ["rooms"] },
@@ -17,6 +35,7 @@ export const getPublicRooms = unstable_cache(
   () =>
     prisma.room.findMany({
       orderBy: [{ isActive: "desc" }, { createdAt: "asc" }],
+      select: roomPublicSelect,
     }),
   ["public-rooms"],
   { revalidate: 3600, tags: ["rooms"] },
@@ -27,6 +46,17 @@ export const getPublishedReviews = unstable_cache(
     prisma.review.findMany({
       where: { isPublished: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        author: true,
+        quote: true,
+        rotation: true,
+        sortOrder: true,
+        isPublished: true,
+        imageUpdatedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     }),
   ["published-reviews"],
   { revalidate: 3600, tags: ["reviews"] },
@@ -37,7 +67,10 @@ function getCachedRoomWithPricing(slug: string) {
     () =>
       prisma.room.findFirst({
         where: { slug, isActive: true },
-        include: { pricingTiers: { orderBy: { minParticipants: "asc" } } },
+        select: {
+          ...roomPublicSelect,
+          pricingTiers: { orderBy: { minParticipants: "asc" } },
+        },
       }),
     ["room-with-pricing", slug],
     { revalidate: 3600, tags: ["rooms", `room-${slug}`] },

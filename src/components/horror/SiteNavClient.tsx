@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/actions/auth";
@@ -44,9 +45,12 @@ function UserAccountLink({
         title={user.email}
         className="group flex items-center gap-3 rounded border border-void-mist px-3 py-2 transition-colors hover:border-blood/50"
       >
-        <img
+        <Image
           src={avatarUrl}
           alt=""
+          width={36}
+          height={36}
+          unoptimized
           className="h-9 w-9 rounded-full bg-void-mist"
         />
         <span className="min-w-0">
@@ -64,9 +68,12 @@ function UserAccountLink({
       title={`${user.name} · ${user.email}`}
       className="group flex min-w-0 flex-col items-center gap-0.5 rounded border border-void-mist px-2 py-1 transition-colors hover:border-blood/50"
     >
-      <img
+      <Image
         src={avatarUrl}
         alt=""
+        width={32}
+        height={32}
+        unoptimized
         className="h-8 w-8 rounded-full bg-void-mist"
       />
       <span className="max-w-[4.5rem] truncate text-[10px] leading-tight text-bone/60 group-hover:text-bone/80">
@@ -172,11 +179,12 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
           href="/"
           className="inline-flex items-center gap-2 font-heading text-lg text-blood-bright transition-colors hover:text-blood sm:gap-2.5 sm:text-xl md:justify-self-start"
         >
-          <img
+          <Image
             src="/icon-trasparent.png"
             alt=""
             width={32}
             height={32}
+            unoptimized
             className="h-7 w-7 sm:h-8 sm:w-8"
           />
           Cage Room

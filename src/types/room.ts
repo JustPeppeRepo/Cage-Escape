@@ -10,4 +10,6 @@ export type RoomSummary = {
   maxPlayers: number;
   terrorLevel: number;
   isActive: boolean;
+  /** Cover già ottimizzata (API media) o fallback /public. */
+  imageUrl: string | null;
 };

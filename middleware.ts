@@ -81,6 +81,6 @@ export default function middleware(req: NextRequest) {
 // difesa in profondita' se il pattern venisse allargato.
 export const config = {
   matcher: [
-    "/((?!api/auth|api/webhook|_next/static|_next/image|favicon.ico|.*\\..*).*)",
+    "/((?!api/auth|api/webhook|api/media|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
+import { getReviewCoverUrl } from "@/app/_lib/media/urls";
 import { requireAdmin } from "@/lib/dal";
 import { ReviewsManager } from "@/components/admin/ReviewsManager";
 
@@ -13,6 +14,15 @@ export default async function AdminReviewsPage() {
 
   const reviews = await prisma.review.findMany({
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      author: true,
+      quote: true,
+      rotation: true,
+      sortOrder: true,
+      isPublished: true,
+      imageUpdatedAt: true,
+    },
   });
 
   return (
@@ -26,7 +36,17 @@ export default async function AdminReviewsPage() {
       </p>
 
       <div className="mt-8">
-        <ReviewsManager reviews={reviews} />
+        <ReviewsManager
+          reviews={reviews.map((review) => ({
+            id: review.id,
+            author: review.author,
+            quote: review.quote,
+            rotation: review.rotation,
+            sortOrder: review.sortOrder,
+            isPublished: review.isPublished,
+            imageUrl: getReviewCoverUrl(review),
+          }))}
+        />
       </div>
     </main>
   );

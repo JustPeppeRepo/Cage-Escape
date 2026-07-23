@@ -38,16 +38,6 @@ const TeamSection = dynamic(
   },
 );
 
-const ChalkArrowConnector = dynamic(
-  () =>
-    import("@/components/horror/about/ChalkArrowConnector").then(
-      (mod) => mod.ChalkArrowConnector,
-    ),
-  {
-    loading: () => <div className="mx-auto h-36 w-full max-w-2xl sm:h-52" />,
-  },
-);
-
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
@@ -75,47 +65,26 @@ export default function AboutPage() {
         </header>
 
         <div className="flex flex-col gap-6 sm:gap-8">
-          <div className="relative mr-auto max-w-xl lg:pb-40">
-            <AboutSection
-              title="Missione"
-              index={0}
-              align="left"
-              className="max-w-none"
-            >
-              <p>
-                CAGE nasce dal desiderio di trasformare le avventure che esistono
-                nei film in esperienze che possano essere vissute in prima
-                persona.
-              </p>
-              <p>
-                Non vogliamo che i giocatori osservino una storia, vogliamo che
-                la attraversino: esplorando, scoprendo, agendo, superando
-                ostacoli e vivendo emozioni reali in condizioni di sicurezza.
-              </p>
-              <p>
-                Per noi un&apos;avventura non è una sequenza di enigmi: è un
-                viaggio fatto di scelte, fatica, tensione, scoperta e conquista.
-              </p>
-              <p>
-                CAGE esiste per permettere alle persone di vivere ciò che
-                normalmente possono soltanto immaginare e trasformare queste
-                esperienze in ricordi difficili da dimenticare.
-              </p>
-            </AboutSection>
-
-            {/* Mobile / tablet: in-flow connector */}
-            <div className="lg:hidden">
-              <ChalkArrowConnector variant="longLtr" />
-            </div>
-
-            {/* Large screens: origin = mid-right of Missione */}
-            <div className="pointer-events-none absolute left-[68%] top-[42%] z-10 hidden w-52 overflow-visible lg:block xl:left-[70%] xl:w-60">
-              <ChalkArrowConnector
-                variant="longLtr"
-                className="!m-0 h-[24rem] w-full max-w-none xl:h-[28rem]"
-              />
-            </div>
-          </div>
+          <AboutSection title="Missione" index={0} align="left">
+            <p>
+              CAGE nasce dal desiderio di trasformare le avventure che esistono
+              nei film in esperienze che possano essere vissute in prima persona.
+            </p>
+            <p>
+              Non vogliamo che i giocatori osservino una storia, vogliamo che la
+              attraversino: esplorando, scoprendo, agendo, superando ostacoli e
+              vivendo emozioni reali in condizioni di sicurezza.
+            </p>
+            <p>
+              Per noi un&apos;avventura non è una sequenza di enigmi: è un
+              viaggio fatto di scelte, fatica, tensione, scoperta e conquista.
+            </p>
+            <p>
+              CAGE esiste per permettere alle persone di vivere ciò che
+              normalmente possono soltanto immaginare e trasformare queste
+              esperienze in ricordi difficili da dimenticare.
+            </p>
+          </AboutSection>
 
           <AboutSection title="Visione" index={1} align="right">
             <p>
@@ -134,11 +103,7 @@ export default function AboutPage() {
             </p>
           </AboutSection>
 
-          <ChalkArrowConnector variant="shortRtl" />
-
           <FounderSection index={2} />
-
-          <ChalkArrowConnector variant="tallDown" />
 
           <TeamSection index={3} />
         </div>

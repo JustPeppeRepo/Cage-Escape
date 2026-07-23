@@ -18,7 +18,7 @@ export function SiteFooter() {
         </Link>
       </nav>
       <details className="mx-auto mt-6 max-w-md text-left">
-        <summary className="cursor-pointer text-bone/40 hover:text-bone/60">
+        <summary className="cursor-pointer text-center text-bone/40 hover:text-bone/60">
           Dettagli che preferiremmo non mostrare
         </summary>
         <p className="mt-2 text-xs leading-relaxed text-bone/40">

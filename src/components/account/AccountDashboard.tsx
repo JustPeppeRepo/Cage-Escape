@@ -164,6 +164,7 @@ function ProfileSection({
                     alt={avatar.label}
                     width={56}
                     height={56}
+                    unoptimized
                     className="h-14 w-14 rounded object-contain"
                   />
                 </div>
@@ -218,6 +219,7 @@ function ProfileSection({
             alt="Anteprima avatar"
             width={48}
             height={48}
+            unoptimized
             className="h-12 w-12 rounded"
           />
           <div>

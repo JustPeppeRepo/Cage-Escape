@@ -1,3 +1,4 @@
+import { getReviewCoverUrl } from "@/app/_lib/media/urls";
 import { getPublishedReviews } from "@/app/_lib/site/content";
 import { ReviewCard } from "@/components/horror/ReviewCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -27,6 +28,7 @@ export async function HomeReviewsSection() {
           key={`${keyPrefix}-${copyIndex}-${review.id}`}
           author={review.author}
           quote={review.quote}
+          imageUrl={getReviewCoverUrl(review)}
           imagePosition={IMAGE_POSITIONS[index % IMAGE_POSITIONS.length]}
         />
       )),

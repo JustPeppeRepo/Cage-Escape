@@ -9,6 +9,7 @@ import {
   adminInputClassName,
   adminLabelClassName,
 } from "@/components/admin/AdminFormFeedback";
+import { MediaUploadField } from "@/components/admin/MediaUploadField";
 
 type RoomFormProps = {
   room?: {
@@ -23,6 +24,7 @@ type RoomFormProps = {
     maxPlayers: number;
     terrorLevel: number;
     isActive: boolean;
+    imageUrl: string | null;
   };
 };
 
@@ -36,6 +38,18 @@ export function RoomForm({ room }: RoomFormProps) {
     <form action={formAction} className="flex flex-col gap-4">
       {room ? <input type="hidden" name="id" value={room.id} readOnly /> : null}
       <AdminFormFeedback state={state} />
+
+      {room ? (
+        <MediaUploadField
+          uploadUrl={`/api/admin/media/rooms/${room.id}`}
+          currentImageUrl={room.imageUrl}
+          label="Foto stanza"
+        />
+      ) : (
+        <p className="rounded border border-void-mist px-3 py-2 text-sm text-bone/60">
+          Dopo aver creato la stanza potrai caricare la foto di copertina.
+        </p>
+      )}
 
       <label className={adminLabelClassName}>
         Slug

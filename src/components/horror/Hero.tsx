@@ -23,16 +23,22 @@ export function Hero() {
         </h1>
 
         <p className="hero-subtitle relative max-w-xl text-lg text-bone/80">
-          90 minuti. Nessuna via di fuga facile. Solo chi conserva la lucidità
-          esce dal Manicomio prima che la mezzanotte lo reclami.
+          Non sei qui per guardare una storia.
+          <br />
+          Non sei qui per seguire un copione.
+          <br />
+          Esplora. Decidi. Agisci.
+          <br />
+          E scopri cosa sei disposto a fare quando non puoi più tornare
+          indietro
         </p>
 
         <div className="hero-cta relative">
           <Link
             href="/rooms"
-            className="hover:animate-glitch-hover inline-block rounded-sm border-2 border-blood bg-blood/20 px-6 py-3 text-base font-semibold uppercase tracking-widest text-bone shadow-[0_0_25px_rgba(133,32,38,0.5)] transition-colors hover:bg-blood/40 sm:px-10 sm:py-4 sm:text-lg"
+            className="animate-glitch-soft inline-block rounded bg-blood px-6 py-3 text-base font-semibold uppercase tracking-widest text-bone transition-colors hover:bg-blood-bright sm:px-10 sm:py-4 sm:text-lg"
           >
-            Prenota se hai coraggio
+            Prenota l&apos;esperienza
           </Link>
         </div>
       </div>
