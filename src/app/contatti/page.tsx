@@ -22,10 +22,15 @@ const ContactForm = dynamic(
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "Contatti | Cage Room",
+  title: "Contatti",
   description:
-    "Contattaci per prenotazioni, informazioni o per segnalare qualcosa di strano uscito dalla stanza.",
+    "Contatta Cage Escape Room per prenotazioni e informazioni. Scrivici o vieni a trovarci.",
   alternates: { canonical: "/contatti" },
+  openGraph: {
+    title: "Contatti | Cage Escape Room",
+    description:
+      "Contatta Cage Escape Room per prenotazioni, orari e informazioni sulle escape room horror.",
+  },
 };
 
 export default function ContattiPage() {
@@ -36,9 +41,9 @@ export default function ContattiPage() {
           <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">
             Scopri come trovarci
           </span>
-          <h2 className="mt-2 font-heading text-4xl text-blood-bright">
+          <h1 className="mt-2 font-heading text-4xl text-blood-bright">
             Contatti
-          </h2>
+          </h1>
           <p className="mt-4 text-bone/70">
             Scrivici per qualsiasi dubbio. Il recupero dei corpi non è incluso
             nel prezzo della prenotazione, ma possiamo indicarti un servizio

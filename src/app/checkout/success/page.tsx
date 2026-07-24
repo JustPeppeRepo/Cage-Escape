@@ -9,7 +9,7 @@ import { formatEuroAmount } from "@/app/_lib/bookings/money";
 import { PaymentStatusPoller } from "@/components/horror/checkout/PaymentStatusPoller";
 
 export const metadata: Metadata = {
-  title: "Pagamento | Cage Room",
+  title: "Pagamento",
   robots: { index: false, follow: false },
 };
 
@@ -88,9 +88,9 @@ export default async function CheckoutSuccessPage({
       <div className="mx-auto flex max-w-xl flex-col gap-6">
         {isConfirmed ? (
           <div className="rounded-md border border-ectoplasm/40 bg-void-deep p-6">
-            <h2 className="mb-2 font-heading text-3xl text-blood-bright">
+            <h1 className="mb-2 font-heading text-3xl text-blood-bright">
               Prenotazione confermata
-            </h2>
+            </h1>
             <p className="mb-4 text-sm text-bone/70">
               Ti aspettiamo, se hai il coraggio di presentarti.
             </p>

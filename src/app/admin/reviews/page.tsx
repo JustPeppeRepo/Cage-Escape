@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/dal";
 import { ReviewsManager } from "@/components/admin/ReviewsManager";
 
 export const metadata: Metadata = {
-  title: "Recensioni | Admin | Cage Room",
+  title: "Recensioni | Admin",
   robots: { index: false, follow: false },
 };
 

@@ -15,9 +15,16 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Cage Room — Escape Room Horror | Prenota il tuo incubo",
+  title: {
+    absolute: "Cage Escape Room — Escape Room Horror | Prenota il tuo incubo",
+  },
   description:
-    "Prenota la tua escape room a tema horror. Enigmi, terrore e 90 minuti per sopravvivere. Prenotazione online sicura e immediata.",
+    "Prenota da Cage Escape Room la tua escape room horror. Enigmi, terrore e 90 minuti per sopravvivere. Prenotazione online sicura e immediata.",
+  openGraph: {
+    title: "Cage Escape Room — Escape Room Horror | Prenota il tuo incubo",
+    description:
+      "Prenota da Cage Escape Room la tua escape room horror. Enigmi, terrore e 90 minuti per sopravvivere.",
+  },
 };
 
 const FAQ_ITEMS = [
@@ -47,7 +54,7 @@ export default function Home() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    name: "Cage Room",
+    name: "Cage Escape Room",
     description:
       "Escape room a tema horror con esperienze immersive per gruppi.",
     url: env.NEXT_PUBLIC_APP_URL,

@@ -7,7 +7,7 @@ import { formatEuroAmount } from "@/app/_lib/bookings/money";
 import { CancelBookingButton } from "@/components/admin/CancelBookingButton";
 
 export const metadata: Metadata = {
-  title: "Prenotazioni | Admin | Cage Room",
+  title: "Prenotazioni | Admin",
   robots: { index: false, follow: false },
 };
 

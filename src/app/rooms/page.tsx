@@ -7,10 +7,15 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Le nostre stanze horror | Cage Room",
+  title: "Stanze escape room horror",
   description:
-    "Scopri tutte le escape room a tema horror di Cage Room. Scegli la tua stanza e prenota online in pochi minuti.",
+    "Scopri tutte le escape room horror di Cage Escape Room. Scegli la stanza e prenota online in pochi minuti.",
   alternates: { canonical: "/rooms" },
+  openGraph: {
+    title: "Stanze escape room horror | Cage Escape Room",
+    description:
+      "Scopri tutte le escape room horror di Cage Escape Room. Scegli la stanza e prenota online.",
+  },
 };
 
 export default async function RoomsPage() {
@@ -20,7 +25,11 @@ export default async function RoomsPage() {
   return (
     <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
-        <SectionHeading eyebrow="Scegli la tua storia" title="Le nostre stanze" />
+        <SectionHeading
+          as="h1"
+          eyebrow="Scegli la tua storia"
+          title="Le nostre stanze"
+        />
         <RoomsGrid rooms={roomSummaries} />
       </div>
     </main>

@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/dal";
 import { ScheduleManager } from "@/components/admin/ScheduleManager";
 
 export const metadata: Metadata = {
-  title: "Orari | Admin | Cage Room",
+  title: "Orari | Admin",
   robots: { index: false, follow: false },
 };
 

@@ -41,10 +41,15 @@ const TeamSection = dynamic(
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "Chi siamo | Cage Room",
+  title: "Chi siamo",
   description:
-    "Missione, visione e fondatore di CAGE: escape room immersive dove le avventure non si osservano — si attraversano.",
+    "Chi è Cage Escape Room: missione, visione e fondatore. Escape room immersive dove le avventure non si osservano — si attraversano.",
   alternates: { canonical: "/about" },
+  openGraph: {
+    title: "Chi siamo | Cage Escape Room",
+    description:
+      "Missione, visione e fondatore di Cage Escape Room: escape room immersive horror.",
+  },
 };
 
 export default function AboutPage() {
@@ -55,13 +60,13 @@ export default function AboutPage() {
           <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">
             Scopri l&apos;esperienza CAGE
           </span>
-          <h2 className="relative inline-block font-heading text-4xl text-blood-bright sm:text-5xl">
+          <h1 className="relative inline-block font-heading text-4xl text-blood-bright sm:text-5xl">
             Chi siamo
             <span
               aria-hidden="true"
               className="absolute -bottom-2 left-1/2 h-[2px] w-24 -translate-x-1/2 bg-blood"
             />
-          </h2>
+          </h1>
         </header>
 
         <div className="flex flex-col gap-10 sm:gap-8">

@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/dal";
 import { RoomForm } from "@/components/admin/RoomForm";
 
 export const metadata: Metadata = {
-  title: "Nuova stanza | Admin | Cage Room",
+  title: "Nuova stanza | Admin",
   robots: { index: false, follow: false },
 };
 

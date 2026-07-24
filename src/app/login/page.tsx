@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/horror/auth/LoginForm";
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = {
-  title: "Accedi | Cage Room",
+  title: "Accedi",
   robots: { index: false, follow: false },
 };
 
@@ -18,9 +18,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-void px-6 py-24 text-bone">
       <div className="w-full max-w-sm">
-        <h2 className="mb-6 text-center font-heading text-3xl text-blood-bright">
+        <h1 className="mb-6 text-center font-heading text-3xl text-blood-bright">
           Accedi
-        </h2>
+        </h1>
         <LoginForm callbackUrl={safeCallbackUrl} />
       </div>
     </main>

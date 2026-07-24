@@ -4,7 +4,7 @@ import { getMaledizionePageData } from "@/app/_actions/maledizione";
 import { MaledizioneGame } from "@/components/horror/maledizione/MaledizioneGame";
 
 export const metadata: Metadata = {
-  title: "Il Rito della Maledizione | Cage Room",
+  title: "Il Rito della Maledizione",
   description:
     "Mini-gioco segreto: affronta l'enigma al buio e sblocca uno sconto sulla tua prossima prenotazione.",
   robots: { index: false, follow: false },
@@ -19,9 +19,9 @@ export default async function MaledizionePage() {
         <Link href="/" className="text-sm text-bone/50 hover:text-bone">
           ← Torna alla home
         </Link>
-        <h2 className="mt-6 font-heading text-4xl text-blood-bright">
+        <h1 className="mt-6 font-heading text-4xl text-blood-bright">
           Il Rito della Maledizione
-        </h2>
+        </h1>
         <p className="mt-4 text-bone/70">
           Pochi osano arrivare fin qui. Risolvi l&apos;enigma e otterrai un codice
           sconto — se il rito è ancora aperto.

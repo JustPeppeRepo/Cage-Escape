@@ -10,7 +10,7 @@ import { getBookingChargeAmount } from "@/app/_lib/bookings/charge-amount";
 import { CheckoutClient } from "@/components/horror/checkout/CheckoutClient";
 
 export const metadata: Metadata = {
-  title: "Completa la prenotazione | Cage Room",
+  title: "Completa la prenotazione",
   robots: { index: false, follow: false },
 };
 
@@ -72,9 +72,9 @@ export default async function CheckoutPage({
   return (
     <main className="min-h-screen bg-void px-6 py-24 text-bone">
       <div className="mx-auto flex max-w-xl flex-col gap-6">
-        <h2 className="font-heading text-3xl text-blood-bright">
+        <h1 className="font-heading text-3xl text-blood-bright">
           Completa la prenotazione
-        </h2>
+        </h1>
 
         {isHoldActive ? (
           <CheckoutClient

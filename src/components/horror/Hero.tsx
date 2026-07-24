@@ -18,9 +18,9 @@ export function Hero() {
           }}
         />
 
-        <h2 className="relative font-heading text-5xl text-blood-bright sm:text-7xl">
+        <h1 className="relative font-heading text-5xl text-blood-bright sm:text-7xl">
           Riuscirai a uscirne vivo?
-        </h2>
+        </h1>
 
         <p className="hero-subtitle relative max-w-xl text-lg text-bone/80">
           Non sei qui per guardare una storia.

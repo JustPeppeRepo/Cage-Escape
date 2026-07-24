@@ -9,7 +9,7 @@ import {
 } from "@/components/account/AccountDashboard";
 
 export const metadata: Metadata = {
-  title: "Il mio account | Cage Room",
+  title: "Il mio account",
   robots: { index: false, follow: false },
   alternates: { canonical: "/account" },
 };
@@ -53,9 +53,9 @@ export default async function AccountPage() {
     <main className="min-h-screen bg-void px-4 py-16 text-bone sm:px-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
         <div>
-          <h2 className="font-heading text-4xl text-blood-bright">
+          <h1 className="font-heading text-4xl text-blood-bright">
             Il mio account
-          </h2>
+          </h1>
           <p className="mt-2 text-bone/60">
             Gestisci profilo, ordini e sicurezza del tuo account.
           </p>

@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/dal";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
 
 export const metadata: Metadata = {
-  title: "Stanze | Admin | Cage Room",
+  title: "Stanze | Admin",
   robots: { index: false, follow: false },
 };
 

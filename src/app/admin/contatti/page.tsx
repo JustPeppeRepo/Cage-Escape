@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/dal";
 import { ContactMessagesManager } from "@/components/admin/ContactMessagesManager";
 
 export const metadata: Metadata = {
-  title: "Messaggi | Admin | Cage Room",
+  title: "Messaggi | Admin",
   robots: { index: false, follow: false },
 };
 

@@ -5,7 +5,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
 
 export const metadata: Metadata = {
-  title: "Amministrazione | Cage Room",
+  title: "Amministrazione",
   robots: { index: false, follow: false },
 };
 

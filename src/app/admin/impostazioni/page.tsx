@@ -4,7 +4,7 @@ import { getSiteSettings } from "@/app/_lib/admin/site-settings";
 import { SiteSettingsForm } from "@/components/admin/SiteSettingsForm";
 
 export const metadata: Metadata = {
-  title: "Impostazioni | Admin | Cage Room",
+  title: "Impostazioni | Admin",
   robots: { index: false, follow: false },
 };
 

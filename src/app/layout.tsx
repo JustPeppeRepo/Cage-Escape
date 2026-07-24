@@ -17,24 +17,24 @@ const displayFont = Anton({
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   title: {
-    default: "Cage Room — Escape Room Horror",
-    template: "%s",
+    default: "Cage Escape Room — Escape Room Horror | Prenota online",
+    template: "%s | Cage Escape Room",
   },
   description:
-    "Escape room a tema horror. Sopravvivi 90 minuti tra enigmi e terrore puro, se ci riesci.",
+    "Cage Escape Room: escape room horror immersive. Prenota online e sopravvivi 90 minuti tra enigmi e terrore puro.",
   openGraph: {
     type: "website",
     locale: "it_IT",
-    siteName: "Cage Room",
-    title: "Cage Room — Escape Room Horror",
+    siteName: "Cage Escape Room",
+    title: "Cage Escape Room — Escape Room Horror",
     description:
-      "Prenota la tua escape room a tema horror. Enigmi, terrore e 90 minuti per sopravvivere.",
+      "Prenota la tua escape room horror da Cage Escape Room. Enigmi, terrore e 90 minuti per sopravvivere.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cage Room — Escape Room Horror",
+    title: "Cage Escape Room — Escape Room Horror",
     description:
-      "Prenota la tua escape room a tema horror. Enigmi, terrore e 90 minuti per sopravvivere.",
+      "Prenota la tua escape room horror da Cage Escape Room. Enigmi, terrore e 90 minuti per sopravvivere.",
   },
   robots: {
     index: true,
