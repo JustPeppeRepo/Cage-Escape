@@ -9,7 +9,7 @@ export function Hero() {
       <FogOverlay />
 
       <div className="relative z-10 flex max-w-3xl flex-col items-center">
-        <div className="-translate-y-8 flex flex-col items-center gap-6 sm:-translate-y-10">
+        <div className="-translate-y-8 flex flex-col items-center gap-4 sm:-translate-y-10 sm:gap-5">
           <h1 className="relative font-heading text-5xl text-blood-bright sm:text-7xl">
             Riuscirai a uscirne vivo?
           </h1>
@@ -26,7 +26,7 @@ export function Hero() {
           </p>
         </div>
 
-        <div className="hero-cta relative mt-8 translate-y-2 sm:mt-10 sm:translate-y-3">
+        <div className="hero-cta relative mt-5 sm:mt-6">
           <Link
             href="/rooms"
             className="hero-cta-pulse inline-block rounded-sm border-2 border-bone bg-bone px-8 py-4 font-heading text-lg tracking-widest text-void-deep shadow-[0_0_28px_rgba(232,226,214,0.35)] transition-colors hover:bg-white hover:text-void sm:px-12 sm:py-5 sm:text-xl"
