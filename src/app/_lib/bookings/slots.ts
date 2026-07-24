@@ -328,6 +328,12 @@ export async function getAvailableSlotsForRoom(
   durationMinutes: number,
   dateStr: string,
 ): Promise<TimeSlot[]> {
+  // Il vincolo EXCLUDE a DB tratta tutti i PENDING come occupanti, anche
+  // con hold scaduto. Senza rilascio qui la UI mostrerebbe lo slot libero
+  // (getOccupiedSlots ignora gli hold scaduti) ma il successivo insert
+  // fallirebbe contro il PENDING zombie.
+  await releaseExpiredHolds();
+
   const { dayStart, dayEnd } = getDayBounds(dateStr);
   const [schedule, occupied] = await Promise.all([
     resolveDaySchedule(dateStr, roomId),

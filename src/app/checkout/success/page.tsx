@@ -132,7 +132,8 @@ export default async function CheckoutSuccessPage({
             </h2>
             <p className="mb-4 text-sm text-bone/70">
               Questa prenotazione non è andata a buon fine. Se hai effettuato
-              un pagamento, verrà rimborsato automaticamente da Stripe.
+              un pagamento e non vedi un rimborso, contattaci: lo staff
+              verificherà la situazione.
             </p>
             <Link
               href={`/rooms/${booking.room.slug}`}

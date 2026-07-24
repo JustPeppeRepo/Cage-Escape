@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   BookingStatus,
   PaymentStatus,
@@ -11,7 +11,11 @@ import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
 import { isSlotAvailable } from "@/app/_lib/bookings/slots";
 import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
-import { getBookingChargeAmountNumber } from "@/app/_lib/bookings/charge-amount";
+import { getBookingChargeAmount } from "@/app/_lib/bookings/charge-amount";
+import {
+  decimalToStripeCents,
+  stripeCentsToDecimal,
+} from "@/app/_lib/bookings/money";
 import { sendStripeOpsAlert } from "@/app/_lib/stripe/ops-alert";
 
 export const runtime = "nodejs";
@@ -31,6 +35,22 @@ function queueStripeOpsAlert(
   alerts.push({ subject, details });
 }
 
+function scheduleStripeOpsAlerts(alerts: StripeOpsAlertPayload[]): void {
+  if (alerts.length === 0) {
+    return;
+  }
+
+  // Non attendere Resend prima del 200: Stripe ritenta se l'endpoint
+  // supera ~5s. Gli alert sono best-effort (gia' loggati se falliscono).
+  after(async () => {
+    await Promise.all(alerts.map((alert) => sendStripeOpsAlert(alert)));
+  });
+}
+
+function paidCentsFromSession(checkoutSession: Stripe.Checkout.Session): number {
+  return checkoutSession.amount_total ?? 0;
+}
+
 // Stripe ha gia' incassato il pagamento in TUTTI i rami che portano a
 // PAYMENT_CONFLICT_REFUND_REQUIRED: senza una riga Payment tracciata qui,
 // l'unica traccia del denaro incassato resta l'email di alert, e sia il
@@ -44,7 +64,7 @@ async function recordConflictPayment(
   params: {
     bookingId: string;
     paymentIntentId: string;
-    amount: number;
+    amountCents: number;
     type: PaymentType;
   },
 ): Promise<void> {
@@ -53,7 +73,7 @@ async function recordConflictPayment(
       data: {
         bookingId: params.bookingId,
         stripePaymentId: params.paymentIntentId,
-        amount: params.amount,
+        amount: stripeCentsToDecimal(params.amountCents),
         type: params.type,
         status: PaymentStatus.SUCCEEDED,
         paidAt: new Date(),
@@ -70,26 +90,34 @@ async function recordConflictPayment(
   }
 }
 
-async function dispatchStripeOpsAlerts(alerts: StripeOpsAlertPayload[]): Promise<void> {
-  await Promise.all(alerts.map((alert) => sendStripeOpsAlert(alert)));
+async function wasWebhookEventProcessed(eventId: string): Promise<boolean> {
+  const existing = await prisma.stripeWebhookEvent.findUnique({
+    where: { id: eventId },
+    select: { id: true },
+  });
+  return existing !== null;
 }
 
-function getExpectedAmount(
-  booking: {
-    paymentChoice: PaymentType;
-    discountCode?: { discountPercent: number } | null;
-  },
-  tier: {
-    totalPrice: { toString(): string };
-    depositPrice: { toString(): string };
-  },
-): number {
-  return getBookingChargeAmountNumber(booking, tier);
+async function markWebhookEventProcessed(event: Stripe.Event): Promise<void> {
+  try {
+    await prisma.stripeWebhookEvent.create({
+      data: { id: event.id, type: event.type },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      // Un altro worker ha gia' marcato lo stesso event.id: ok.
+      return;
+    }
+    throw error;
+  }
 }
 
 async function handleCheckoutCompleted(
   checkoutSession: Stripe.Checkout.Session,
-): Promise<void> {
+): Promise<StripeOpsAlertPayload[]> {
   const bookingId = checkoutSession.metadata?.bookingId;
   const paymentChoiceRaw = checkoutSession.metadata?.paymentChoice;
 
@@ -108,9 +136,12 @@ async function handleCheckoutCompleted(
   if (checkoutSession.payment_status !== "paid") {
     console.warn(
       "[stripe webhook] checkout.session.completed con payment_status non 'paid', ignorato:",
-      JSON.stringify({ sessionId: checkoutSession.id, paymentStatus: checkoutSession.payment_status }),
+      JSON.stringify({
+        sessionId: checkoutSession.id,
+        paymentStatus: checkoutSession.payment_status,
+      }),
     );
-    return;
+    return [];
   }
 
   if (
@@ -182,21 +213,21 @@ async function handleCheckoutCompleted(
         // traccia nel nostro DB per un rimborso. Non tocchiamo lo stato
         // della prenotazione (gia corretto), registriamo solo il pagamento
         // duplicato per il rimborso manuale.
-        const duplicatePaidAmount = (checkoutSession.amount_total ?? 0) / 100;
+        const duplicatePaidCents = paidCentsFromSession(checkoutSession);
         console.error(
           "[stripe webhook] PAGAMENTO DUPLICATO su booking gia confermato - rimborso manuale richiesto:",
           JSON.stringify({
             bookingId: booking.id,
             paymentIntentId,
             existingStatus: booking.status,
-            duplicatePaidAmount,
+            duplicatePaidCents,
           }),
         );
         await tx.payment.create({
           data: {
             bookingId: booking.id,
             stripePaymentId: paymentIntentId,
-            amount: duplicatePaidAmount,
+            amount: stripeCentsToDecimal(duplicatePaidCents),
             type: paymentChoice,
             status: PaymentStatus.SUCCEEDED,
             paidAt: new Date(),
@@ -206,27 +237,31 @@ async function handleCheckoutCompleted(
           bookingId: booking.id,
           paymentIntentId,
           existingStatus: booking.status,
-          duplicatePaidAmount,
+          duplicatePaidCents,
         });
         return;
       }
 
       if (booking.status === BookingStatus.CANCELLED) {
         // L'utente (o l'admin) ha annullato la prenotazione, ma il link di
-        // pagamento Stripe era rimasto apert (es. altra tab) e viene
+        // pagamento Stripe era rimasto aperto (es. altra tab) e viene
         // completato comunque. Senza questo guard il codice sotto
         // proseguirebbe verso la conferma normale, "resuscitando" una
         // prenotazione annullata. Il denaro e' comunque stato incassato da
         // Stripe: lo registriamo per rimborso manuale invece di ignorarlo.
-        const cancelledPaidAmount = (checkoutSession.amount_total ?? 0) / 100;
+        const cancelledPaidCents = paidCentsFromSession(checkoutSession);
         console.error(
           "[stripe webhook] Pagamento completato su booking gia CANCELLED - rimborso manuale richiesto:",
-          JSON.stringify({ bookingId: booking.id, paymentIntentId, cancelledPaidAmount }),
+          JSON.stringify({
+            bookingId: booking.id,
+            paymentIntentId,
+            cancelledPaidCents,
+          }),
         );
         await recordConflictPayment(tx, {
           bookingId: booking.id,
           paymentIntentId,
-          amount: cancelledPaidAmount,
+          amountCents: cancelledPaidCents,
           type: paymentChoice,
         });
         await tx.booking.update({
@@ -239,7 +274,7 @@ async function handleCheckoutCompleted(
         queueStripeOpsAlert(opsAlerts, "Pagamento completato su booking annullato", {
           bookingId: booking.id,
           paymentIntentId,
-          conflictAmount: cancelledPaidAmount,
+          conflictAmountCents: cancelledPaidCents,
         });
         return;
       }
@@ -251,25 +286,25 @@ async function handleCheckoutCompleted(
       // conflitto), va comunque tracciato: senza questo il secondo incasso
       // sparirebbe senza alcuna traccia ne' alert.
       if (booking.status === BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED) {
-        const conflictPaidAmount = (checkoutSession.amount_total ?? 0) / 100;
+        const conflictPaidCents = paidCentsFromSession(checkoutSession);
         console.error(
           "[stripe webhook] Nuovo pagamento su booking gia in conflitto - rimborso manuale richiesto:",
           JSON.stringify({
             bookingId: booking.id,
             paymentIntentId,
-            conflictPaidAmount,
+            conflictPaidCents,
           }),
         );
         await recordConflictPayment(tx, {
           bookingId: booking.id,
           paymentIntentId,
-          amount: conflictPaidAmount,
+          amountCents: conflictPaidCents,
           type: paymentChoice,
         });
         queueStripeOpsAlert(opsAlerts, "Nuovo pagamento su booking gia in conflitto", {
           bookingId: booking.id,
           paymentIntentId,
-          conflictPaidAmount,
+          conflictPaidCents,
         });
         return;
       }
@@ -285,7 +320,7 @@ async function handleCheckoutCompleted(
         paymentChoiceRaw !== booking.paymentChoice ||
         (metadataUserId && metadataUserId !== booking.userId)
       ) {
-        const metadataConflictAmount = (checkoutSession.amount_total ?? 0) / 100;
+        const metadataConflictCents = paidCentsFromSession(checkoutSession);
         console.error(
           "[stripe webhook] Metadata sessione incoerenti con il booking - rimborso manuale richiesto:",
           JSON.stringify({
@@ -300,7 +335,7 @@ async function handleCheckoutCompleted(
         await recordConflictPayment(tx, {
           bookingId: booking.id,
           paymentIntentId,
-          amount: metadataConflictAmount,
+          amountCents: metadataConflictCents,
           type: paymentChoice,
         });
         await tx.booking.update({
@@ -317,7 +352,7 @@ async function handleCheckoutCompleted(
           bookingPaymentChoice: booking.paymentChoice,
           metadataUserId,
           bookingUserId: booking.userId,
-          conflictAmount: metadataConflictAmount,
+          conflictAmountCents: metadataConflictCents,
         });
         return;
       }
@@ -326,7 +361,7 @@ async function handleCheckoutCompleted(
       // valuta effettiva della sessione pagata prima di confermare, stesso
       // trattamento del mismatch di importo qui sotto.
       if (checkoutSession.currency !== "eur") {
-        const currencyConflictAmount = (checkoutSession.amount_total ?? 0) / 100;
+        const currencyConflictCents = paidCentsFromSession(checkoutSession);
         console.error(
           "[stripe webhook] Valuta inattesa - rimborso manuale richiesto:",
           JSON.stringify({
@@ -338,7 +373,7 @@ async function handleCheckoutCompleted(
         await recordConflictPayment(tx, {
           bookingId: booking.id,
           paymentIntentId,
-          amount: currencyConflictAmount,
+          amountCents: currencyConflictCents,
           type: paymentChoice,
         });
         await tx.booking.update({
@@ -352,7 +387,7 @@ async function handleCheckoutCompleted(
           bookingId: booking.id,
           paymentIntentId,
           currency: checkoutSession.currency,
-          conflictAmount: currencyConflictAmount,
+          conflictAmountCents: currencyConflictCents,
         });
         return;
       }
@@ -368,7 +403,7 @@ async function handleCheckoutCompleted(
         // incassato. Il pagamento e gia stato preso da Stripe, quindi
         // segnaliamo per rimborso manuale invece di rischiare un calcolo
         // errato.
-        const missingTierPaidAmount = (checkoutSession.amount_total ?? 0) / 100;
+        const missingTierPaidCents = paidCentsFromSession(checkoutSession);
         console.error(
           "[stripe webhook] Nessuna fascia di prezzo trovata - rimborso manuale richiesto:",
           JSON.stringify({
@@ -381,7 +416,7 @@ async function handleCheckoutCompleted(
         await recordConflictPayment(tx, {
           bookingId: booking.id,
           paymentIntentId,
-          amount: missingTierPaidAmount,
+          amountCents: missingTierPaidCents,
           type: paymentChoice,
         });
         await tx.booking.update({
@@ -396,28 +431,36 @@ async function handleCheckoutCompleted(
           paymentIntentId,
           roomId: booking.roomId,
           participantCount: booking.participantCount,
-          conflictAmount: missingTierPaidAmount,
+          conflictAmountCents: missingTierPaidCents,
         });
         return;
       }
 
-      const expectedAmount = getExpectedAmount(booking, tier);
-      const paidAmount = (checkoutSession.amount_total ?? 0) / 100;
+      const expectedCents = decimalToStripeCents(
+        getBookingChargeAmount(booking, tier),
+      );
+      const paidCents = paidCentsFromSession(checkoutSession);
 
-      if (Math.abs(paidAmount - expectedAmount) > 0.01) {
+      if (paidCents !== expectedCents) {
         // L'importo incassato da Stripe non coincide con quello atteso (es.
         // la fascia di prezzo e cambiata tra la creazione della sessione e
-        // la consegna del webhook). Non confermiamo mai un pagamento sulla
-        // base di un importo che non sappiamo validare: meglio un falso
-        // rimborso manuale che una prenotazione confermata a un prezzo errato.
+        // la consegna del webhook). Confronto in centesimi interi: niente
+        // tolleranza float. Non confermiamo mai un pagamento sulla base di
+        // un importo che non sappiamo validare.
         console.error(
           "[stripe webhook] AMOUNT MISMATCH - rimborso manuale richiesto:",
-          JSON.stringify({ bookingId, paymentIntentId, expectedAmount, paidAmount, paymentChoice }),
+          JSON.stringify({
+            bookingId,
+            paymentIntentId,
+            expectedCents,
+            paidCents,
+            paymentChoice,
+          }),
         );
         await recordConflictPayment(tx, {
           bookingId: booking.id,
           paymentIntentId,
-          amount: paidAmount,
+          amountCents: paidCents,
           type: paymentChoice,
         });
         await tx.booking.update({
@@ -430,8 +473,8 @@ async function handleCheckoutCompleted(
         queueStripeOpsAlert(opsAlerts, "Importo Stripe diverso da atteso", {
           bookingId,
           paymentIntentId,
-          expectedAmount,
-          paidAmount,
+          expectedCents,
+          paidCents,
           paymentChoice,
         });
         return;
@@ -470,7 +513,7 @@ async function handleCheckoutCompleted(
           await recordConflictPayment(tx, {
             bookingId: booking.id,
             paymentIntentId,
-            amount: paidAmount,
+            amountCents: paidCents,
             type: paymentChoice,
           });
           await tx.booking.update({
@@ -486,7 +529,7 @@ async function handleCheckoutCompleted(
             roomId: booking.roomId,
             startTime: booking.startTime.toISOString(),
             endTime: booking.endTime.toISOString(),
-            conflictAmount: paidAmount,
+            conflictAmountCents: paidCents,
           });
           return;
         }
@@ -523,7 +566,7 @@ async function handleCheckoutCompleted(
               await recordConflictPayment(tx, {
                 bookingId: booking.id,
                 paymentIntentId,
-                amount: paidAmount,
+                amountCents: paidCents,
                 type: paymentChoice,
               });
               await tx.booking.update({
@@ -538,7 +581,7 @@ async function handleCheckoutCompleted(
                 paymentIntentId,
                 discountCodeId: booking.discountCodeId,
                 redeemedByBookingId: redeemedByOther.id,
-                conflictAmount: paidAmount,
+                conflictAmountCents: paidCents,
               });
               return;
             }
@@ -558,7 +601,7 @@ async function handleCheckoutCompleted(
           data: {
             bookingId: booking.id,
             stripePaymentId: paymentIntentId,
-            amount: expectedAmount,
+            amount: stripeCentsToDecimal(expectedCents),
             type: paymentChoice,
             status: PaymentStatus.SUCCEEDED,
             paidAt: new Date(),
@@ -583,7 +626,7 @@ async function handleCheckoutCompleted(
         await recordConflictPayment(tx, {
           bookingId: booking.id,
           paymentIntentId,
-          amount: paidAmount,
+          amountCents: paidCents,
           type: paymentChoice,
         });
         await tx.booking.update({
@@ -596,14 +639,14 @@ async function handleCheckoutCompleted(
         queueStripeOpsAlert(opsAlerts, "Conflitto su update finale booking", {
           bookingId: booking.id,
           paymentIntentId,
-          conflictAmount: paidAmount,
+          conflictAmountCents: paidCents,
         });
       }
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
 
-  await dispatchStripeOpsAlerts(opsAlerts);
+  return opsAlerts;
 }
 
 async function handleCheckoutExpired(
@@ -635,6 +678,117 @@ async function handleCheckoutExpired(
   });
 }
 
+/**
+ * Rimborsi avviati da Dashboard Stripe / API esterne (non solo cancel app).
+ * Totale: marca Payment REFUNDED; se non restano SUCCEEDED, CANCELLED + slot libero.
+ * Parziale: non libera lo slot automaticamente — escalation ops.
+ */
+async function handleChargeRefunded(
+  charge: Stripe.Charge,
+): Promise<StripeOpsAlertPayload[]> {
+  const opsAlerts: StripeOpsAlertPayload[] = [];
+
+  const paymentIntentId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+
+  if (!paymentIntentId) {
+    console.warn(
+      "[stripe webhook] charge.refunded senza payment_intent:",
+      charge.id,
+    );
+    return opsAlerts;
+  }
+
+  const payment = await prisma.payment.findUnique({
+    where: { stripePaymentId: paymentIntentId },
+    include: {
+      booking: {
+        include: {
+          payments: true,
+        },
+      },
+    },
+  });
+
+  if (!payment) {
+    // Rimborso su un PI non tracciato (sessione test, pagamento fuori app).
+    return opsAlerts;
+  }
+
+  const isFullyRefunded =
+    charge.refunded === true || charge.amount_refunded >= charge.amount;
+
+  if (!isFullyRefunded) {
+    queueStripeOpsAlert(opsAlerts, "Rimborso parziale Stripe (slot non liberato)", {
+      chargeId: charge.id,
+      paymentIntentId,
+      bookingId: payment.bookingId,
+      amount: charge.amount,
+      amountRefunded: charge.amount_refunded,
+      bookingStatus: payment.booking.status,
+    });
+    return opsAlerts;
+  }
+
+  if (payment.status !== PaymentStatus.REFUNDED) {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: PaymentStatus.REFUNDED },
+    });
+  }
+
+  const remainingSucceeded = await prisma.payment.count({
+    where: {
+      bookingId: payment.bookingId,
+      status: PaymentStatus.SUCCEEDED,
+    },
+  });
+
+  if (remainingSucceeded > 0) {
+    queueStripeOpsAlert(
+      opsAlerts,
+      "Rimborso totale di un pagamento ma ne restano altri SUCCEEDED",
+      {
+        chargeId: charge.id,
+        paymentIntentId,
+        bookingId: payment.bookingId,
+        remainingSucceeded,
+      },
+    );
+    return opsAlerts;
+  }
+
+  // Tutti i pagamenti rimborsati: libera lo slot (CANCELLED esce dal
+  // vincolo EXCLUDE PENDING/DEPOSIT_PAID/PAID).
+  const cancelled = await prisma.booking.updateMany({
+    where: {
+      id: payment.bookingId,
+      status: {
+        in: [
+          BookingStatus.PAID,
+          BookingStatus.DEPOSIT_PAID,
+          BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED,
+        ],
+      },
+    },
+    data: {
+      status: BookingStatus.CANCELLED,
+      holdExpiresAt: null,
+    },
+  });
+
+  if (cancelled.count === 0) {
+    console.info(
+      "[stripe webhook] charge.refunded: booking gia non occupante",
+      payment.bookingId,
+    );
+  }
+
+  return opsAlerts;
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   const signature = request.headers.get("stripe-signature");
 
@@ -659,11 +813,21 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  // Claim DOPO il processing riuscito: se rispondessimo 200 su un claim
+  // anticipato mentre un handler concorrente fallisce e rilascia il claim,
+  // Stripe smetterebbe di ritentare e l'evento andrebbe perso. I handler
+  // sono gia' idempotenti (stripePaymentId / updateMany guarded).
+  if (await wasWebhookEventProcessed(event.id)) {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+
   try {
+    let opsAlerts: StripeOpsAlertPayload[] = [];
+
     switch (event.type) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutCompleted(checkoutSession);
+        opsAlerts = await handleCheckoutCompleted(checkoutSession);
         break;
       }
       case "checkout.session.expired": {
@@ -671,10 +835,29 @@ export async function POST(request: Request): Promise<NextResponse> {
         await handleCheckoutExpired(checkoutSession);
         break;
       }
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        opsAlerts = await handleChargeRefunded(charge);
+        break;
+      }
+      case "payment_intent.payment_failed": {
+        // Checkout mode + card: l'utente puo' ritentare nella stessa
+        // sessione. NON cancellare il PENDING qui, altrimenti si libera lo
+        // slot mentre Stripe Checkout e' ancora aperto. Lo slot torna
+        // disponibile via hold TTL (10m) o checkout.session.expired (30m).
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        console.info(
+          "[stripe webhook] payment_intent.payment_failed (no-op, hold/expiry gestiscono lo slot):",
+          paymentIntent.id,
+        );
+        break;
+      }
       default:
         break;
     }
 
+    await markWebhookEventProcessed(event);
+    scheduleStripeOpsAlerts(opsAlerts);
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("[stripe webhook] Handler error:", error);

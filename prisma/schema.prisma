@@ -280,3 +280,14 @@ model RateLimitCounter {
 
   @@index([resetAt])
 }
+
+// Idempotenza webhook Stripe: event.id univoco. I retry di Stripe
+// (stesso evt_...) devono tornare 200 senza rieseguire mutazioni.
+model StripeWebhookEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([type])
+  @@map("stripe_webhook_event")
+}

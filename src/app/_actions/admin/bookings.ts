@@ -74,6 +74,24 @@ export async function cancelBooking(
         };
       }
 
+      // Claim atomico PRIMA dei rimborsi (come cancelMyBooking): due admin
+      // concorrenti non devono entrambi chiamare stripe.refunds.create.
+      // Lo slot esce subito dal vincolo EXCLUDE (CANCELLED).
+      const claimed = await prisma.booking.updateMany({
+        where: { id: bookingId, status: originalStatus },
+        data: {
+          status: BookingStatus.CANCELLED,
+          holdExpiresAt: null,
+        },
+      });
+
+      if (claimed.count !== 1) {
+        return {
+          success: false,
+          error: "Questa prenotazione è già stata aggiornata altrove",
+        };
+      }
+
       // Rimborso per-pagamento: ogni pagamento viene rimborsato e marcato
       // REFUNDED individualmente subito dopo il successo della singola
       // chiamata Stripe (idempotencyKey previene doppi rimborsi su
@@ -107,8 +125,12 @@ export async function cancelBooking(
 
       if (failedPayments.length > 0) {
         if (refundedPaymentIds.length === 0) {
-          // Nessun rimborso e' andato a buon fine: nessun denaro si e'
-          // mosso, la prenotazione resta nello stato originale.
+          // Nessun rimborso e' andato a buon fine: ripristina lo stato
+          // originale cosi' l'admin puo' ritentare (slot torna occupato).
+          await prisma.booking.update({
+            where: { id: bookingId },
+            data: { status: originalStatus },
+          });
           await sendStripeOpsAlert({
             subject: "Rimborso admin fallito",
             details: { bookingId, originalStatus, failedPayments },
@@ -120,9 +142,8 @@ export async function cancelBooking(
         }
 
         // Rimborso parziale: almeno un pagamento e' stato restituito da
-        // Stripe, almeno un altro no. Non possiamo annullare la
-        // prenotazione come se tutto fosse andato bene: serve intervento
-        // manuale per riconciliare i pagamenti falliti.
+        // Stripe, almeno un altro no. Non possiamo ripristinare lo stato
+        // originale (nasconderebbe denaro gia' uscito): escalation.
         await prisma.booking.update({
           where: { id: bookingId },
           data: { status: BookingStatus.PAYMENT_CONFLICT_REFUND_REQUIRED },
@@ -142,6 +163,10 @@ export async function cancelBooking(
             "Rimborso parzialmente completato: alcuni pagamenti non sono stati rimborsati. Verifica manualmente prima di riprovare.",
         };
       }
+
+      revalidatePath("/admin/bookings");
+      revalidatePath("/admin");
+      return { success: true, message: "Prenotazione annullata e rimborsata" };
     }
 
     const claimed = await prisma.booking.updateMany({
@@ -152,7 +177,7 @@ export async function cancelBooking(
       },
     });
 
-    if (claimed.count !== 1 && !needsRefund) {
+    if (claimed.count !== 1) {
       return {
         success: false,
         error: "Questa prenotazione è già stata aggiornata altrove",

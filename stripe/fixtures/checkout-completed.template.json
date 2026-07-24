@@ -1,0 +1,35 @@
+{
+  "_comment": "Fixture Stripe CLI per Cage Room. Sostituisci BOOKING_ID_REALE con un Booking.id PENDING del tuo DB locale (vedi STRIPE_INTEGRATION_ROADMAP.md).",
+  "_fixtures": [
+    {
+      "name": "checkout_session_completed_paid",
+      "path": "/v1/checkout/sessions",
+      "method": "post",
+      "params": {
+        "mode": "payment",
+        "payment_method_types": ["card"],
+        "line_items": [
+          {
+            "price_data": {
+              "currency": "eur",
+              "unit_amount": 5000,
+              "product_data": {
+                "name": "Test Cage Room booking"
+              }
+            },
+            "quantity": 1
+          }
+        ],
+        "success_url": "http://localhost:3000/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+        "cancel_url": "http://localhost:3000/checkout",
+        "metadata": {
+          "bookingId": "BOOKING_ID_REALE",
+          "userId": "USER_ID_REALE",
+          "paymentChoice": "FULL",
+          "roomId": "ROOM_ID_REALE"
+        },
+        "client_reference_id": "BOOKING_ID_REALE"
+      }
+    }
+  ]
+}

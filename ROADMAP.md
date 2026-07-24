@@ -64,6 +64,22 @@ Documento vivo: aggiornato al completamento del piano Admin + pagine pubbliche +
 - [x] Ogni ramo `PAYMENT_CONFLICT_REFUND_REQUIRED` del webhook registra sempre una riga `Payment` tracciabile
 - [x] Annullamento self-service utente (`/account`) con rimborso automatico Stripe se effettuato oltre 48h prima dell'evento; bloccato entro le 48h (idempotency key, claim atomico anti-race, revert su fallimento rimborso)
 
+## Fase G — Hardening Stripe prenotazioni (audit 2026-07-24) ✅ / backlog
+
+Dettaglio operativo e comandi CLI: vedi `STRIPE_INTEGRATION_ROADMAP.md`.
+
+- [x] Idempotenza webhook su `event.id` (`StripeWebhookEvent` / tabella `stripe_webhook_event`)
+- [x] Alert ops deferred con `after()` per non rischiare timeout Stripe
+- [x] Confronto importo in centesimi interi
+- [x] Handler `charge.refunded` (totale → cancel + slot libero; parziale → alert)
+- [x] `payment_intent.payment_failed` documentato come no-op (hold / session.expired)
+- [x] Alias path `/api/webhooks/stripe`
+- [x] Admin cancel: claim `CANCELLED` prima dei refund
+- [x] `releaseExpiredHolds` anche in lettura slot (UI allineata a EXCLUDE)
+- [ ] Dispute / chargeback (`charge.dispute.created`)
+- [ ] Auto-refund sui conflitti `PAYMENT_CONFLICT_REFUND_REQUIRED`
+- [ ] Job periodico cleanup hold scaduti
+
 
 - In caso di conflitto col prompt architetturale, vince lo stato attuale funzionante.
 - Resend approvato per Fase B; variabili email opzionali finché non configurate.
