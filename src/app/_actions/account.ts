@@ -191,7 +191,18 @@ export async function requestPasswordReset(
     };
   }
 
-  const { email } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+
+  // Diagnostica temporanea: in UI il messaggio è sempre generico (anti-enumerazione),
+  // quindi senza questo log non si vede se Better Auth ha trovato l'utente / se Resend parte.
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  console.info("[account/requestPasswordReset]", {
+    emailDomain: email.includes("@") ? email.split("@")[1] : null,
+    userFound: Boolean(existing),
+  });
 
   try {
     await auth.api.requestPasswordReset({
