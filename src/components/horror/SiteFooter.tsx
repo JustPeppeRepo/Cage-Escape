@@ -4,7 +4,7 @@ const COPYRIGHT_YEAR = 2026;
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-void-mist px-6 py-12 text-center text-sm text-bone/50">
+    <footer className="border-t border-void-mist bg-void-deep px-6 py-12 text-center text-sm text-bone/50">
       <p>© {COPYRIGHT_YEAR} Cage Escape Room. Chi entra, spera di uscire.</p>
       <nav className="mt-4 flex flex-wrap justify-center gap-4 text-xs">
         <Link href="/about" className="hover:text-bone/80">

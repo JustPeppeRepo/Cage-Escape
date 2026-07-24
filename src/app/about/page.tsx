@@ -114,12 +114,14 @@ export default function AboutPage() {
           <TeamSection index={3} />
         </AboutFlowArrows>
 
-        <div className="mt-20 text-center sm:mt-24">
+        <div className="hero-cta mt-20 text-center sm:mt-24">
           <Link
             href="/rooms"
-            className="inline-block rounded bg-blood px-8 py-3 text-bone transition-colors hover:bg-blood-bright hover:animate-glitch-hover"
+            className="hero-cta-pulse inline-block rounded-sm border-2 border-bone bg-bone px-8 py-4 font-heading text-lg tracking-widest text-void-deep shadow-[0_0_28px_rgba(232,226,214,0.35)] transition-colors hover:bg-white hover:text-void sm:px-12 sm:py-5 sm:text-xl"
           >
-            Scegli la tua stanza
+            <span className="hero-cta-label inline-block">
+              Scegli la tua stanza
+            </span>
           </Link>
         </div>
       </div>

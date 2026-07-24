@@ -14,7 +14,7 @@ import { resolvePricingTier } from "@/app/_lib/bookings/pricing";
 import { getBookingChargeAmount } from "@/app/_lib/bookings/charge-amount";
 import {
   decimalToStripeCents,
-  stripeCentsToDecimal,
+  stripeCentsToEuroFixed,
 } from "@/app/_lib/bookings/money";
 import { sendStripeOpsAlert } from "@/app/_lib/stripe/ops-alert";
 
@@ -73,7 +73,7 @@ async function recordConflictPayment(
       data: {
         bookingId: params.bookingId,
         stripePaymentId: params.paymentIntentId,
-        amount: stripeCentsToDecimal(params.amountCents),
+        amount: new Prisma.Decimal(stripeCentsToEuroFixed(params.amountCents)),
         type: params.type,
         status: PaymentStatus.SUCCEEDED,
         paidAt: new Date(),
@@ -227,7 +227,7 @@ async function handleCheckoutCompleted(
           data: {
             bookingId: booking.id,
             stripePaymentId: paymentIntentId,
-            amount: stripeCentsToDecimal(duplicatePaidCents),
+            amount: new Prisma.Decimal(stripeCentsToEuroFixed(duplicatePaidCents)),
             type: paymentChoice,
             status: PaymentStatus.SUCCEEDED,
             paidAt: new Date(),
@@ -601,7 +601,7 @@ async function handleCheckoutCompleted(
           data: {
             bookingId: booking.id,
             stripePaymentId: paymentIntentId,
-            amount: stripeCentsToDecimal(expectedCents),
+            amount: new Prisma.Decimal(stripeCentsToEuroFixed(expectedCents)),
             type: paymentChoice,
             status: PaymentStatus.SUCCEEDED,
             paidAt: new Date(),

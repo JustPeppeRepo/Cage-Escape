@@ -66,7 +66,7 @@ function UserAccountLink({
       href="/account"
       onClick={onNavigate}
       title={`${user.name} · ${user.email}`}
-      className="group flex min-w-0 flex-col items-center gap-0.5 rounded border border-void-mist px-2 py-1 transition-colors hover:border-blood/50"
+      className="group flex min-w-0 flex-col items-center gap-0.5 rounded px-2 py-1 transition-colors"
     >
       <Image
         src={avatarUrl}
@@ -208,7 +208,13 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
           ))}
         </nav>
 
-        <div className="hidden justify-self-end text-sm md:flex">
+        <div className="hidden items-center justify-self-end gap-3 text-sm md:flex">
+          <Link
+            href="/rooms"
+            className="hidden rounded-sm border border-bone bg-bone px-4 py-2 font-heading text-sm tracking-wider text-void-deep transition-colors hover:bg-white lg:inline-block"
+          >
+            Prenota
+          </Link>
           <NavAuthSection user={user} />
         </div>
 

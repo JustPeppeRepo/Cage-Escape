@@ -1,5 +1,3 @@
-import { Prisma } from "@/generated/prisma/client";
-
 type DecimalLike = { toString(): string };
 
 export function decimalToNumber(value: DecimalLike | number | string): number {
@@ -10,9 +8,16 @@ export function decimalToStripeCents(value: DecimalLike | number | string): numb
   return Math.round(decimalToNumber(value) * 100);
 }
 
-/** Converte centesimi Stripe (intero) in Decimal euro senza float intermedi. */
-export function stripeCentsToDecimal(cents: number): Prisma.Decimal {
-  return new Prisma.Decimal(cents).div(100);
+/**
+ * Centesimi Stripe → stringa euro a 2 decimali (niente float).
+ * Usare con `new Prisma.Decimal(...)` solo in codice server.
+ */
+export function stripeCentsToEuroFixed(cents: number): string {
+  const negative = cents < 0;
+  const abs = Math.abs(Math.trunc(cents));
+  const whole = Math.floor(abs / 100);
+  const frac = abs % 100;
+  return `${negative ? "-" : ""}${whole}.${frac.toString().padStart(2, "0")}`;
 }
 
 export function formatEuroAmount(value: DecimalLike | number | string): string {

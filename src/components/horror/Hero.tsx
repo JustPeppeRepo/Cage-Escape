@@ -9,15 +9,6 @@ export function Hero() {
       <FogOverlay />
 
       <div className="relative z-10 flex max-w-3xl flex-col items-center gap-6">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[min(130vw,42rem)] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl sm:w-[min(90vw,48rem)]"
-          style={{
-            background:
-              "radial-gradient(circle at center, rgba(3,3,3,0.78) 0%, rgba(3,3,3,0.4) 25%, rgba(3,3,3,0.15) 45%, transparent 62%)",
-          }}
-        />
-
         <h1 className="relative font-heading text-5xl text-blood-bright sm:text-7xl">
           Riuscirai a uscirne vivo?
         </h1>
@@ -36,9 +27,11 @@ export function Hero() {
         <div className="hero-cta relative">
           <Link
             href="/rooms"
-            className="hover:animate-glitch-hover inline-block rounded-sm border-2 border-blood bg-blood/20 px-6 py-3 text-base font-semibold uppercase tracking-widest text-bone shadow-[0_0_25px_rgba(153,0,0,0.5)] transition-colors hover:bg-blood/40 sm:px-10 sm:py-4 sm:text-lg"
+            className="hero-cta-pulse inline-block rounded-sm border-2 border-bone bg-bone px-8 py-4 font-heading text-lg tracking-widest text-void-deep shadow-[0_0_28px_rgba(232,226,214,0.35)] transition-colors hover:bg-white hover:text-void sm:px-12 sm:py-5 sm:text-xl"
           >
-            Prenota l&apos;esperienza
+            <span className="hero-cta-label inline-block">
+              Prenota l&apos;esperienza
+            </span>
           </Link>
         </div>
       </div>

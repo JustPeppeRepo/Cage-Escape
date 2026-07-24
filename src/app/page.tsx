@@ -9,6 +9,7 @@ import {
   RoomsSectionSkeleton,
 } from "@/components/horror/HomeSkeletons";
 import { FaqAccordion } from "@/components/horror/FaqAccordion";
+import { HomeBookingCta } from "@/components/horror/HomeBookingCta";
 import { SiteFooter } from "@/components/horror/SiteFooter";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
@@ -87,6 +88,8 @@ export default function Home() {
           <SectionHeading eyebrow="Prima di prenotare" title="Domande frequenti" />
           <FaqAccordion items={FAQ_ITEMS} />
         </section>
+
+        <HomeBookingCta />
 
         <SiteFooter />
       </main>
