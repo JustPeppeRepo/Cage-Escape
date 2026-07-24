@@ -62,36 +62,6 @@ body {
   }
 }
 
-/* Idle CTA: stessi keyframe/steps dell'hover, ma offset e shadow più lievi + ciclo più lento */
-@keyframes glitch-shift-soft {
-  0% {
-    text-shadow: 0 0 color-mix(in srgb, var(--color-blood-bright) 55%, transparent);
-    transform: translate(0);
-  }
-  20% {
-    text-shadow:
-      -1.25px 0 color-mix(in srgb, var(--color-blood-bright) 70%, transparent),
-      1.25px 0 color-mix(in srgb, var(--color-ectoplasm) 60%, transparent);
-    transform: translate(-4px, 3px);
-  }
-  40% {
-    text-shadow:
-      1.25px 0 color-mix(in srgb, var(--color-blood-bright) 70%, transparent),
-      -1.25px 0 color-mix(in srgb, var(--color-ectoplasm) 60%, transparent);
-    transform: translate(4px, -3px);
-  }
-  60% {
-    text-shadow:
-      -0.75px 0 color-mix(in srgb, var(--color-blood-bright) 65%, transparent),
-      0.75px 0 color-mix(in srgb, var(--color-ectoplasm) 55%, transparent);
-    transform: translate(-3px, 2px);
-  }
-  100% {
-    text-shadow: 0 0 color-mix(in srgb, var(--color-blood-bright) 55%, transparent);
-    transform: translate(0);
-  }
-}
-
 @keyframes shake {
   0%,
   100% {
@@ -183,15 +153,6 @@ body {
   animation: hero-fade-in 0.6s ease-out 0.8s both;
 }
 
-/* Classe plain (non @utility): Tailwind non stava emettendo animate-glitch-soft */
-.animate-glitch-soft {
-  animation: glitch-shift-soft 1s steps(2, end) infinite;
-}
-
-.animate-glitch-soft:hover {
-  animation: glitch-shift 0.3s steps(2, end) infinite;
-}
-
 .room-card {
   transition:
     transform 0.2s ease,
@@ -207,6 +168,12 @@ body {
   .hero-cta {
     animation: none;
     opacity: 1;
+    transform: none;
+  }
+
+  .hero-cta a {
+    animation: none !important;
+    text-shadow: none;
     transform: none;
   }
 

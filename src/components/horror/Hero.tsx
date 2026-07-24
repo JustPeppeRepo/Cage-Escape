@@ -36,7 +36,7 @@ export function Hero() {
         <div className="hero-cta relative">
           <Link
             href="/rooms"
-            className="animate-glitch-soft hover:animate-glitch-hover inline-block rounded bg-blood px-6 py-3 text-base font-semibold uppercase tracking-widest text-bone transition-colors hover:bg-blood-bright sm:px-10 sm:py-4 sm:text-lg"
+            className="hover:animate-glitch-hover inline-block rounded-sm border-2 border-blood bg-blood/20 px-6 py-3 text-base font-semibold uppercase tracking-widest text-bone shadow-[0_0_25px_rgba(153,0,0,0.5)] transition-colors hover:bg-blood/40 sm:px-10 sm:py-4 sm:text-lg"
           >
             Prenota l&apos;esperienza
           </Link>
