@@ -73,9 +73,10 @@ Dettaglio operativo e comandi CLI: vedi `STRIPE_INTEGRATION_ROADMAP.md`.
 - [x] Confronto importo in centesimi interi
 - [x] Handler `charge.refunded` (totale → cancel + slot libero; parziale → alert)
 - [x] `payment_intent.payment_failed` documentato come no-op (hold / session.expired)
-- [x] Alias path `/api/webhooks/stripe`
+- [x] Alias path `/api/webhooks/stripe` (wrapper; no re-export `runtime`)
 - [x] Admin cancel: claim `CANCELLED` prima dei refund
 - [x] `releaseExpiredHolds` anche in lettura slot (UI allineata a EXCLUDE)
+- [x] Re-test automatizzato flussi pagamento: `scripts/audit-stripe-payment-flows.ts` (14/14 PASS)
 - [ ] Dispute / chargeback (`charge.dispute.created`)
 - [ ] Auto-refund sui conflitti `PAYMENT_CONFLICT_REFUND_REQUIRED`
 - [ ] Job periodico cleanup hold scaduti

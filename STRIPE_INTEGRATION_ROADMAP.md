@@ -39,10 +39,29 @@ Copia il `whsec_...` in `.env` come `STRIPE_WEBHOOK_SECRET`.
 - [x] Confronto importi in **centesimi interi** (niente float/`0.01`)
 - [x] Handler `charge.refunded`: rimborso totale → `Payment.REFUNDED` + `Booking.CANCELLED` (slot libero); parziale → alert ops, slot non liberato
 - [x] `payment_intent.payment_failed`: **no-op intenzionale** (Checkout permette retry; liberazione via hold TTL / `session.expired`)
-- [x] Alias `/api/webhooks/stripe`
+- [x] Alias `/api/webhooks/stripe` (wrapper esplicito; **non** re-export di `runtime`)
 - [x] Admin cancel: claim atomico `CANCELLED` **prima** dei refund (anti double-refund)
 - [x] `getAvailableSlotsForRoom` chiama `releaseExpiredHolds` (allinea UI al vincolo EXCLUDE)
 - [x] Copy success page: niente promessa di rimborso “automatico” fuorviante
+- [x] Script audit ripetibile: `npx tsx scripts/audit-stripe-payment-flows.ts` → **14/14 PASS** (2026-07-24)
+
+### Esito re-test flussi (2026-07-24)
+
+| Flusso | Risultato |
+|--------|-----------|
+| Firma invalida → 400 | PASS |
+| `checkout.session.completed` → PAID + Payment + event row | PASS |
+| Stesso `event.id` → 200 duplicate, no doppio Payment | PASS |
+| Amount mismatch → `PAYMENT_CONFLICT_REFUND_REQUIRED` | PASS |
+| `metadata.userId` spoof → conflict | PASS |
+| `checkout.session.expired` → CANCELLED (PENDING only) | PASS |
+| Expired su PAID → no-op | PASS |
+| `payment_intent.payment_failed` → PENDING invariato | PASS |
+| `charge.refunded` totale → CANCELLED + REFUNDED | PASS |
+| `charge.refunded` parziale → slot resta PAID | PASS |
+| DEPOSIT → `DEPOSIT_PAID` | PASS |
+| PaymentIntent reale Stripe + refund API | PASS |
+| Alias `/api/webhooks/stripe` | PASS |
 
 ### Backlog / prossimi step
 
