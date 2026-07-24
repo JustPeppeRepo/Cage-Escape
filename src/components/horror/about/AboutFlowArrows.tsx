@@ -9,6 +9,9 @@ import {
   type HandDrawnArrowArt,
 } from "@/components/horror/about/aboutArrowArt";
 
+/** Provvisorio: spegni le frecce senza togliere il layout/sezioni. */
+const ARROWS_ENABLED = false;
+
 type Point = { x: number; y: number };
 
 type PlacedArrow = {
@@ -108,6 +111,8 @@ export function AboutFlowArrows({ children }: AboutFlowArrowsProps) {
   const [arrows, setArrows] = useState<PlacedArrow[]>([]);
 
   useEffect(() => {
+    if (!ARROWS_ENABLED) return;
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -168,7 +173,8 @@ export function AboutFlowArrows({ children }: AboutFlowArrowsProps) {
         width="100%"
         height="100%"
       >
-        {arrows.map(({ art, transform }, i) => (
+        {ARROWS_ENABLED
+          ? arrows.map(({ art, transform }, i) => (
           <g key={art.id} transform={transform}>
             {art.soft ? (
               <motion.path
@@ -243,7 +249,8 @@ export function AboutFlowArrows({ children }: AboutFlowArrowsProps) {
               />
             ))}
           </g>
-        ))}
+        ))
+          : null}
       </svg>
 
       {children}
