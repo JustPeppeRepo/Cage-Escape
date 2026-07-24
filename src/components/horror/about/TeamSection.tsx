@@ -9,11 +9,12 @@ type TeamSectionProps = {
 export function TeamSection({ index = 0 }: TeamSectionProps) {
   return (
     <motion.section
+      data-flow-anchor
       initial={{ opacity: 0, y: 36 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.65, delay: index * 0.06 }}
-      className="ml-auto max-w-md"
+      className="relative z-10 ml-auto max-w-md"
     >
       <h2 className="font-heading text-2xl text-blood-bright sm:text-right sm:text-3xl">
         Team

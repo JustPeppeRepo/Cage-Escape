@@ -21,11 +21,12 @@ export function AboutSection({
 
   return (
     <motion.section
+      data-flow-anchor
       initial={{ opacity: 0, y: 36 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.65, delay: index * 0.06 }}
-      className={`max-w-xl ${isRight ? "ml-auto text-right" : "mr-auto text-left"} ${className}`}
+      className={`relative z-10 max-w-xl ${isRight ? "ml-auto text-right" : "mr-auto text-left"} ${className}`}
     >
       <h2 className="font-heading text-2xl text-blood-bright sm:text-3xl">
         {title}

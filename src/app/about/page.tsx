@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { AboutFlowArrows } from "@/components/horror/about/AboutFlowArrows";
 
 const AboutSection = dynamic(
   () =>
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-4xl lg:max-w-5xl">
         <header className="mb-16 flex flex-col items-center gap-2 text-center sm:mb-20">
           <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">
             Scopri l&apos;esperienza CAGE
@@ -69,7 +70,7 @@ export default function AboutPage() {
           </h1>
         </header>
 
-        <div className="flex flex-col gap-10 sm:gap-8">
+        <AboutFlowArrows>
           <AboutSection title="Missione" index={0} align="left">
             <p>
               CAGE nasce dal desiderio di trasformare le avventure che esistono
@@ -111,7 +112,7 @@ export default function AboutPage() {
           <FounderSection index={2} />
 
           <TeamSection index={3} />
-        </div>
+        </AboutFlowArrows>
 
         <div className="mt-20 text-center sm:mt-24">
           <Link

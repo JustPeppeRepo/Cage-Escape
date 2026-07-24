@@ -5,6 +5,7 @@ import { Anton } from "next/font/google";
 import { env } from "@/app/_lib/env";
 import { SiteNav } from "@/components/horror/SiteNav";
 import { SiteNavShell } from "@/components/horror/SiteNavShell";
+import { WhatsAppFloat } from "@/components/horror/WhatsAppFloat";
 import "./globals.css";
 
 const displayFont = Anton({
@@ -61,6 +62,7 @@ export default function RootLayout({
           <SiteNav />
         </SiteNavShell>
         {children}
+        <WhatsAppFloat />
         <Analytics />
         <SpeedInsights />
       </body>
