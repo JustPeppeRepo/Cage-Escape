@@ -64,7 +64,7 @@ export function ContactForm() {
         disabled={pending || state?.success}
         className="rounded bg-blood px-4 py-2 text-bone transition-colors hover:bg-blood-bright disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {pending ? "Invio in corso…" : "Invia dal limbo"}
+        {pending ? "Invio in corso…" : "Invia"}
       </button>
     </form>
   );

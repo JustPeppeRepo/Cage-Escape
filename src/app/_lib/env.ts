@@ -10,6 +10,10 @@ const envSchema = z
     STRIPE_SECRET_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     NEXT_PUBLIC_APP_URL: z.string().url(),
+    // iubenda (opzionali): quando impostati, footer e banner cookie usano gli embed ufficiali
+    NEXT_PUBLIC_IUBENDA_SITE_ID: z.string().min(1).optional(),
+    NEXT_PUBLIC_IUBENDA_PRIVACY_POLICY_ID: z.string().min(1).optional(),
+    NEXT_PUBLIC_IUBENDA_TERMS_ID: z.string().min(1).optional(),
     RESEND_API_KEY: z.string().min(1).optional(),
     // Indirizzo "from" su un dominio verificato Resend. Obbligatorio se
     // RESEND_API_KEY è impostata: senza, Resend non consegna agli utenti

@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Contatti | Cage Escape Room",
     description:
-      "Contatta Cage Escape Room per prenotazioni, orari e informazioni sulle escape room horror.",
+      "Contatta Cage Escape Room per prenotazioni, orari e informazioni sulle escape room.",
   },
 };
 
@@ -56,8 +56,31 @@ export default function ContattiPage() {
               13, 00100 Roma
             </p>
             <p>
-              <span className="text-bone/80">Orari segreteria:</span> Lun–Dom
-              10:00–22:00
+              <span className="text-bone/80">WhatsApp:</span>{" "}
+              <a
+                href="https://wa.me/393929375672"
+                className="text-bone/70 underline-offset-2 hover:text-bone hover:underline"
+              >
+                392 937 5672
+              </a>
+            </p>
+            <p>
+              <span className="text-bone/80">Email:</span>{" "}
+              <a
+                href="mailto:info@cageroom.it"
+                className="text-bone/70 underline-offset-2 hover:text-bone hover:underline"
+              >
+                info@cageroom.it
+              </a>
+            </p>
+            <p>
+              <span className="text-bone/80">PEC:</span>{" "}
+              <a
+                href="mailto:girolamo.aiello@pec.it"
+                className="text-bone/70 underline-offset-2 hover:text-bone hover:underline"
+              >
+                girolamo.aiello@pec.it
+              </a>
             </p>
           </div>
 
@@ -73,7 +96,7 @@ export default function ContattiPage() {
 
         <div className="rounded-md border border-void-mist bg-void-deep p-6">
           <h2 className="mb-4 font-heading text-xl text-blood-bright">
-            Form spettrale
+            Scrivici una mail
           </h2>
           <ContactForm />
         </div>

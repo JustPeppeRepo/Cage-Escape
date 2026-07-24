@@ -27,8 +27,11 @@ export async function generateMetadata({
     return { title: "Stanza non trovata" };
   }
 
+  const isHorrorRoom = room.terrorLevel >= 4;
+  const roomLabel = isHorrorRoom ? "escape room horror" : "escape room";
+
   return {
-    title: `${room.name} — escape room horror`,
+    title: `${room.name} — ${roomLabel}`,
     description: room.description,
     alternates: {
       canonical: `/rooms/${slug}`,

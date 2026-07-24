@@ -17,14 +17,14 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Cage Escape Room — Escape Room Horror | Prenota il tuo incubo",
+    absolute: "Cage Escape Room — Escape Room Immersive | Prenota online",
   },
   description:
-    "Prenota da Cage Escape Room la tua escape room horror. Enigmi, terrore e 90 minuti per sopravvivere. Prenotazione online sicura e immediata.",
+    "Prenota da Cage Escape Room la tua escape room immersiva. Temi diversi, dall'avventura all'horror: enigmi e 90 minuti fuori dal mondo. Prenotazione online sicura.",
   openGraph: {
-    title: "Cage Escape Room — Escape Room Horror | Prenota il tuo incubo",
+    title: "Cage Escape Room — Escape Room Immersive | Prenota online",
     description:
-      "Prenota da Cage Escape Room la tua escape room horror. Enigmi, terrore e 90 minuti per sopravvivere.",
+      "Prenota da Cage Escape Room la tua escape room immersiva. Temi diversi, dall'avventura all'horror: enigmi e 90 minuti fuori dal mondo.",
   },
 };
 
@@ -57,7 +57,7 @@ export default function Home() {
     "@type": "LocalBusiness",
     name: "Cage Escape Room",
     description:
-      "Escape room a tema horror con esperienze immersive per gruppi.",
+      "Escape room immersive con esperienze a tema per gruppi, incluse stanze horror.",
     url: env.NEXT_PUBLIC_APP_URL,
     priceRange: "€€",
   };

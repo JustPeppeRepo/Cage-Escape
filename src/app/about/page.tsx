@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Chi siamo | Cage Escape Room",
     description:
-      "Missione, visione e fondatore di Cage Escape Room: escape room immersive horror.",
+      "Missione, visione e fondatore di Cage Escape Room: escape room immersive a tema.",
   },
 };
 

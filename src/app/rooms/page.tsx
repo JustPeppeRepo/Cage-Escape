@@ -7,14 +7,14 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Stanze escape room horror",
+  title: "Stanze escape room",
   description:
-    "Scopri tutte le escape room horror di Cage Escape Room. Scegli la stanza e prenota online in pochi minuti.",
+    "Scopri le escape room di Cage Escape Room: temi diversi, dall'avventura all'horror. Scegli la stanza e prenota online in pochi minuti.",
   alternates: { canonical: "/rooms" },
   openGraph: {
-    title: "Stanze escape room horror | Cage Escape Room",
+    title: "Stanze escape room | Cage Escape Room",
     description:
-      "Scopri tutte le escape room horror di Cage Escape Room. Scegli la stanza e prenota online.",
+      "Scopri le escape room di Cage Escape Room: temi diversi, dall'avventura all'horror. Scegli la stanza e prenota online.",
   },
 };
 
