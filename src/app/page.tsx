@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { env } from "@/app/_lib/env";
+import { MAINTENANCE } from "@/app/_lib/site/maintenance";
 import { Hero } from "@/components/horror/Hero";
 import { HomeRoomsSection } from "@/components/horror/HomeRoomsSection";
 import { HomeReviewsSection } from "@/components/horror/HomeReviewsSection";
@@ -10,23 +11,32 @@ import {
 } from "@/components/horror/HomeSkeletons";
 import { FaqAccordion } from "@/components/horror/FaqAccordion";
 import { HomeBookingCta } from "@/components/horror/HomeBookingCta";
+import { MaintenanceScreen } from "@/components/horror/MaintenanceScreen";
 import { SiteFooter } from "@/components/horror/SiteFooter";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Cage Escape Room — Escape Room Immersive | Prenota online",
-  },
-  description:
-    "Prenota da Cage Escape Room la tua escape room immersiva. Temi diversi, dall'avventura all'horror: enigmi e 90 minuti fuori dal mondo. Prenotazione online sicura.",
-  openGraph: {
-    title: "Cage Escape Room — Escape Room Immersive | Prenota online",
-    description:
-      "Prenota da Cage Escape Room la tua escape room immersiva. Temi diversi, dall'avventura all'horror: enigmi e 90 minuti fuori dal mondo.",
-  },
-};
+export const metadata: Metadata = MAINTENANCE.enabled
+  ? {
+      title: {
+        absolute: `${MAINTENANCE.brand} — ${MAINTENANCE.headline}`,
+      },
+      description: MAINTENANCE.message,
+      robots: { index: false, follow: false },
+    }
+  : {
+      title: {
+        absolute: "Cage Escape Room — Escape Room Immersive | Prenota online",
+      },
+      description:
+        "Prenota da Cage Escape Room la tua escape room immersiva. Temi diversi, dall'avventura all'horror: enigmi e 90 minuti fuori dal mondo. Prenotazione online sicura.",
+      openGraph: {
+        title: "Cage Escape Room — Escape Room Immersive | Prenota online",
+        description:
+          "Prenota da Cage Escape Room la tua escape room immersiva. Temi diversi, dall'avventura all'horror: enigmi e 90 minuti fuori dal mondo.",
+      },
+    };
 
 const FAQ_ITEMS = [
   {
@@ -52,6 +62,11 @@ const FAQ_ITEMS = [
 ];
 
 export default function Home() {
+  // Difesa in profondita': unita al rewrite in proxy.ts.
+  if (MAINTENANCE.enabled) {
+    return <MaintenanceScreen />;
+  }
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",

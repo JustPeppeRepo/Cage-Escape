@@ -1,6 +1,22 @@
 import type { NextConfig } from "next";
+import { MAINTENANCE } from "./src/app/_lib/site/maintenance";
 
 const isDev = process.env.NODE_ENV === "development";
+
+/** Redirect di backup se il proxy non intercetta (dev Turbopack). */
+function maintenanceRedirects() {
+  if (!MAINTENANCE.enabled) return [];
+
+  // `/:path+` = almeno un segmento → `/` resta la home muta.
+  // Esclude bundle Next, API e file statici con estensione.
+  return [
+    {
+      source: "/:path((?!_next/|api/|.*\\..*).+)",
+      destination: "/",
+      permanent: false,
+    },
+  ];
+}
 
 // Stripe Checkout e' hosted (redirect), ma Analytics/Speed Insights caricano
 // script da va.vercel-scripts.com — vanno allowlistati esplicitamente.
@@ -20,6 +36,9 @@ const cspHeader = `
 `;
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return maintenanceRedirects();
+  },
   async headers() {
     return [
       {

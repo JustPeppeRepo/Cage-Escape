@@ -1,8 +1,13 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/app/_lib/prisma";
 import { env } from "@/app/_lib/env";
+import { MAINTENANCE } from "@/app/_lib/site/maintenance";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (MAINTENANCE.enabled) {
+    return [];
+  }
+
   const baseUrl = env.NEXT_PUBLIC_APP_URL;
 
   const rooms = await prisma.room.findMany({
