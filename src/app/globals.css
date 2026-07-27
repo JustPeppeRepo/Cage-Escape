@@ -126,8 +126,14 @@ body {
 }
 
 .reviews-marquee-track {
-  animation: reviews-marquee 90s linear infinite;
+  animation: reviews-marquee 150s linear infinite;
   will-change: transform;
+}
+
+@media (min-width: 640px) {
+  .reviews-marquee-track {
+    animation-duration: 90s;
+  }
 }
 
 .reviews-marquee-group {

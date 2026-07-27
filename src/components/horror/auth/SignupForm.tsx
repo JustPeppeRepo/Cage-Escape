@@ -5,6 +5,7 @@ import Link from "next/link";
 import { prepareSignup, type AuthFormState } from "@/actions/auth";
 import { authClient } from "@/lib/auth-client";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
+import { EmailVerificationPending } from "@/components/horror/auth/EmailVerificationPending";
 
 type SignupFormProps = {
   callbackUrl: string;
@@ -25,14 +26,17 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
         return;
       }
 
+      const email = String(formData.get("email") ?? "").trim();
       const username = String(formData.get("username") ?? "");
+      const resolvedCallback = prepared.callbackUrl ?? callbackUrl;
+
       const { error } = await authClient.signUp.email({
-        email: String(formData.get("email") ?? ""),
+        email,
         password: String(formData.get("password") ?? ""),
         name: username,
         username,
         phone: String(formData.get("phone") ?? ""),
-        callbackURL: prepared.callbackUrl ?? callbackUrl,
+        callbackURL: resolvedCallback,
       });
 
       if (error) {
@@ -51,26 +55,20 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
       setState({
         success: true,
         needsEmailVerification: true,
-        callbackUrl: prepared.callbackUrl ?? callbackUrl,
+        verificationEmail: email,
+        callbackUrl: resolvedCallback,
       });
     });
   }
 
-  if (state?.needsEmailVerification) {
+  if (state?.needsEmailVerification && state.verificationEmail) {
     return (
-      <div className="flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6 text-bone">
-        <h2 className="font-display text-xl text-bone">Controlla la tua email</h2>
-        <p className="text-sm text-bone/80">
-          Ti abbiamo inviato un link per verificare l&apos;account. Apri la
-          casella di posta (e lo spam), conferma l&apos;indirizzo e poi accedi.
-        </p>
-        <Link
-          href="/login"
-          className="rounded bg-blood px-4 py-2 text-center text-bone transition-colors hover:bg-blood-bright"
-        >
-          Vai al login
-        </Link>
-      </div>
+      <EmailVerificationPending
+        email={state.verificationEmail}
+        callbackUrl={state.callbackUrl ?? callbackUrl}
+        description="Ti abbiamo inviato un link per verificare l'account. Apri la casella di posta, conferma l'indirizzo e poi accedi."
+        showLoginLink
+      />
     );
   }
 

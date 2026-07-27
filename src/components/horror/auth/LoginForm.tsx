@@ -8,6 +8,7 @@ import {
 } from "@/actions/auth";
 import { authClient } from "@/lib/auth-client";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
+import { EmailVerificationPending } from "@/components/horror/auth/EmailVerificationPending";
 
 type LoginFormProps = {
   callbackUrl: string;
@@ -28,21 +29,23 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
         return;
       }
 
+      const email = String(formData.get("email") ?? "").trim();
+      const resolvedCallback = prepared.callbackUrl ?? callbackUrl;
+
       const { error } = await authClient.signIn.email({
-        email: String(formData.get("email") ?? ""),
+        email,
         password: String(formData.get("password") ?? ""),
+        callbackURL: resolvedCallback,
       });
 
       if (error) {
-        // 403: email non verificata (Better Auth reinvia il link se sendOnSignIn).
-        // Lockout/contatori sono gestiti solo server-side negli hook Better Auth.
+        // 403: email non verificata — Better Auth ha già inviato (o reinviato)
+        // il link se sendOnSignIn è attivo.
         if (error.status === 403) {
           setState({
-            errors: {
-              email: [
-                "Verifica la tua email prima di accedere. Controlla la casella di posta (e lo spam).",
-              ],
-            },
+            needsEmailVerification: true,
+            verificationEmail: email,
+            callbackUrl: resolvedCallback,
           });
           return;
         }
@@ -62,8 +65,19 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
         return;
       }
 
-      window.location.assign(prepared.callbackUrl ?? callbackUrl);
+      window.location.assign(resolvedCallback);
     });
+  }
+
+  if (state?.needsEmailVerification && state.verificationEmail) {
+    return (
+      <EmailVerificationPending
+        email={state.verificationEmail}
+        callbackUrl={state.callbackUrl ?? callbackUrl}
+        description="Il tuo account esiste ma l'email non è ancora verificata. Ti abbiamo inviato un link di conferma: aprilo per attivare l'accesso, poi riprova ad entrare."
+        onBackToForm={() => setState(null)}
+      />
+    );
   }
 
   return (

@@ -3,10 +3,12 @@
 import { z } from "zod"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
+import { APIError } from "better-auth"
 import { auth } from "@/lib/auth"
 import { checkRateLimit } from "@/app/_lib/rate-limit"
 import { getLoginLockStatus } from "@/app/_lib/auth/lockout"
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect"
+import { VERIFICATION_RESEND_COOLDOWN_SECONDS } from "@/lib/auth-constants"
 
 export type AuthFormState = {
   errors?: {
@@ -17,8 +19,16 @@ export type AuthFormState = {
   }
   success?: boolean
   callbackUrl?: string
-  /** Signup: account creato, in attesa di verifica email. */
+  /** Account in attesa di verifica email (signup o login bloccato). */
   needsEmailVerification?: boolean
+  /** Email a cui è stata inviata la verifica (per UI / reinvio). */
+  verificationEmail?: string
+} | null
+
+export type ResendVerificationState = {
+  success?: boolean
+  error?: string
+  retryAfterSeconds?: number
 } | null
 
 const signupSchema = z.object({
@@ -31,6 +41,11 @@ const signupSchema = z.object({
 const loginSchema = z.object({
   email: z.string().trim().email().max(255),
   password: z.string().min(8).max(72),
+})
+
+const resendVerificationSchema = z.object({
+  email: z.string().trim().email().max(255),
+  callbackUrl: z.string().optional(),
 })
 
 /**
@@ -112,6 +127,60 @@ export async function prepareSignup(
   )
 
   return { success: true, callbackUrl }
+}
+
+/**
+ * Reinvia l'email di verifica. Anti-enumerazione: messaggio generico anche
+ * se l'email non esiste o è già verificata (comportamento Better Auth).
+ */
+export async function resendVerificationEmail(
+  _prevState: ResendVerificationState,
+  formData: FormData,
+): Promise<ResendVerificationState> {
+  const rateLimit = await checkRateLimit("resend-verification", 1)
+  if (!rateLimit.allowed) {
+    return {
+      error: `Attendi ${rateLimit.retryAfterSeconds} secondi prima di richiedere un nuovo invio.`,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    }
+  }
+
+  const parsed = resendVerificationSchema.safeParse({
+    email: formData.get("email"),
+    callbackUrl: formData.get("callbackUrl") || undefined,
+  })
+
+  if (!parsed.success) {
+    return { error: "Indirizzo email non valido." }
+  }
+
+  const email = parsed.data.email.trim().toLowerCase()
+  const callbackURL = sanitizeCallbackUrl(parsed.data.callbackUrl ?? null)
+
+  try {
+    await auth.api.sendVerificationEmail({
+      body: {
+        email,
+        callbackURL,
+      },
+      headers: await headers(),
+    })
+  } catch (error) {
+    if (error instanceof APIError) {
+      console.error("[auth/resendVerificationEmail] APIError:", error.message)
+    } else {
+      console.error("[auth/resendVerificationEmail] Unexpected error:", error)
+    }
+    return {
+      error:
+        "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
+    }
+  }
+
+  return {
+    success: true,
+    retryAfterSeconds: VERIFICATION_RESEND_COOLDOWN_SECONDS,
+  }
 }
 
 export async function logout() {
