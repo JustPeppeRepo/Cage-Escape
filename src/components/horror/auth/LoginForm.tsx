@@ -41,32 +41,57 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       });
 
       if (error) {
-        // Solo EMAIL_NOT_VERIFIED: non usare status===403 da solo (altri
-        // FORBIDDEN di Better Auth farebbero partire un "reinvio" finto).
+        // Su POST /sign-in/email: 401 = password/email errati, 403 = email
+        // non verificata (Better Auth FORBIDDEN + EMAIL_NOT_VERIFIED).
+        // status===403 è affidabile su questo endpoint; code/message possono
+        // mancare nel client e senza di essi l'utente vedeva "credenziali
+        // non valide" con password corretta.
         const unverified =
+          error.status === 403 ||
           error.code === "EMAIL_NOT_VERIFIED" ||
           /email not verified/i.test(error.message ?? "");
 
         if (unverified) {
-          const resendData = new FormData();
-          resendData.set("email", email);
-          resendData.set("callbackUrl", resolvedCallback);
-          resendData.set("requireSend", "1");
-          const resend = await resendVerificationEmail(null, resendData);
+          let sendError: string | undefined;
+          let retryAfter: number | undefined;
+          try {
+            const resendData = new FormData();
+            resendData.set("email", email);
+            resendData.set("callbackUrl", resolvedCallback);
+            resendData.set("requireSend", "1");
+            const resend = await resendVerificationEmail(null, resendData);
+            sendError = resend?.error;
+            retryAfter = resend?.success
+              ? VERIFICATION_RESEND_COOLDOWN_SECONDS
+              : resend?.retryAfterSeconds;
+          } catch {
+            sendError =
+              "Impossibile inviare l'email di verifica. Usa il pulsante per riprovare.";
+          }
 
           setState({
             needsEmailVerification: true,
             verificationEmail: email,
             callbackUrl: resolvedCallback,
-            verificationSendError: resend?.error,
-            verificationRetryAfterSeconds: resend?.success
-              ? VERIFICATION_RESEND_COOLDOWN_SECONDS
-              : resend?.retryAfterSeconds,
+            verificationSendError: sendError,
+            verificationRetryAfterSeconds: retryAfter,
           });
           return;
         }
 
-        setState({ errors: { email: ["Credenziali non valide"] } });
+        if (error.status === 401) {
+          setState({ errors: { email: ["Credenziali non valide"] } });
+          return;
+        }
+
+        setState({
+          errors: {
+            email: [
+              error.message?.trim() ||
+                "Accesso non riuscito. Riprova tra poco.",
+            ],
+          },
+        });
         return;
       }
 
