@@ -8,7 +8,6 @@ import { BookingStatus } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { requireUser } from "@/lib/dal";
 import { prisma } from "@/app/_lib/prisma";
-import { env } from "@/app/_lib/env";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
 import { getAvatarUrlById } from "@/app/_lib/account/avatars";
 import {
@@ -208,7 +207,9 @@ export async function requestPasswordReset(
     await auth.api.requestPasswordReset({
       body: {
         email,
-        redirectTo: `${env.NEXT_PUBLIC_APP_URL}/reset-password`,
+        // Path relativo: passa originCheck con allowRelativePaths e evita
+        // INVALID_CALLBACK_URL se BETTER_AUTH_URL in prod non combacia.
+        redirectTo: "/reset-password",
       },
     });
   } catch (error) {

@@ -41,11 +41,9 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       });
 
       if (error) {
-        // Email non verificata: Better Auth risponde 403 ma NON invia più
-        // (sendOnSignIn: false) perché runInBackgroundOrAwait swallowerebbe
-        // gli errori Resend. Inviamo qui in modo esplicito e mostriamo fallimenti.
+        // Solo EMAIL_NOT_VERIFIED: non usare status===403 da solo (altri
+        // FORBIDDEN di Better Auth farebbero partire un "reinvio" finto).
         const unverified =
-          error.status === 403 ||
           error.code === "EMAIL_NOT_VERIFIED" ||
           /email not verified/i.test(error.message ?? "");
 
@@ -53,6 +51,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
           const resendData = new FormData();
           resendData.set("email", email);
           resendData.set("callbackUrl", resolvedCallback);
+          resendData.set("requireSend", "1");
           const resend = await resendVerificationEmail(null, resendData);
 
           setState({

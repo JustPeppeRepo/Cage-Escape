@@ -21,6 +21,7 @@ const STATIC_FILE_EXT =
 function isPublicPath(pathname: string): boolean {
   if (STATIC_FILE_EXT.test(pathname)) return true
   if (publicRoutes.includes(pathname)) return true
+  if (pathname.startsWith("/reset-password/")) return true
   return pathname.startsWith("/rooms")
 }
 

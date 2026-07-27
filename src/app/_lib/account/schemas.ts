@@ -16,10 +16,19 @@ export const forgotPasswordSchema = z.object({
   email: z.string().trim().email("Email non valida").max(255),
 });
 
-export const resetPasswordSchema = z.object({
-  token: z.string().min(1, "Token mancante o non valido").max(512),
-  newPassword: z.string().min(8, "La password deve avere almeno 8 caratteri").max(72),
-});
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Token mancante o non valido").max(512),
+    newPassword: z
+      .string()
+      .min(8, "La password deve avere almeno 8 caratteri")
+      .max(72),
+    confirmPassword: z.string().min(8).max(72),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Le password non coincidono",
+    path: ["confirmPassword"],
+  });
 
 export const deleteAccountSchema = z.object({
   confirmEmail: z.string().trim().email("Email non valida").max(255),

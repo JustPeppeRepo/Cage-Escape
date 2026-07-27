@@ -32,6 +32,8 @@ export type ResendVerificationState = {
   success?: boolean
   error?: string
   retryAfterSeconds?: number
+  /** true solo se Resend ha accettato l'invio */
+  sent?: boolean
 } | null
 
 const signupSchema = z.object({
@@ -135,14 +137,16 @@ export async function prepareSignup(
 /**
  * Reinvia l'email di verifica via Resend in modo diretto (token + send),
  * senza Better Auth runInBackgroundOrAwait (che swallowa gli errori).
- * Anti-enumerazione: messaggio generico anche se l'email non esiste o è
- * già verificata.
+ *
+ * formData opzionale:
+ * - requireSend=1 → dopo login/signup: se non partiamo, è un errore (niente
+ *   anti-enumerazione che finge successo).
  */
 export async function resendVerificationEmail(
   _prevState: ResendVerificationState,
   formData: FormData,
 ): Promise<ResendVerificationState> {
-  const rateLimit = await checkRateLimit("resend-verification", 1)
+  const rateLimit = await checkRateLimit("resend-verification", 3)
   if (!rateLimit.allowed) {
     return {
       error: `Attendi ${rateLimit.retryAfterSeconds} secondi prima di richiedere un nuovo invio.`,
@@ -160,6 +164,7 @@ export async function resendVerificationEmail(
   }
 
   const email = parsed.data.email.trim().toLowerCase()
+  const requireSend = formData.get("requireSend") === "1"
   const { issueAndSendVerificationEmail } = await import(
     "@/app/_lib/auth/issue-verification-email"
   )
@@ -167,6 +172,7 @@ export async function resendVerificationEmail(
   const result = await issueAndSendVerificationEmail({
     email,
     callbackUrl: parsed.data.callbackUrl,
+    requireSend,
   })
 
   if (!result.ok) {
@@ -175,17 +181,24 @@ export async function resendVerificationEmail(
       error:
         result.error === "Servizio email non configurato"
           ? "Servizio email non configurato. Contatta lo staff."
-          : "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
+          : result.error.startsWith("Impossibile") ||
+              result.error.startsWith("Questo account")
+            ? result.error
+            : "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
     }
   }
 
   console.info("[auth/resendVerificationEmail] ok", {
     emailDomain: email.includes("@") ? email.split("@")[1] : null,
     sent: result.sent,
+    requireSend,
   })
 
+  // Anti-enumerazione sul reinvio manuale: successo anche se non inviato.
+  // Con requireSend, sent è sempre true se ok.
   return {
     success: true,
+    sent: result.sent,
     retryAfterSeconds: VERIFICATION_RESEND_COOLDOWN_SECONDS,
   }
 }

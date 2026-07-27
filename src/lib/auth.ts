@@ -48,8 +48,16 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
-    sendResetPassword: async ({ user, url }) => {
-      const result = await sendPasswordResetEmail({ email: user.email, url });
+    sendResetPassword: async ({ user, token }) => {
+      // Non usare l'URL intermedio Better Auth
+      // (`/api/auth/reset-password/:token?callbackURL=...`): in produzione
+      // originCheck rifiuta il callbackURL e risponde 404. Il form UI
+      // valida il token al submit via auth.api.resetPassword.
+      const resetUrl = `${env.NEXT_PUBLIC_APP_URL}/reset-password?token=${encodeURIComponent(token)}`;
+      const result = await sendPasswordResetEmail({
+        email: user.email,
+        url: resetUrl,
+      });
       if (!result.ok) {
         throw new APIError("INTERNAL_SERVER_ERROR", {
           message: result.error,

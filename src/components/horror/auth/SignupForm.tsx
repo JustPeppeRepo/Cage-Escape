@@ -60,6 +60,7 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
       const resendData = new FormData();
       resendData.set("email", email);
       resendData.set("callbackUrl", resolvedCallback);
+      resendData.set("requireSend", "1");
       const resend = await resendVerificationEmail(null, resendData);
 
       setState({

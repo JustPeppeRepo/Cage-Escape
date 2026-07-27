@@ -4,13 +4,17 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { resetPassword } from "@/app/_actions/account";
 import { AdminFormFeedback } from "@/components/admin/AdminFormFeedback";
+import { PasswordInput } from "@/components/horror/auth/PasswordInput";
 
 type ResetPasswordFormProps = {
   token: string | null;
   invalidToken: boolean;
 };
 
-export function ResetPasswordForm({ token, invalidToken }: ResetPasswordFormProps) {
+export function ResetPasswordForm({
+  token,
+  invalidToken,
+}: ResetPasswordFormProps) {
   const [state, formAction, pending] = useActionState(resetPassword, null);
 
   if (invalidToken || !token) {
@@ -40,15 +44,29 @@ export function ResetPasswordForm({ token, invalidToken }: ResetPasswordFormProp
     >
       <input type="hidden" name="token" value={token} readOnly />
 
+      <p className="text-sm text-bone/70">
+        Scegli una nuova password per il tuo account (minimo 8 caratteri).
+      </p>
+
       <label className="flex flex-col gap-1 text-sm text-bone/80">
         Nuova password
-        <input
-          type="password"
+        <PasswordInput
           name="newPassword"
           required
           minLength={8}
+          maxLength={72}
           autoComplete="new-password"
-          className="rounded border border-void-mist bg-void px-3 py-2 text-bone"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm text-bone/80">
+        Conferma password
+        <PasswordInput
+          name="confirmPassword"
+          required
+          minLength={8}
+          maxLength={72}
+          autoComplete="new-password"
         />
       </label>
 
@@ -63,7 +81,10 @@ export function ResetPasswordForm({ token, invalidToken }: ResetPasswordFormProp
       </button>
 
       <p className="text-center text-sm text-bone/60">
-        <Link href="/login" className="underline decoration-blood underline-offset-4">
+        <Link
+          href="/login"
+          className="underline decoration-blood underline-offset-4"
+        >
           Torna al login
         </Link>
       </p>
