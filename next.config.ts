@@ -2,16 +2,17 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// Stripe Checkout e' hosted (redirect), ma Analytics/Speed Insights caricano
-// script da va.vercel-scripts.com — vanno allowlistati esplicitamente.
+// Stripe Checkout e' hosted (redirect). Analytics/Speed Insights: va.vercel-scripts.com.
+// iubenda: cookie banner + autoblocking + embed policy (cdn/cs/www).
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com;
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' blob: data:;
+  script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com https://cdn.iubenda.com https://cs.iubenda.com;
+  style-src 'self' 'unsafe-inline' https://cdn.iubenda.com;
+  img-src 'self' blob: data: https://cdn.iubenda.com https://*.iubenda.com;
   media-src 'self';
-  font-src 'self';
-  connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com;
+  font-src 'self' https://cdn.iubenda.com;
+  connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com https://*.iubenda.com;
+  frame-src https://www.iubenda.com https://cdn.iubenda.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';

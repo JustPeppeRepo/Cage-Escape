@@ -12,6 +12,10 @@ const publicRoutes = [
   "/maledizione",
   "/forgot-password",
   "/reset-password",
+  // GDPR/ePrivacy: consultabili senza account (prima/dopo consenso cookie).
+  "/privacy",
+  "/termini",
+  "/cookie",
 ]
 
 /** Asset in /public: non devono passare dal gate auth. */

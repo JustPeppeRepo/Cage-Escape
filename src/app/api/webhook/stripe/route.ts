@@ -90,29 +90,29 @@ async function recordConflictPayment(
   }
 }
 
-async function wasWebhookEventProcessed(eventId: string): Promise<boolean> {
-  const existing = await prisma.stripeWebhookEvent.findUnique({
-    where: { id: eventId },
-    select: { id: true },
-  });
-  return existing !== null;
-}
-
-async function markWebhookEventProcessed(event: Stripe.Event): Promise<void> {
+async function claimWebhookEvent(
+  event: Stripe.Event,
+): Promise<"claimed" | "duplicate"> {
   try {
     await prisma.stripeWebhookEvent.create({
       data: { id: event.id, type: event.type },
     });
+    return "claimed";
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      // Un altro worker ha gia' marcato lo stesso event.id: ok.
-      return;
+      return "duplicate";
     }
     throw error;
   }
+}
+
+async function releaseWebhookEventClaim(eventId: string): Promise<void> {
+  // Solo su failure dell'handler: cosi' Stripe puo' ritentare lo stesso
+  // event.id. In caso di successo il claim resta (idempotenza).
+  await prisma.stripeWebhookEvent.deleteMany({ where: { id: eventId } });
 }
 
 async function handleCheckoutCompleted(
@@ -813,11 +813,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // Claim DOPO il processing riuscito: se rispondessimo 200 su un claim
-  // anticipato mentre un handler concorrente fallisce e rilascia il claim,
-  // Stripe smetterebbe di ritentare e l'evento andrebbe perso. I handler
-  // sono gia' idempotenti (stripePaymentId / updateMany guarded).
-  if (await wasWebhookEventProcessed(event.id)) {
+  // Claim atomico ANTICIPATO su event.id: due delivery concorrenti non
+  // processano entrambe. Se l'handler fallisce rilasciamo il claim cosi'
+  // Stripe puo' ritentare (altrimenti l'evento resterebbe perso).
+  const claim = await claimWebhookEvent(event);
+  if (claim === "duplicate") {
     return NextResponse.json({ received: true, duplicate: true });
   }
 
@@ -856,11 +856,18 @@ export async function POST(request: Request): Promise<NextResponse> {
         break;
     }
 
-    await markWebhookEventProcessed(event);
     scheduleStripeOpsAlerts(opsAlerts);
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("[stripe webhook] Handler error:", error);
+    try {
+      await releaseWebhookEventClaim(event.id);
+    } catch (releaseError) {
+      console.error(
+        "[stripe webhook] Failed to release event claim:",
+        releaseError,
+      );
+    }
     return NextResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 },

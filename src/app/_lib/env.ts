@@ -22,6 +22,8 @@ const envSchema = z
     CONTACT_EMAIL_TO: z.string().email().optional(),
     STRIPE_OPS_EMAIL_TO: z.string().email().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    // Presente su Vercel; assente in locale. Usato per fail-closed rate limit.
+    VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.BETTER_AUTH_URL !== data.NEXT_PUBLIC_APP_URL) {

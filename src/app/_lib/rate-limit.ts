@@ -83,10 +83,14 @@ export async function checkRateLimit(
     return { allowed: true };
   }
 
-  // Neon irraggiungibile: in produzione falliamo chiuso (degradare a
-  // in-memory per-istanza su Vercel equivarrebbe a un bypass quasi totale
-  // del rate limit). In sviluppo/test resta il fallback locale.
-  if (env.NODE_ENV === "production") {
+  // Neon irraggiungibile: in produzione (Vercel prod o NODE_ENV=production)
+  // falliamo chiuso — degradare a in-memory per-istanza su Vercel
+  // equivarrebbe a un bypass quasi totale del rate limit. In sviluppo/test
+  // locale resta il fallback in-memory.
+  const failClosed =
+    env.VERCEL_ENV === "production" || env.NODE_ENV === "production";
+
+  if (failClosed) {
     logError(
       "rate-limit",
       "Neon Postgres irraggiungibile in produzione: richiesta negata (fail-closed)",

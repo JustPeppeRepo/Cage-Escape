@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prisma } from "@/app/_lib/prisma";
 import { env } from "@/app/_lib/env";
+import { checkRateLimit } from "@/app/_lib/rate-limit";
 import {
   sendPasswordResetEmail,
   sendVerificationEmail,
@@ -26,6 +27,17 @@ function isCredentialAuthFailure(returned: unknown): boolean {
   // (email non verificata) né 429 (rate limit) come tentativi di lockout.
   return returned.statusCode === 401 || returned.status === "UNAUTHORIZED";
 }
+
+/** Limiti Postgres condivisi (non in-memory) sui path Better Auth sensibili. */
+const AUTH_PATH_RATE_LIMITS: Record<string, { action: string; max: number }> = {
+  "/sign-in/email": { action: "ba-sign-in-email", max: 5 },
+  "/sign-up/email": { action: "ba-sign-up-email", max: 5 },
+  "/send-verification-email": { action: "ba-send-verification", max: 1 },
+  "/request-password-reset": { action: "ba-request-password-reset", max: 5 },
+  "/reset-password": { action: "ba-reset-password", max: 5 },
+  "/change-password": { action: "ba-change-password", max: 5 },
+  "/delete-user": { action: "ba-delete-user", max: 3 },
+};
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -85,6 +97,8 @@ export const auth = betterAuth({
       }
     },
   },
+  // Difesa in profondita' (in-memory per istanza). Il limite effettivo
+  // distribuito e' enforceato negli hooks before via checkRateLimit/Postgres.
   rateLimit: {
     enabled: true,
     customRules: {
@@ -97,11 +111,20 @@ export const auth = betterAuth({
       "/delete-user": { window: 60, max: 3 },
     },
   },
-  // Lockout account sul path Better Auth (/api/auth/sign-in/email), non solo
-  // sul form UI: altrimenti un POST diretto bypasserebbe prepareLogin e le
-  // Server Action reportLogin* (che erano anche abusabili da terzi).
+  // Lockout account + rate limit Postgres sul path Better Auth (/api/auth/*),
+  // non solo sul form UI: altrimenti un POST diretto bypasserebbe prepareLogin.
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      const pathLimit = AUTH_PATH_RATE_LIMITS[ctx.path];
+      if (pathLimit) {
+        const rateLimit = await checkRateLimit(pathLimit.action, pathLimit.max);
+        if (!rateLimit.allowed) {
+          throw new APIError("TOO_MANY_REQUESTS", {
+            message: "Troppe richieste. Riprova tra poco.",
+          });
+        }
+      }
+
       if (ctx.path !== "/sign-in/email") return;
 
       const email = emailFromBody(ctx.body);

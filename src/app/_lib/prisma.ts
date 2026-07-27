@@ -1,6 +1,7 @@
 import { PrismaClient } from '@/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
+import { env } from '@/app/_lib/env'
 
 // Incrementa dopo `prisma generate` quando HMR potrebbe riusare un client
 // globalThis con DMMF/modelli non aggiornati (campi o tabelle nuovi).
@@ -17,7 +18,7 @@ function getOrCreatePool(): Pool {
     return globalForPrisma.pgPool
   }
 
-  const connectionUrl = new URL(process.env.DATABASE_URL ?? '')
+  const connectionUrl = new URL(env.DATABASE_URL)
   const sslmode = connectionUrl.searchParams.get('sslmode')
   connectionUrl.searchParams.delete('sslmode')
 

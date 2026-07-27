@@ -12,8 +12,8 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const review = await prisma.review.findUnique({
-    where: { id: reviewId },
+  const review = await prisma.review.findFirst({
+    where: { id: reviewId, isPublished: true },
     select: {
       imageWebp: true,
       imageUpdatedAt: true,
