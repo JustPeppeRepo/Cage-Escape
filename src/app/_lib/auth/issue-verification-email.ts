@@ -68,7 +68,7 @@ export async function issueAndSendVerificationEmail(input: {
     env.BETTER_AUTH_SECRET,
     user.email,
   );
-  const url = `${env.BETTER_AUTH_URL}/api/auth/verify-email?token=${token}&callbackURL=${encodeURIComponent(callbackURL)}`;
+  const url = `${env.NEXT_PUBLIC_APP_URL}/api/auth/verify-email?token=${token}&callbackURL=${encodeURIComponent(callbackURL)}`;
 
   const result = await sendVerificationEmail({ email: user.email, url });
   if (!result.ok) {

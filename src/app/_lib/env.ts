@@ -67,3 +67,19 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+// I link in email (verifica/reset) e metadataBase usano queste URL.
+// Se in produzione restano su *.vercel.app mentre il sito pubblico è
+// cageroom.it, i link nelle mail puntano al dominio sbagliato e i cookie
+// di sessione dopo verify/reset non valgono su cageroom.it.
+if (
+  env.NODE_ENV === "production" &&
+  /vercel\.app$/i.test(new URL(env.NEXT_PUBLIC_APP_URL).hostname)
+) {
+  console.error(
+    "❌ NEXT_PUBLIC_APP_URL / BETTER_AUTH_URL puntano a un dominio Vercel " +
+      `(${env.NEXT_PUBLIC_APP_URL}). Imposta entrambi a https://cageroom.it ` +
+      "nelle env di produzione, altrimenti i link nelle email di verifica/reset " +
+      "useranno cage-escape.vercel.app invece del dominio reale.",
+  );
+}

@@ -38,6 +38,10 @@ export const auth = betterAuth({
   // cosi' il login da telefono sulla LAN non fallisce il check CSRF.
   trustedOrigins: [
     env.BETTER_AUTH_URL,
+    // Dominio pubblico del sito: anche se per errore BETTER_AUTH_URL restasse
+    // su *.vercel.app, i callback da cageroom.it non devono fallire origin check.
+    "https://cageroom.it",
+    "https://www.cageroom.it",
     ...(env.NODE_ENV === "development"
       ? ["http://localhost:3000", "http://127.0.0.1:3000"]
       : []),
