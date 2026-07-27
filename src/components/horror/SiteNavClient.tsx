@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logout } from "@/actions/auth";
 import {
   getAvatarUrlById,
   resolveAvatarId,
@@ -115,18 +114,6 @@ function NavAuthSection({
       <div className={stackClass}>
         <UserAccountLink user={user} onNavigate={onNavigate} compact={compact} />
         {user.isAdmin ? <AdminLink onNavigate={onNavigate} /> : null}
-        <form action={logout} className={compact ? undefined : "shrink-0"}>
-          <button
-            type="submit"
-            className={
-              compact
-                ? "rounded bg-void-mist px-3 py-1.5 text-bone/80 transition-colors hover:bg-blood/30 hover:text-bone"
-                : "rounded bg-void-mist px-2.5 py-1.5 text-xs text-bone/80 transition-colors hover:bg-blood/30 hover:text-bone"
-            }
-          >
-            Esci
-          </button>
-        </form>
       </div>
     );
   }
@@ -186,7 +173,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
             width={32}
             height={32}
             unoptimized
-            className="h-7 w-7 shrink-0 sm:h-8 sm:w-8"
+            className="h-7 w-7 shrink-0 brightness-125 saturate-150 sm:h-8 sm:w-8"
           />
           <span className="font-heading m-0 text-sm leading-none sm:text-base md:text-lg">
             Cage Escape Room
@@ -211,7 +198,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
         <div className="hidden items-center justify-self-end gap-3 text-sm md:flex">
           <Link
             href="/rooms"
-            className="hidden rounded-sm border border-bone bg-bone px-4 py-2 font-heading text-sm tracking-wider text-void-deep transition-colors hover:bg-white lg:inline-block"
+            className="hidden rounded-sm border-2 border-blood-bright bg-blood px-4 py-2 font-heading text-sm tracking-wider text-bone transition-colors hover:bg-blood-bright lg:inline-block"
           >
             Prenota
           </Link>

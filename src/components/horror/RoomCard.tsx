@@ -18,7 +18,7 @@ export function RoomCard({ room, priority = false }: RoomCardProps) {
       className={`room-card flex h-full flex-col overflow-hidden rounded-md border bg-void-deep shadow-[0_0_20px_rgba(0,0,0,0.6)] transition-shadow ${
         unavailable
           ? "border-blood/50 opacity-90"
-          : "hover:animate-glitch-hover border-void-mist hover:shadow-[0_0_30px_rgba(133,32,38,0.4)]"
+          : "hover:animate-glitch-hover border-void-mist hover:shadow-[0_0_30px_rgba(224,58,72,0.4)]"
       }`}
     >
       <div className="relative aspect-16/10 w-full overflow-hidden bg-void">
@@ -46,7 +46,7 @@ export function RoomCard({ room, priority = false }: RoomCardProps) {
               aria-hidden
               className="pointer-events-none absolute inset-0 z-10"
             >
-              <div className="absolute top-1/2 left-[-20%] h-1 w-[140%] -translate-y-1/2 rotate-[-18deg] bg-blood shadow-[0_0_12px_rgba(133,32,38,0.8)]" />
+              <div className="absolute top-1/2 left-[-20%] h-1 w-[140%] -translate-y-1/2 rotate-[-18deg] bg-blood shadow-[0_0_12px_rgba(224,58,72,0.8)]" />
             </div>
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-void/55">
               <span className="border border-blood bg-void-deep/90 px-4 py-2 font-heading text-sm tracking-[0.2em] text-blood-bright uppercase sm:text-base">

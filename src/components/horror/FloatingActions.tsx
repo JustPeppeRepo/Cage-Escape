@@ -10,7 +10,7 @@ export function FloatingActions() {
         href="/rooms"
         aria-label="Prenota l'esperienza"
         title="Prenota"
-        className="group flex h-14 items-center rounded-full border-2 border-bone bg-bone px-5 font-heading text-sm tracking-wider text-void-deep transition-transform hover:scale-105 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bone lg:hidden"
+        className="group flex h-14 items-center rounded-full border-2 border-blood-bright bg-blood px-5 font-heading text-sm tracking-wider text-bone transition-transform hover:scale-105 hover:bg-blood-bright focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-bright lg:hidden"
       >
         <span className="inline-block group-hover:animate-glitch-hover">
           Prenota

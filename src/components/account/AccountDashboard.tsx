@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
+import { logout } from "@/actions/auth";
 import {
   changePassword,
   deleteAccount,
@@ -347,6 +348,21 @@ function OrdersSection({ bookings }: { bookings: AccountBooking[] }) {
   );
 }
 
+function LogoutSection() {
+  return (
+    <AccountSection
+      title="Sessione"
+      description="Esci dal tuo account su questo dispositivo."
+    >
+      <form action={logout}>
+        <button type="submit" className={adminSecondaryButtonClassName}>
+          Esci
+        </button>
+      </form>
+    </AccountSection>
+  );
+}
+
 function SecuritySection() {
   const [state, formAction, pending] = useActionState(changePassword, null);
 
@@ -442,6 +458,7 @@ export function AccountDashboard({ user, bookings }: AccountDashboardProps) {
       <ProfileSection user={user} />
       <OrdersSection bookings={bookings} />
       <SecuritySection />
+      <LogoutSection />
       <DeleteAccountSection email={user.email} />
     </div>
   );

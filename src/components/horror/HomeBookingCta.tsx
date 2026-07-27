@@ -12,7 +12,7 @@ export function HomeBookingCta() {
         </p>
         <Link
           href="/rooms"
-          className="hero-cta-pulse inline-block rounded-sm border-2 border-bone bg-bone px-8 py-4 font-heading text-lg tracking-widest text-void-deep shadow-[0_0_28px_rgba(232,226,214,0.35)] transition-colors hover:bg-white hover:text-void sm:px-12 sm:py-5 sm:text-xl"
+          className="hero-cta-pulse inline-block rounded-sm border-2 border-blood-bright bg-blood px-8 py-4 font-heading text-lg tracking-widest text-bone transition-colors hover:bg-blood-bright sm:px-12 sm:py-5 sm:text-xl"
         >
           <span className="hero-cta-label inline-block">Vai alle stanze</span>
         </Link>
