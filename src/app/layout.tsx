@@ -5,7 +5,6 @@ import { Anton } from "next/font/google";
 import { env } from "@/app/_lib/env";
 import { MAINTENANCE } from "@/app/_lib/site/maintenance";
 import { SiteNav } from "@/components/horror/SiteNav";
-import { SiteNavShell } from "@/components/horror/SiteNavShell";
 import { FloatingActions } from "@/components/horror/FloatingActions";
 import { Iubenda } from "@/components/horror/Iubenda";
 import "./globals.css";
@@ -70,11 +69,7 @@ export default function RootLayout({
   return (
     <html lang="it" className={displayFont.variable}>
       <body>
-        {!maintenanceOn ? (
-          <SiteNavShell>
-            <SiteNav />
-          </SiteNavShell>
-        ) : null}
+        {!maintenanceOn ? <SiteNav /> : null}
         {children}
         {!maintenanceOn ? <FloatingActions /> : null}
         {!maintenanceOn &&

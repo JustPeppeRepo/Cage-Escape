@@ -1,6 +1,6 @@
 # Roadmap — Cage Escape Room
 
-Documento vivo: aggiornato al 2026-07-26 (manutenzione pubblica, Next.js 16 `proxy.ts`, iubenda, SEO).
+Documento vivo: aggiornato al 2026-07-27 (co-location UI pubblica, manutenzione, Next.js 16 `proxy.ts`, iubenda, SEO).
 
 Checklist operativa go-live (placeholder, env, asset, test): vedi `CHECKLIST-PUBBLICAZIONE.md`.  
 Dettaglio Stripe / audit pagamenti: vedi `STRIPE_INTEGRATION_ROADMAP.md`.
@@ -113,6 +113,18 @@ Dettaglio operativo: `STRIPE_INTEGRATION_ROADMAP.md`.
 1. In `src/app/_lib/site/maintenance.ts` imposta `enabled: false`
 2. Deploy (o riavvio locale)
 3. Verifica che `/rooms`, login e checkout rispondano di nuovo
+
+## Fase I — Co-location UI pubblica ✅
+
+Refactoring UI (2026-07-27): meno file frammentati, stesso aspetto/UX. Auth, Stripe e Server Action di mutazione **non** riscritti (solo path import dove serviva).
+
+- [x] Home: sezioni verticali in ordine di resa — `HeroSection`, `RoomsSection`, `ReviewsSection` (+ ReviewCard), `FaqSection`, `BookingCtaSection`
+- [x] Hero: `FogOverlay` inline in `HeroSection`; `HeroVideo` resta client separato
+- [x] About: un solo `AboutContent.tsx`; rimossi frecce disattivate (`AboutFlowArrows`, `aboutArrowArt`) e micro-sezioni
+- [x] Nav: `SiteNavShell` + `SiteNavAuth` uniti in `SiteNav`; resta `SiteNavClient`
+- [x] Room detail: `dynamic()` di `BookingWidget` inline in `rooms/[slug]/page.tsx` (loader dedicato eliminato)
+- [x] Cleanup: cartella vuota `photographer/`, campo inutilizzato `LEGAL_ENTITY.tradeName`
+- [x] Fuori scope (intatti): webhook/checkout Stripe, Better Auth, interni `BookingWidget` / form auth, pannello admin
 
 ## Note
 

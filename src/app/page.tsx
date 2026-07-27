@@ -2,18 +2,17 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { env } from "@/app/_lib/env";
 import { MAINTENANCE } from "@/app/_lib/site/maintenance";
-import { Hero } from "@/components/horror/Hero";
-import { HomeRoomsSection } from "@/components/horror/HomeRoomsSection";
-import { HomeReviewsSection } from "@/components/horror/HomeReviewsSection";
+import { HeroSection } from "@/components/horror/HeroSection";
+import { RoomsSection } from "@/components/horror/RoomsSection";
+import { ReviewsSection } from "@/components/horror/ReviewsSection";
 import {
   ReviewsSectionSkeleton,
   RoomsSectionSkeleton,
 } from "@/components/horror/HomeSkeletons";
-import { FaqAccordion } from "@/components/horror/FaqAccordion";
-import { HomeBookingCta } from "@/components/horror/HomeBookingCta";
+import { FaqSection } from "@/components/horror/FaqSection";
+import { BookingCtaSection } from "@/components/horror/BookingCtaSection";
 import { MaintenanceScreen } from "@/components/horror/MaintenanceScreen";
 import { SiteFooter } from "@/components/horror/SiteFooter";
-import { SectionHeading } from "@/components/ui/SectionHeading";
 
 export const revalidate = 3600;
 
@@ -37,29 +36,6 @@ export const metadata: Metadata = MAINTENANCE.enabled
           "Prenota da Cage Escape Room la tua escape room immersiva. Temi diversi, dall'avventura all'horror: enigmi e 90 minuti fuori dal mondo.",
       },
     };
-
-const FAQ_ITEMS = [
-  {
-    question: "Quanto dura un'esperienza?",
-    answer:
-      "Ogni sessione dura circa 90 minuti, inclusi briefing iniziale e debriefing finale.",
-  },
-  {
-    question: "È adatto ai minorenni?",
-    answer:
-      "Sì, con la presenza di un accompagnatore maggiorenne e la firma di un modulo di responsabilità.",
-  },
-  {
-    question: "Cosa succede se non riesco a completare la stanza?",
-    answer:
-      "Nessun problema: un Game Master veglia sempre su di te e fornirà indizi se resterai bloccato troppo a lungo.",
-  },
-  {
-    question: "Posso annullare o modificare la prenotazione?",
-    answer:
-      "Puoi gestire la tua prenotazione fino a 48 ore prima dell'orario scelto contattando il nostro staff.",
-  },
-];
 
 export default function Home() {
   // Difesa in profondita': unita al rewrite in proxy.ts.
@@ -89,22 +65,19 @@ export default function Home() {
       />
 
       <main>
-        <Hero />
+        <HeroSection />
 
         <Suspense fallback={<RoomsSectionSkeleton />}>
-          <HomeRoomsSection />
+          <RoomsSection />
         </Suspense>
 
         <Suspense fallback={<ReviewsSectionSkeleton />}>
-          <HomeReviewsSection />
+          <ReviewsSection />
         </Suspense>
 
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <SectionHeading eyebrow="Prima di prenotare" title="Domande frequenti" />
-          <FaqAccordion items={FAQ_ITEMS} />
-        </section>
+        <FaqSection />
 
-        <HomeBookingCta />
+        <BookingCtaSection />
 
         <SiteFooter />
       </main>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
-export function HomeBookingCta() {
+export function BookingCtaSection() {
   return (
     <section className="bg-void-deep py-16 sm:py-24">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 text-center sm:px-6">

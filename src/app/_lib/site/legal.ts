@@ -9,7 +9,6 @@ import { env } from "@/app/_lib/env";
  */
 
 export const LEGAL_ENTITY = {
-  tradeName: "Cage Escape Room",
   legalName: "CAGE di Aiello Girolamo Emanuele",
   vatNumber: "07339710829",
   legalForm: "Impresa individuale",

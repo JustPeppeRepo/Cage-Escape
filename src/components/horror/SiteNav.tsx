@@ -1,4 +1,8 @@
-import { SiteNavAuth } from "@/components/horror/SiteNavAuth";
+"use client";
+
+import { usePathname } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { SiteNavClient } from "@/components/horror/SiteNavClient";
 
 export type SiteNavUser = {
   name: string;
@@ -8,6 +12,32 @@ export type SiteNavUser = {
   isAdmin: boolean;
 };
 
+function toNavUser(user: {
+  name: string;
+  username?: string | null;
+  email: string;
+  image?: string | null;
+  role?: string | null;
+}): SiteNavUser {
+  return {
+    name: user.name,
+    username:
+      typeof user.username === "string" ? user.username : user.name,
+    email: user.email,
+    image: user.image ?? null,
+    isAdmin: user.role === "ADMIN",
+  };
+}
+
 export function SiteNav() {
-  return <SiteNavAuth />;
+  const pathname = usePathname();
+  const { data: session } = authClient.useSession();
+
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
+
+  const navUser = session?.user ? toNavUser(session.user) : null;
+
+  return <SiteNavClient user={navUser} />;
 }

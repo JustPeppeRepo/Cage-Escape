@@ -1,10 +1,25 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import { getActiveRooms, getRoomWithPricing } from "@/app/_lib/site/content";
 import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
 import { SkullRating } from "@/components/horror/SkullRating";
-import { BookingWidget } from "@/components/horror/booking/BookingWidgetLoader";
+
+const BookingWidget = dynamic(
+  () =>
+    import("@/components/horror/booking/BookingWidget").then(
+      (mod) => mod.BookingWidget,
+    ),
+  {
+    loading: () => (
+      <div
+        className="h-96 animate-pulse rounded-md border border-void-mist bg-void-deep"
+        aria-hidden
+      />
+    ),
+  },
+);
 
 export const revalidate = 3600;
 

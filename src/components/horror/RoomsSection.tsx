@@ -3,7 +3,7 @@ import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { RoomsGrid } from "@/components/horror/RoomsGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
-export async function HomeRoomsSection() {
+export async function RoomsSection() {
   const rooms = await getPublicRooms();
   const roomSummaries = rooms.map(toRoomSummary);
 

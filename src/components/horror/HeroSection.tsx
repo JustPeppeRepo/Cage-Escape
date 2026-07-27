@@ -1,12 +1,20 @@
 import Link from "next/link";
-import { FogOverlay } from "@/components/horror/FogOverlay";
 import { HeroVideo } from "@/components/horror/HeroVideo";
 
-export function Hero() {
+export function HeroSection() {
   return (
     <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden bg-void-deep px-6 text-center">
       <HeroVideo />
-      <FogOverlay />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="animate-fog-drift absolute left-1/2 top-1/3 h-64 w-[min(90%,28rem)] -translate-x-1/2 rounded-full bg-void-mist/40 blur-3xl sm:w-[min(80%,32rem)]" />
+        <div
+          className="animate-fog-drift absolute left-1/2 top-1/2 h-72 w-[min(95%,32rem)] -translate-x-1/2 rounded-full bg-void-mist/25 blur-3xl sm:w-[min(85%,36rem)]"
+          style={{ animationDelay: "-9s" }}
+        />
+      </div>
 
       <div className="relative z-10 flex max-w-3xl flex-col items-center">
         <div className="-translate-y-8 flex flex-col items-center gap-4 sm:-translate-y-10 sm:gap-5">

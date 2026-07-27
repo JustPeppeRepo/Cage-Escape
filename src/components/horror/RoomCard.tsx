@@ -68,10 +68,10 @@ export function RoomCard({ room, priority = false }: RoomCardProps) {
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <SkullRating level={room.terrorLevel} />
           {unavailable ? (
-            <span className="text-sm font-semibold tracking-wide text-blood-bright uppercase">
+            <span className="shrink-0 text-right text-sm font-semibold tracking-wide text-blood-bright uppercase">
               Non disponibile
             </span>
           ) : (

@@ -1,40 +1,20 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { AboutFlowArrows } from "@/components/horror/about/AboutFlowArrows";
 
-const AboutSection = dynamic(
+const AboutContent = dynamic(
   () =>
-    import("@/components/horror/about/AboutSection").then(
-      (mod) => mod.AboutSection,
+    import("@/components/horror/about/AboutContent").then(
+      (mod) => mod.AboutContent,
     ),
   {
     loading: () => (
-      <div className="h-40 max-w-xl animate-pulse rounded bg-void-mist/30" />
-    ),
-  },
-);
-
-const FounderSection = dynamic(
-  () =>
-    import("@/components/horror/about/FounderSection").then(
-      (mod) => mod.FounderSection,
-    ),
-  {
-    loading: () => (
-      <div className="h-64 max-w-3xl animate-pulse rounded bg-void-mist/30" />
-    ),
-  },
-);
-
-const TeamSection = dynamic(
-  () =>
-    import("@/components/horror/about/TeamSection").then(
-      (mod) => mod.TeamSection,
-    ),
-  {
-    loading: () => (
-      <div className="ml-auto h-24 max-w-md animate-pulse rounded bg-void-mist/30" />
+      <div className="relative flex flex-col gap-16 sm:gap-24">
+        <div className="h-40 max-w-xl animate-pulse rounded bg-void-mist/30" />
+        <div className="ml-auto h-40 max-w-xl animate-pulse rounded bg-void-mist/30" />
+        <div className="h-64 max-w-3xl animate-pulse rounded bg-void-mist/30" />
+        <div className="ml-auto h-24 max-w-md animate-pulse rounded bg-void-mist/30" />
+      </div>
     ),
   },
 );
@@ -70,49 +50,7 @@ export default function AboutPage() {
           </h1>
         </header>
 
-        <AboutFlowArrows>
-          <AboutSection title="Missione" index={0} align="left">
-            <p>
-              CAGE nasce dal desiderio di trasformare le avventure che esistono
-              nei film in esperienze che possano essere vissute in prima persona.
-            </p>
-            <p>
-              Non vogliamo che i giocatori osservino una storia, vogliamo che la
-              attraversino: esplorando, scoprendo, agendo, superando ostacoli e
-              vivendo emozioni reali in condizioni di sicurezza.
-            </p>
-            <p>
-              Per noi un&apos;avventura non è una sequenza di enigmi: è un
-              viaggio fatto di scelte, fatica, tensione, scoperta e conquista.
-            </p>
-            <p>
-              CAGE esiste per permettere alle persone di vivere ciò che
-              normalmente possono soltanto immaginare e trasformare queste
-              esperienze in ricordi difficili da dimenticare.
-            </p>
-          </AboutSection>
-
-          <AboutSection title="Visione" index={1} align="right">
-            <p>
-              CAGE vuole diventare il luogo in cui sia possibile vivere avventure
-              sempre più vicine a quelle che oggi esistono solo
-              nell&apos;immaginazione.
-            </p>
-            <p>
-              Dall&apos;esplorazione di una piramide perduta alla sopravvivenza in
-              un bunker, fino a esperienze fisiche, immersive e sicure che
-              ridefiniscano il concetto stesso di Escape room.
-            </p>
-            <p>
-              L&apos;obiettivo finale non è costruire stanze. L&apos;obiettivo
-              finale è costruire avventure.
-            </p>
-          </AboutSection>
-
-          <FounderSection index={2} />
-
-          <TeamSection index={3} />
-        </AboutFlowArrows>
+        <AboutContent />
 
         <div className="hero-cta mt-20 text-center sm:mt-24">
           <Link
