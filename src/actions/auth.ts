@@ -1,9 +1,6 @@
 "use server"
 
 import { z } from "zod"
-import { headers } from "next/headers"
-import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
 import { checkRateLimit } from "@/app/_lib/rate-limit"
 import { getLoginLockStatus } from "@/app/_lib/auth/lockout"
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect"
@@ -188,12 +185,6 @@ export async function resendVerificationEmail(
     }
   }
 
-  console.info("[auth/resendVerificationEmail] ok", {
-    emailDomain: email.includes("@") ? email.split("@")[1] : null,
-    sent: result.sent,
-    requireSend,
-  })
-
   // Anti-enumerazione sul reinvio manuale: successo anche se non inviato.
   // Con requireSend, sent è sempre true se ok.
   return {
@@ -201,12 +192,4 @@ export async function resendVerificationEmail(
     sent: result.sent,
     retryAfterSeconds: VERIFICATION_RESEND_COOLDOWN_SECONDS,
   }
-}
-
-export async function logout() {
-  await auth.api.signOut({
-    headers: await headers(),
-  })
-
-  redirect("/")
 }

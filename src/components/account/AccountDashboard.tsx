@@ -2,13 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
-import { logout } from "@/actions/auth";
+import { useRouter } from "next/navigation";
 import {
-  changePassword,
-  deleteAccount,
-  updateProfile,
-} from "@/app/_actions/account";
+  useActionState,
+  useEffect,
+  useState,
+  type FormEvent,
+} from "react";
+import { changePassword, deleteAccount } from "@/app/_actions/account";
+import {
+  type AdminActionResult,
+  formDataToObject,
+} from "@/app/_lib/admin/action-result";
+import { profileFormSchema } from "@/app/_lib/account/schemas";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import {
   AVATARS,
   type AvatarId,
@@ -25,6 +32,8 @@ import {
   adminSecondaryButtonClassName,
 } from "@/components/admin/AdminFormFeedback";
 import { CancelMyBookingButton } from "@/components/account/CancelMyBookingButton";
+import { authClient } from "@/lib/auth-client";
+import { clearClientSessionAndGoHome } from "@/lib/clear-client-session";
 
 type AccountBookingStatus =
   | "PENDING"
@@ -121,7 +130,9 @@ function ProfileSection({
 }: {
   user: AccountDashboardProps["user"];
 }) {
-  const [state, formAction, pending] = useActionState(updateProfile, null);
+  const router = useRouter();
+  const [state, setState] = useState<AdminActionResult | null>(null);
+  const [pending, setPending] = useState(false);
   const [selectedAvatarId, setSelectedAvatarId] = useState<AvatarId>(() =>
     resolveAvatarId(user.image),
   );
@@ -133,12 +144,56 @@ function ProfileSection({
     }
   }, [selectedAvatarId, user.image]);
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+
+    setPending(true);
+    setState(null);
+
+    const formData = new FormData(event.currentTarget);
+    const parsed = profileFormSchema.safeParse(formDataToObject(formData));
+    if (!parsed.success) {
+      setState({
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Input non valido",
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      });
+      setPending(false);
+      return;
+    }
+
+    const { name: nextName, phone, avatarId } = parsed.data;
+    // Client updateUser: aggiorna DB e invalida l'atom di useSession
+    // (navbar nome/avatar). La Server Action non triggera quel refresh.
+    const { error } = await authClient.updateUser({
+      name: nextName,
+      phone,
+      image: getAvatarUrlById(avatarId),
+    });
+
+    if (error) {
+      setState({
+        success: false,
+        error: "Impossibile aggiornare il profilo",
+      });
+      setPending(false);
+      return;
+    }
+
+    setName(nextName);
+    setSelectedAvatarId(avatarId);
+    setState({ success: true, message: "Profilo aggiornato" });
+    setPending(false);
+    router.refresh();
+  }
+
   return (
     <AccountSection
       title="Profilo"
       description="Scegli un avatar e aggiorna i tuoi dati."
     >
-      <form action={formAction} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <fieldset>
           <legend className="mb-3 text-sm text-bone/80">Avatar</legend>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
@@ -354,11 +409,7 @@ function LogoutSection() {
       title="Sessione"
       description="Esci dal tuo account su questo dispositivo."
     >
-      <form action={logout}>
-        <button type="submit" className={adminSecondaryButtonClassName}>
-          Esci
-        </button>
-      </form>
+      <LogoutButton className={adminSecondaryButtonClassName} />
     </AccountSection>
   );
 }
@@ -407,6 +458,15 @@ function SecuritySection() {
 
 function DeleteAccountSection({ email }: { email: string }) {
   const [state, formAction, pending] = useActionState(deleteAccount, null);
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => {
+    if (!state?.success || clearing) return;
+    setClearing(true);
+    void clearClientSessionAndGoHome();
+  }, [state, clearing]);
+
+  const busy = pending || clearing;
 
   return (
     <AccountSection
@@ -442,10 +502,10 @@ function DeleteAccountSection({ email }: { email: string }) {
 
         <button
           type="submit"
-          disabled={pending}
+          disabled={busy}
           className="rounded bg-blood px-4 py-2 text-sm text-bone transition-colors hover:bg-blood-bright disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {pending ? "Eliminazione…" : "Elimina il mio account"}
+          {busy ? "Eliminazione…" : "Elimina il mio account"}
         </button>
       </form>
     </AccountSection>

@@ -73,15 +73,6 @@ export default function ContattiPage() {
                 info@cageroom.it
               </a>
             </p>
-            <p>
-              <span className="text-bone/80">PEC:</span>{" "}
-              <a
-                href="mailto:girolamo.aiello@pec.it"
-                className="text-bone/70 underline-offset-2 hover:text-bone hover:underline"
-              >
-                girolamo.aiello@pec.it
-              </a>
-            </p>
           </div>
 
           <SocialLinks />

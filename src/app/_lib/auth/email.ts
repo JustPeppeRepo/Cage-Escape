@@ -34,10 +34,7 @@ async function sendAuthEmail(input: {
   const resend = new Resend(env.RESEND_API_KEY);
 
   try {
-    console.info(`[auth/email] sending ${input.logLabel}`, {
-      toDomain: input.email.includes("@") ? input.email.split("@")[1] : null,
-    });
-    const { data, error } = await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: getResendFromAddress("Cage Room", env.RESEND_FROM_EMAIL),
       to: input.email,
       subject: input.subject,
@@ -78,9 +75,6 @@ async function sendAuthEmail(input: {
       return { ok: false, error: "Invio email non riuscito" };
     }
 
-    console.info(`[auth/email] ${input.logLabel} accepted by Resend`, {
-      id: data?.id ?? null,
-    });
     return { ok: true };
   } catch (error) {
     logError("auth", `Unexpected ${input.logLabel} email error`, {

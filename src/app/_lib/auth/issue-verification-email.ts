@@ -36,10 +36,6 @@ export async function issueAndSendVerificationEmail(input: {
   });
 
   if (!user) {
-    console.info("[auth/issueVerification] user not found", {
-      emailDomain: email.includes("@") ? email.split("@")[1] : null,
-      requireSend: Boolean(input.requireSend),
-    });
     if (input.requireSend) {
       return {
         ok: false,
@@ -50,10 +46,6 @@ export async function issueAndSendVerificationEmail(input: {
   }
 
   if (user.emailVerified) {
-    console.info("[auth/issueVerification] already verified", {
-      emailDomain: email.includes("@") ? email.split("@")[1] : null,
-      requireSend: Boolean(input.requireSend),
-    });
     if (input.requireSend) {
       return {
         ok: false,
@@ -75,8 +67,5 @@ export async function issueAndSendVerificationEmail(input: {
     return { ok: false, error: result.error };
   }
 
-  console.info("[auth/issueVerification] sent", {
-    emailDomain: user.email.includes("@") ? user.email.split("@")[1] : null,
-  });
   return { ok: true, sent: true };
 }

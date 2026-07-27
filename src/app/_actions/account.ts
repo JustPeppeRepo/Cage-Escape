@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { APIError } from "better-auth";
@@ -9,12 +8,10 @@ import { auth } from "@/lib/auth";
 import { requireUser } from "@/lib/dal";
 import { prisma } from "@/app/_lib/prisma";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
-import { getAvatarUrlById } from "@/app/_lib/account/avatars";
 import {
   changePasswordSchema,
   deleteAccountSchema,
   forgotPasswordSchema,
-  profileFormSchema,
   resetPasswordSchema,
 } from "@/app/_lib/account/schemas";
 import {
@@ -79,47 +76,6 @@ async function deleteDeletableBookings(userId: string): Promise<void> {
       where: { id: { in: bookingIds } },
     });
   });
-}
-
-export async function updateProfile(
-  prevState: AdminActionResult | null,
-  formData: FormData,
-): Promise<AdminActionResult> {
-  await requireUser();
-
-  const parsed = profileFormSchema.safeParse(formDataToObject(formData));
-  if (!parsed.success) {
-    return {
-      success: false,
-      error: parsed.error.issues[0]?.message ?? "Input non valido",
-      fieldErrors: parsed.error.flatten().fieldErrors,
-    };
-  }
-
-  const { name, phone, avatarId } = parsed.data;
-
-  try {
-    await auth.api.updateUser({
-      body: {
-        name,
-        phone,
-        image: getAvatarUrlById(avatarId),
-      },
-      headers: await headers(),
-    });
-  } catch (error) {
-    if (error instanceof APIError) {
-      console.error("[account/updateProfile] Better Auth error:", error.message);
-      return { success: false, error: "Impossibile aggiornare il profilo" };
-    }
-    console.error("[account/updateProfile] Unexpected error:", error);
-    return { success: false, error: "Errore durante l'aggiornamento del profilo" };
-  }
-
-  revalidatePath("/account");
-  revalidatePath("/", "layout");
-
-  return { success: true, message: "Profilo aggiornato" };
 }
 
 export async function changePassword(
@@ -191,17 +147,6 @@ export async function requestPasswordReset(
   }
 
   const email = parsed.data.email.trim().toLowerCase();
-
-  // Diagnostica temporanea: in UI il messaggio è sempre generico (anti-enumerazione),
-  // quindi senza questo log non si vede se Better Auth ha trovato l'utente / se Resend parte.
-  const existing = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  console.info("[account/requestPasswordReset]", {
-    emailDomain: email.includes("@") ? email.split("@")[1] : null,
-    userFound: Boolean(existing),
-  });
 
   try {
     await auth.api.requestPasswordReset({
@@ -346,5 +291,7 @@ export async function deleteAccount(
     return { success: false, error: "Errore durante l'eliminazione dell'account" };
   }
 
-  redirect("/");
+  // Niente redirect server: il client deve fare signOut + hard navigation
+  // per azzerare useSession in navbar (stesso problema del logout).
+  return { success: true, message: "Account eliminato" };
 }
