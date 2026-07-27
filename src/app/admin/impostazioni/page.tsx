@@ -18,13 +18,15 @@ export default async function AdminSettingsPage() {
         Impostazioni
       </h1>
       <p className="mt-2 text-sm text-bone/60">
-        Configurazione dello sconto per il mini-gioco &quot;Il Rito della Maledizione&quot;.
+        Cooldown tra sessioni e configurazione dello sconto per il mini-gioco
+        &quot;Il Rito della Maledizione&quot;.
       </p>
 
       <div className="mt-8">
         <SiteSettingsForm
           easterEggDiscountEnabled={settings.easterEggDiscountEnabled}
           easterEggDiscountPercent={settings.easterEggDiscountPercent}
+          slotCooldownMinutes={settings.slotCooldownMinutes}
         />
       </div>
     </main>

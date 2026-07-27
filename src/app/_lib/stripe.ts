@@ -7,7 +7,12 @@ export const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
   typescript: true,
 });
 
-const STRIPE_SECRET_KEY_PLACEHOLDERS = new Set(["sk_test_xxxx", "sk_live_xxxx"]);
+const STRIPE_SECRET_KEY_PLACEHOLDERS = new Set([
+  "sk_test_xxxx",
+  "sk_live_xxxx",
+  "rk_test_xxxx",
+  "rk_live_xxxx",
+]);
 
 // Dettaglio della misconfigurazione: SOLO per uso server-side (log), non va
 // mai restituito direttamente al client perché cita nomi di variabili
@@ -23,7 +28,9 @@ function getStripeConfigurationErrorDetail(): string | null {
     return "STRIPE_SECRET_KEY mancante o placeholder";
   }
 
-  if (!/^sk_(test|live)_[A-Za-z0-9]+$/.test(key)) {
+  // Accetta secret key standard (sk_) e restricted key (rk_).
+  // Le rk_ possono contenere underscore nel body.
+  if (!/^[sr]k_(test|live)_[A-Za-z0-9_]+$/.test(key)) {
     return "STRIPE_SECRET_KEY non ha un formato valido";
   }
 

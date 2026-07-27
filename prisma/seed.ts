@@ -81,6 +81,20 @@ async function main() {
   await prisma.review.deleteMany();
   await prisma.review.createMany({ data: seedReviews });
 
+  // Orari settimanali di default (lun–dom 10–22), idempotente.
+  for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek += 1) {
+    await prisma.weeklyOpeningHours.upsert({
+      where: { dayOfWeek },
+      update: {},
+      create: {
+        dayOfWeek,
+        isOpen: true,
+        openHour: 10,
+        closeHour: 22,
+      },
+    });
+  }
+
   console.log("Seed completato:", room.slug);
 }
 

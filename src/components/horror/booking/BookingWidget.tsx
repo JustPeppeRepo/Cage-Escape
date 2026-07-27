@@ -487,13 +487,14 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
                     key={slot.startTime}
                     type="button"
                     onClick={() => setSelectedSlot(slot.startTime)}
-                    className={`min-w-[5.75rem] rounded border px-5 py-3 text-base transition-colors ${
+                    className={`min-w-[7.5rem] rounded border px-4 py-3 text-base transition-colors ${
                       effectiveSelectedSlot === slot.startTime
                         ? "border-blood bg-blood text-bone"
                         : "border-void-mist text-bone/80 hover:bg-blood/20"
                     }`}
                   >
-                    {formatSlotTime(slot.startTime)}
+                    {formatSlotTime(slot.startTime)} –{" "}
+                    {formatSlotTime(slot.endTime)}
                   </button>
                 ))}
               </div>
@@ -605,11 +606,14 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
                     name="paymentChoice"
                     value="DEPOSIT"
                     checked={paymentChoice === "DEPOSIT"}
-                    onChange={() => setPaymentChoice("DEPOSIT")}
+                    onChange={() => {
+                      setPaymentChoice("DEPOSIT");
+                      setDiscountCode("");
+                    }}
                   />
-                  Solo caparra
+                  Blocca la prenotazione
                   <InfoHint
-                    label="Cosa significa solo caparra"
+                    label="Cosa significa bloccare la prenotazione"
                     text={DEPOSIT_PAYMENT_HINT}
                   />
                 </span>
@@ -619,19 +623,21 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
               </label>
             </fieldset>
 
-            <label className="flex flex-col gap-1 text-sm text-bone/80">
-              Codice sconto (opzionale)
-              <input
-                type="text"
-                name="discountCode"
-                value={discountCode}
-                onChange={(event) =>
-                  setDiscountCode(event.target.value.toUpperCase())
-                }
-                placeholder="RITO-XXXX-XXXX"
-                className="rounded border border-void-mist bg-void px-3 py-2 text-bone uppercase"
-              />
-            </label>
+            {paymentChoice === "FULL" ? (
+              <label className="flex flex-col gap-1 text-sm text-bone/80">
+                Codice sconto (opzionale)
+                <input
+                  type="text"
+                  name="discountCode"
+                  value={discountCode}
+                  onChange={(event) =>
+                    setDiscountCode(event.target.value.toUpperCase())
+                  }
+                  placeholder="RITO-XXXX-XXXX"
+                  className="rounded border border-void-mist bg-void px-3 py-2 text-bone uppercase"
+                />
+              </label>
+            ) : null}
 
             {!previewTier ? (
               <p className="text-sm text-blood-bright">

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getActiveRooms, getRoomWithPricing } from "@/app/_lib/site/content";
 import { toRoomSummary } from "@/app/_lib/bookings/mappers";
 import { formatEuroAmount } from "@/app/_lib/bookings/money";
-import { SkullRating } from "@/components/horror/SkullRating";
+import { StarRating } from "@/components/horror/StarRating";
 
 const BookingWidget = dynamic(
   () =>
@@ -97,7 +97,7 @@ export default async function RoomDetailPage({
               {roomSummary.minPlayers}-{roomSummary.maxPlayers} giocatori
             </span>
             <span>A partire da {roomSummary.prezzoTotale} €</span>
-            <SkullRating level={roomSummary.terrorLevel} />
+            <StarRating level={roomSummary.terrorLevel} />
           </div>
           <p className="text-bone/70">{roomSummary.description}</p>
         </header>

@@ -52,8 +52,7 @@ export default function ContattiPage() {
 
           <div className="mt-10 space-y-4 text-sm text-bone/60">
             <p>
-              <span className="text-bone/80">Indirizzo:</span> Via del Manicomio
-              13, 00100 Roma
+              <span className="text-bone/80">Indirizzo:</span> Via sconosciuta, Palermo
             </p>
             <p>
               <span className="text-bone/80">WhatsApp:</span>{" "}

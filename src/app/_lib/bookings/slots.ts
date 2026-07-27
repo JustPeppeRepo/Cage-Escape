@@ -1,11 +1,18 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { BookingStatus, ScheduleOverrideType } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
+import { getSlotCooldownMinutes } from "@/app/_lib/admin/site-settings";
 import {
   DEFAULT_CLOSE_HOUR,
   DEFAULT_OPEN_HOUR,
   TIMEZONE,
 } from "@/app/_lib/bookings/constants";
+import {
+  ensureWeeklyOpeningHours,
+  resolveWeeklyDaySchedule,
+  weeklyHoursToMap,
+  type WeeklyDayHours,
+} from "@/app/_lib/bookings/weekly-hours";
 
 export type TimeSlot = {
   startTime: Date;
@@ -123,10 +130,19 @@ function toUtcDateOnly(dateStr: string): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+function defaultDaySchedule(): DaySchedule {
+  return {
+    closed: false,
+    openHour: DEFAULT_OPEN_HOUR,
+    closeHour: DEFAULT_CLOSE_HOUR,
+  };
+}
+
 export function resolveDayScheduleFromOverrides(
   dateStr: string,
   roomId: string,
   overrides: ScheduleOverrideRecord[],
+  weeklyByDay?: Map<number, WeeklyDayHours>,
 ): DaySchedule {
   const dateOnly = toUtcDateOnly(dateStr);
   const dayOverrides = overrides.filter(
@@ -138,11 +154,10 @@ export function resolveDayScheduleFromOverrides(
   const override = roomOverride ?? globalOverride;
 
   if (!override) {
-    return {
-      closed: false,
-      openHour: DEFAULT_OPEN_HOUR,
-      closeHour: DEFAULT_CLOSE_HOUR,
-    };
+    if (weeklyByDay) {
+      return resolveWeeklyDaySchedule(dateStr, weeklyByDay);
+    }
+    return defaultDaySchedule();
   }
 
   if (override.type === ScheduleOverrideType.CLOSED) {
@@ -161,26 +176,34 @@ export function resolveDayScheduleFromOverrides(
     };
   }
 
-  return {
-    closed: false,
-    openHour: DEFAULT_OPEN_HOUR,
-    closeHour: DEFAULT_CLOSE_HOUR,
-  };
+  if (weeklyByDay) {
+    return resolveWeeklyDaySchedule(dateStr, weeklyByDay);
+  }
+
+  return defaultDaySchedule();
 }
 
 export async function resolveDaySchedule(
   dateStr: string,
   roomId: string,
 ): Promise<DaySchedule> {
-  const overrides = await prisma.scheduleOverride.findMany({
-    where: {
-      date: toUtcDateOnly(dateStr),
-      OR: [{ roomId: null }, { roomId }],
-    },
-    orderBy: { roomId: "desc" },
-  });
+  const [overrides, weekly] = await Promise.all([
+    prisma.scheduleOverride.findMany({
+      where: {
+        date: toUtcDateOnly(dateStr),
+        OR: [{ roomId: null }, { roomId }],
+      },
+      orderBy: { roomId: "desc" },
+    }),
+    ensureWeeklyOpeningHours(),
+  ]);
 
-  return resolveDayScheduleFromOverrides(dateStr, roomId, overrides);
+  return resolveDayScheduleFromOverrides(
+    dateStr,
+    roomId,
+    overrides,
+    weeklyHoursToMap(weekly),
+  );
 }
 
 export function generateTimeSlots(
@@ -188,6 +211,7 @@ export function generateTimeSlots(
   durationMinutes: number,
   openHour: number,
   closeHour: number,
+  cooldownMinutes = 0,
 ): TimeSlot[] {
   if (openHour >= closeHour) {
     return [];
@@ -196,6 +220,7 @@ export function generateTimeSlots(
   const slots: TimeSlot[] = [];
   let cursorHour = openHour;
   let cursorMinute = 0;
+  const stepMinutes = durationMinutes + Math.max(0, cooldownMinutes);
 
   while (true) {
     const startTime = createRomeDateTime(dateStr, cursorHour, cursorMinute);
@@ -211,8 +236,15 @@ export function generateTimeSlots(
 
     slots.push({ startTime, endTime });
 
-    cursorHour = endParts.hour;
-    cursorMinute = endParts.minute;
+    const nextStart = new Date(startTime.getTime() + stepMinutes * 60_000);
+    const nextParts = getZonedParts(nextStart, TIMEZONE);
+
+    if (nextParts.date !== dateStr) {
+      break;
+    }
+
+    cursorHour = nextParts.hour;
+    cursorMinute = nextParts.minute;
   }
 
   return slots;
@@ -227,6 +259,13 @@ function rangesOverlap(
   return startA < endB && endA > startB;
 }
 
+function withCooldownEnd(endTime: Date, cooldownMinutes: number): Date {
+  if (cooldownMinutes <= 0) {
+    return endTime;
+  }
+  return new Date(endTime.getTime() + cooldownMinutes * 60_000);
+}
+
 export async function getOccupiedSlots(
   roomId: string,
   dayStart: Date,
@@ -234,6 +273,7 @@ export async function getOccupiedSlots(
   tx: TransactionClient = prisma,
 ): Promise<TimeSlot[]> {
   const now = new Date();
+  const cooldownMinutes = await getSlotCooldownMinutes();
 
   const bookings = await tx.booking.findMany({
     where: {
@@ -254,7 +294,10 @@ export async function getOccupiedSlots(
     },
   });
 
-  return bookings;
+  return bookings.map((booking) => ({
+    startTime: booking.startTime,
+    endTime: withCooldownEnd(booking.endTime, cooldownMinutes),
+  }));
 }
 
 export async function isSlotAvailable(
@@ -264,12 +307,16 @@ export async function isSlotAvailable(
   tx: TransactionClient = prisma,
 ): Promise<boolean> {
   const now = new Date();
+  const cooldownMinutes = await getSlotCooldownMinutes();
+  const cooldownMs = Math.max(0, cooldownMinutes) * 60_000;
 
+  // Intervallo busy = [start, end + cooldown). Confronto simmetrico con le
+  // prenotazioni esistenti (anche se inserite in ordine inverso).
   const conflict = await tx.booking.findFirst({
     where: {
       roomId,
-      startTime: { lt: endTime },
-      endTime: { gt: startTime },
+      startTime: { lt: new Date(endTime.getTime() + cooldownMs) },
+      endTime: { gt: new Date(startTime.getTime() - cooldownMs) },
       OR: [
         { status: { in: [BookingStatus.PAID, BookingStatus.DEPOSIT_PAID] } },
         {
@@ -287,17 +334,19 @@ export async function isSlotAvailable(
 export function filterAvailableSlots(
   generated: TimeSlot[],
   occupied: TimeSlot[],
+  cooldownMinutes = 0,
 ): TimeSlot[] {
-  return generated.filter((slot) =>
-    !occupied.some((booking) =>
+  return generated.filter((slot) => {
+    const slotBusyEnd = withCooldownEnd(slot.endTime, cooldownMinutes);
+    return !occupied.some((booking) =>
       rangesOverlap(
         slot.startTime,
-        slot.endTime,
+        slotBusyEnd,
         booking.startTime,
         booking.endTime,
       ),
-    ),
-  );
+    );
+  });
 }
 
 function getBookableSlotsForDay(
@@ -306,6 +355,7 @@ function getBookableSlotsForDay(
   schedule: DaySchedule,
   occupied: TimeSlot[],
   now: Date,
+  cooldownMinutes = 0,
 ): { bookable: TimeSlot[]; available: TimeSlot[] } {
   if (schedule.closed) {
     return { bookable: [], available: [] };
@@ -316,9 +366,10 @@ function getBookableSlotsForDay(
     durationMinutes,
     schedule.openHour,
     schedule.closeHour,
+    cooldownMinutes,
   );
   const bookable = generated.filter((slot) => slot.startTime > now);
-  const available = filterAvailableSlots(bookable, occupied);
+  const available = filterAvailableSlots(bookable, occupied, cooldownMinutes);
 
   return { bookable, available };
 }
@@ -334,6 +385,8 @@ export async function getAvailableSlotsForRoom(
   // fallirebbe contro il PENDING zombie.
   await releaseExpiredHolds();
 
+  const cooldownMinutes = await getSlotCooldownMinutes();
+
   const { dayStart, dayEnd } = getDayBounds(dateStr);
   const [schedule, occupied] = await Promise.all([
     resolveDaySchedule(dateStr, roomId),
@@ -346,6 +399,7 @@ export async function getAvailableSlotsForRoom(
     schedule,
     occupied,
     new Date(),
+    cooldownMinutes,
   ).available;
 }
 
@@ -360,17 +414,21 @@ export async function getMonthClosedDates(
   const startDateStr = `${monthPrefix}-01`;
   const endDateStr = `${monthPrefix}-${pad(lastDay)}`;
 
-  const overrides = await prisma.scheduleOverride.findMany({
-    where: {
-      date: {
-        gte: toUtcDateOnly(startDateStr),
-        lte: toUtcDateOnly(endDateStr),
+  const [overrides, weekly] = await Promise.all([
+    prisma.scheduleOverride.findMany({
+      where: {
+        date: {
+          gte: toUtcDateOnly(startDateStr),
+          lte: toUtcDateOnly(endDateStr),
+        },
+        OR: [{ roomId: null }, { roomId }],
       },
-      OR: [{ roomId: null }, { roomId }],
-    },
-    orderBy: { roomId: "desc" },
-  });
+      orderBy: { roomId: "desc" },
+    }),
+    ensureWeeklyOpeningHours(),
+  ]);
 
+  const weeklyByDay = weeklyHoursToMap(weekly);
   const closedDates: string[] = [];
 
   for (let day = 1; day <= lastDay; day += 1) {
@@ -383,6 +441,7 @@ export async function getMonthClosedDates(
       dateStr,
       roomId,
       overrides,
+      weeklyByDay,
     );
 
     if (schedule.closed) {

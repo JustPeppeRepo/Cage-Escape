@@ -24,7 +24,11 @@ export async function updateSiteSettings(
     };
   }
 
-  const { easterEggDiscountEnabled, easterEggDiscountPercent } = parsed.data;
+  const {
+    easterEggDiscountEnabled,
+    easterEggDiscountPercent,
+    slotCooldownMinutes,
+  } = parsed.data;
 
   try {
     await prisma.siteSettings.upsert({
@@ -32,15 +36,18 @@ export async function updateSiteSettings(
       update: {
         easterEggDiscountEnabled,
         easterEggDiscountPercent,
+        slotCooldownMinutes,
       },
       create: {
         id: SITE_SETTINGS_ID,
         easterEggDiscountEnabled,
         easterEggDiscountPercent,
+        slotCooldownMinutes,
       },
     });
 
     revalidatePath("/admin/impostazioni");
+    revalidatePath("/admin/schedule");
     revalidatePath("/maledizione");
 
     return { success: true, message: "Impostazioni salvate" };

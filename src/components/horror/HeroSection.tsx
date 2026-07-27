@@ -25,12 +25,10 @@ export function HeroSection() {
           <p className="hero-subtitle relative max-w-xl text-lg text-bone/80">
             Non sei qui per guardare una storia.
             <br />
-            Non sei qui per seguire un copione.
-            <br />
             Esplora. Decidi. Agisci.
             <br />
-            E scopri cosa sei disposto a fare quando non puoi più tornare
-            indietro
+            Scopri cosa sei disposto a fare quando non puoi più tornare
+            indietro.
           </p>
         </div>
 

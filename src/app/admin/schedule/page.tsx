@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";
+import { ensureWeeklyOpeningHours } from "@/app/_lib/bookings/weekly-hours";
 import { ScheduleManager } from "@/components/admin/ScheduleManager";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ function formatDateOnly(date: Date): string {
 export default async function AdminSchedulePage() {
   await requireAdmin();
 
-  const [rooms, overrides] = await Promise.all([
+  const [rooms, overrides, weeklyHours] = await Promise.all([
     prisma.room.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
@@ -24,6 +25,7 @@ export default async function AdminSchedulePage() {
       orderBy: { date: "asc" },
       include: { room: { select: { name: true } } },
     }),
+    ensureWeeklyOpeningHours(),
   ]);
 
   return (
@@ -32,12 +34,14 @@ export default async function AdminSchedulePage() {
         Orari e chiusure
       </h1>
       <p className="mt-2 text-sm text-bone/60">
-        Override per date specifiche (chiusura o orario personalizzato).
+        Configura gli orari settimanali di default e gli override per date
+        specifiche.
       </p>
 
       <div className="mt-8">
         <ScheduleManager
           rooms={rooms}
+          weeklyHours={weeklyHours}
           overrides={overrides.map((override) => ({
             id: override.id,
             date: formatDateOnly(override.date),

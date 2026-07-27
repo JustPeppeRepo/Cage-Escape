@@ -165,6 +165,17 @@ model ScheduleOverride {
   @@index([date])
 }
 
+// Orari di apertura settimanali di default (0 = lunedì … 6 = domenica).
+// Gli override su ScheduleOverride hanno priorità su queste regole.
+model WeeklyOpeningHours {
+  id        String   @id @default(cuid())
+  dayOfWeek Int      @unique
+  isOpen    Boolean  @default(true)
+  openHour  Int      @default(10)
+  closeHour Int      @default(22)
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
 model Booking {
   id              String        @id @default(cuid())
   user            User          @relation(fields: [userId], references: [id])
@@ -222,6 +233,8 @@ model SiteSettings {
   id                       String   @id @default("default")
   easterEggDiscountEnabled Boolean  @default(false)
   easterEggDiscountPercent Int      @default(5)
+  /// Minuti di buffer tra fine di una sessione e inizio della successiva (stessa stanza).
+  slotCooldownMinutes       Int      @default(15)
   updatedAt                DateTime @updatedAt @db.Timestamptz
 }
 

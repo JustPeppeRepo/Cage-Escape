@@ -43,7 +43,18 @@ export const holdSlotSchema = z
   .refine((data) => data.minorCount <= data.participantCount, {
     message: "Il numero di minorenni non può superare i partecipanti",
     path: ["minorCount"],
-  });
+  })
+  .refine(
+    (data) =>
+      data.paymentChoice === PaymentType.FULL ||
+      !data.discountCode ||
+      data.discountCode.length === 0,
+    {
+      message:
+        "Il codice sconto è disponibile solo con il pagamento del saldo completo",
+      path: ["discountCode"],
+    },
+  );
 
 export const createStripeCheckoutSessionSchema = z.object({
   bookingId: z.string().cuid().max(64),

@@ -2,8 +2,13 @@ import { PrismaClient } from '@/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 
+// Incrementa dopo `prisma generate` quando HMR potrebbe riusare un client
+// globalThis con DMMF/modelli non aggiornati (campi o tabelle nuovi).
+const PRISMA_CLIENT_REVISION = 3
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
+  prismaRevision: number | undefined
   pgPool: Pool | undefined
 }
 
@@ -34,14 +39,16 @@ function createPrismaClient(): PrismaClient {
 }
 
 function getPrismaClient(): PrismaClient {
-  const cached = globalForPrisma.prisma
-
-  if (cached?.review) {
-    return cached
+  if (
+    globalForPrisma.prisma &&
+    globalForPrisma.prismaRevision === PRISMA_CLIENT_REVISION
+  ) {
+    return globalForPrisma.prisma
   }
 
   const client = createPrismaClient()
   globalForPrisma.prisma = client
+  globalForPrisma.prismaRevision = PRISMA_CLIENT_REVISION
 
   return client
 }

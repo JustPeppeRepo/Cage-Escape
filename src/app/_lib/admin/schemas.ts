@@ -38,7 +38,10 @@ export const pricingTierFormSchema = z.object({
 export const scheduleOverrideFormSchema = z
   .object({
     id: z.string().cuid().optional(),
-    date: z.string().regex(dateRegex, "Formato data non valido (YYYY-MM-DD)"),
+    dates: z
+      .array(z.string().regex(dateRegex, "Formato data non valido (YYYY-MM-DD)"))
+      .min(1, "Seleziona almeno una data")
+      .max(62, "Puoi selezionare al massimo 62 giorni per volta"),
     roomId: z.string().cuid().optional().or(z.literal("")),
     type: z.enum([ScheduleOverrideType.CLOSED, ScheduleOverrideType.CUSTOM_HOURS]),
     openHour: z.coerce.number().int().min(0).max(23).optional(),
@@ -63,6 +66,29 @@ export const scheduleOverrideFormSchema = z
     }
   });
 
+export const weeklyOpeningHoursFormSchema = z.object({
+  days: z
+    .array(
+      z
+        .object({
+          dayOfWeek: z.coerce.number().int().min(0).max(6),
+          isOpen: z.boolean(),
+          openHour: z.coerce.number().int().min(0).max(23),
+          closeHour: z.coerce.number().int().min(1).max(24),
+        })
+        .superRefine((day, ctx) => {
+          if (day.isOpen && day.openHour >= day.closeHour) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["closeHour"],
+              message: "La chiusura deve essere successiva all'apertura",
+            });
+          }
+        }),
+    )
+    .length(7, "Servono esattamente 7 giorni"),
+});
+
 export const cancelBookingSchema = z.object({
   bookingId: z.string().cuid().max(64),
 });
@@ -86,6 +112,7 @@ export const siteSettingsFormSchema = z.object({
     .optional()
     .transform((value) => value === "true" || value === "on"),
   easterEggDiscountPercent: z.coerce.number().int().min(1).max(50),
+  slotCooldownMinutes: z.coerce.number().int().min(0).max(120),
 });
 
 export const contactFormSchema = z.object({

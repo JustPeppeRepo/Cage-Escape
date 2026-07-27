@@ -1,5 +1,6 @@
 export const DEFAULT_OPEN_HOUR = 10;
 export const DEFAULT_CLOSE_HOUR = 22;
+export const DEFAULT_SLOT_COOLDOWN_MINUTES = 15;
 export const HOLD_DURATION_MS = 10 * 60 * 1000;
 export const TIMEZONE = "Europe/Rome";
 // Limite di hold PENDING attivi per singolo utente: senza questo cap un

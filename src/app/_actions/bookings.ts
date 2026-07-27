@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
-import { BookingStatus, PaymentStatus } from "@/generated/prisma/client";
+import {
+  BookingStatus,
+  PaymentStatus,
+  PaymentType,
+} from "@/generated/prisma/client";
 import { getCurrentSession } from "@/lib/dal";
 import { prisma } from "@/app/_lib/prisma";
 import {
@@ -44,6 +48,7 @@ import { getBookingChargeAmount } from "@/app/_lib/bookings/charge-amount";
 import { validateDiscountCodeForUser } from "@/app/_lib/bookings/discount-code";
 import { applyDiscountPercent } from "@/app/_lib/admin/discount";
 import { validateWaiverFiles } from "@/app/_lib/bookings/waiver-upload";
+import { getSlotCooldownMinutes } from "@/app/_lib/admin/site-settings";
 
 export type BookingActionError = {
   success: false;
@@ -362,10 +367,23 @@ export async function holdSlot(
       };
     }
 
-    const discountValidation = await validateDiscountCodeForUser(
-      discountCode,
-      session.user.id,
-    );
+    if (
+      paymentChoice === PaymentType.DEPOSIT &&
+      discountCode &&
+      discountCode.trim().length > 0
+    ) {
+      return {
+        success: false,
+        error:
+          "Il codice sconto è disponibile solo con il pagamento del saldo completo",
+        code: "DISCOUNT_INVALID",
+      };
+    }
+
+    const discountValidation =
+      paymentChoice === PaymentType.FULL
+        ? await validateDiscountCodeForUser(discountCode, session.user.id)
+        : ({ ok: true, discount: null } as const);
 
     if (!discountValidation.ok) {
       return {
@@ -390,11 +408,13 @@ export async function holdSlot(
       };
     }
 
+    const cooldownMinutes = await getSlotCooldownMinutes();
     const validSlots = generateTimeSlots(
       dateStr,
       room.durationMinutes,
       schedule.openHour,
       schedule.closeHour,
+      cooldownMinutes,
     );
 
     const matchedSlot = validSlots.find(

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { SkullRating } from "@/components/horror/SkullRating";
+import { StarRating } from "@/components/horror/StarRating";
 import type { RoomSummary } from "@/types";
 
 type RoomCardProps = {
@@ -69,7 +69,7 @@ export function RoomCard({ room, priority = false }: RoomCardProps) {
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <SkullRating level={room.terrorLevel} />
+          <StarRating level={room.terrorLevel} />
           {unavailable ? (
             <span className="shrink-0 text-right text-sm font-semibold tracking-wide text-blood-bright uppercase">
               Non disponibile
