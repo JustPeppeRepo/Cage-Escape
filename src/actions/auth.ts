@@ -157,13 +157,15 @@ export async function resendVerificationEmail(
   const email = parsed.data.email.trim().toLowerCase()
   const callbackURL = sanitizeCallbackUrl(parsed.data.callbackUrl ?? null)
 
+  // Come requestPasswordReset: niente headers della request page — evita
+  // side-effect CSRF/origin sul path auth.api e allinea il comportamento
+  // all'invio reset password (che su Resend funziona).
   try {
     await auth.api.sendVerificationEmail({
       body: {
         email,
         callbackURL,
       },
-      headers: await headers(),
     })
   } catch (error) {
     if (error instanceof APIError) {

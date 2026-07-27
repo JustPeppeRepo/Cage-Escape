@@ -1,7 +1,11 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import {
+  APIError,
+  createAuthMiddleware,
+  createEmailVerificationToken,
+} from "better-auth/api";
 import { prisma } from "@/app/_lib/prisma";
 import { env } from "@/app/_lib/env";
 import {
@@ -25,6 +29,31 @@ function isCredentialAuthFailure(returned: unknown): boolean {
   // Solo fallimenti credenziali (password errata). Non contare 403
   // (email non verificata) né 429 (rate limit) come tentativi di lockout.
   return returned.statusCode === 401 || returned.status === "UNAUTHORIZED";
+}
+
+/**
+ * Better Auth, con requireEmailVerification, risponde 200 anche a un signup
+ * con email già registrata (anti-enumerazione) e NON invia la mail. Senza
+ * questo hook un secondo tentativo di registrazione mostra "controlla
+ * l'email" ma Resend non riceve nulla.
+ */
+async function sendVerificationToExistingUser(user: {
+  email: string;
+  emailVerified: boolean;
+}) {
+  if (user.emailVerified) return;
+
+  const token = await createEmailVerificationToken(
+    env.BETTER_AUTH_SECRET,
+    user.email,
+  );
+  const url = `${env.BETTER_AUTH_URL}/api/auth/verify-email?token=${token}&callbackURL=${encodeURIComponent("/")}`;
+  const result = await sendVerificationEmail({ email: user.email, url });
+  if (!result.ok) {
+    throw new APIError("INTERNAL_SERVER_ERROR", {
+      message: result.error,
+    });
+  }
 }
 
 export const auth = betterAuth({
@@ -56,10 +85,16 @@ export const auth = betterAuth({
         });
       }
     },
+    onExistingUserSignUp: async ({ user }) => {
+      await sendVerificationToExistingUser(user);
+    },
   },
   emailVerification: {
     sendOnSignUp: true,
-    sendOnSignIn: true,
+    // false: Better Auth swallowa gli errori Resend in runInBackgroundOrAwait
+    // e risponde comunque 403. L'invio lo facciamo esplicitamente da LoginForm
+    // cosi' un fallimento Resend non viene nascosto all'utente.
+    sendOnSignIn: false,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       const result = await sendVerificationEmail({ email: user.email, url });
