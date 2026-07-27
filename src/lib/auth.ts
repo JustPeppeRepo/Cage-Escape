@@ -91,10 +91,11 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: true,
-    // false: Better Auth swallowa gli errori Resend in runInBackgroundOrAwait
-    // e risponde comunque 403. L'invio lo facciamo esplicitamente da LoginForm
-    // cosi' un fallimento Resend non viene nascosto all'utente.
-    sendOnSignIn: false,
+    // true: l'invio parte DENTRO il POST /sign-in/email (prima del 403).
+    // Se lo spegnessimo, dipenderemmo solo dal Server Action di reinvio:
+    // in produzione un fallimento di quel path non lascia traccia su Resend
+    // per l'email reale dell'utente.
+    sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       const result = await sendVerificationEmail({ email: user.email, url });

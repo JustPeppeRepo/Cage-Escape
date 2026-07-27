@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   prepareLogin,
-  resendVerificationEmail,
   type AuthFormState,
 } from "@/actions/auth";
 import { authClient } from "@/lib/auth-client";
@@ -40,23 +39,16 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       });
 
       if (error) {
-        // 403: email non verificata. Invio esplicito (sendOnSignIn è off) cosi'
-        // un fallimento Resend non viene nascosto da Better Auth.
-        if (error.status === 403) {
-          const form = new FormData();
-          form.set("email", email);
-          form.set("callbackUrl", resolvedCallback);
-          const sent = await resendVerificationEmail(null, form);
+        // Email non verificata: Better Auth risponde 403 e (con sendOnSignIn)
+        // ha già tentato l'invio nel medesimo POST. Non rifare subito un
+        // secondo invio qui: rischia rate-limit e doppio traffico Resend.
+        // Il reinvio resta sul pulsante in EmailVerificationPending.
+        const unverified =
+          error.status === 403 ||
+          error.code === "EMAIL_NOT_VERIFIED" ||
+          /email not verified/i.test(error.message ?? "");
 
-          if (sent?.error) {
-            setState({
-              errors: {
-                email: [sent.error],
-              },
-            });
-            return;
-          }
-
+        if (unverified) {
           setState({
             needsEmailVerification: true,
             verificationEmail: email,
