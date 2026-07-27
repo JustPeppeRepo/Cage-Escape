@@ -3,7 +3,6 @@
 import { z } from "zod"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
-import { APIError } from "better-auth"
 import { auth } from "@/lib/auth"
 import { checkRateLimit } from "@/app/_lib/rate-limit"
 import { getLoginLockStatus } from "@/app/_lib/auth/lockout"
@@ -23,6 +22,10 @@ export type AuthFormState = {
   needsEmailVerification?: boolean
   /** Email a cui è stata inviata la verifica (per UI / reinvio). */
   verificationEmail?: string
+  /** Errore dell'invio Resend (visibile in EmailVerificationPending). */
+  verificationSendError?: string
+  /** Cooldown residuo dopo invio automatico / rate limit. */
+  verificationRetryAfterSeconds?: number
 } | null
 
 export type ResendVerificationState = {
@@ -130,8 +133,10 @@ export async function prepareSignup(
 }
 
 /**
- * Reinvia l'email di verifica. Anti-enumerazione: messaggio generico anche
- * se l'email non esiste o è già verificata (comportamento Better Auth).
+ * Reinvia l'email di verifica via Resend in modo diretto (token + send),
+ * senza Better Auth runInBackgroundOrAwait (che swallowa gli errori).
+ * Anti-enumerazione: messaggio generico anche se l'email non esiste o è
+ * già verificata.
  */
 export async function resendVerificationEmail(
   _prevState: ResendVerificationState,
@@ -155,29 +160,29 @@ export async function resendVerificationEmail(
   }
 
   const email = parsed.data.email.trim().toLowerCase()
-  const callbackURL = sanitizeCallbackUrl(parsed.data.callbackUrl ?? null)
+  const { issueAndSendVerificationEmail } = await import(
+    "@/app/_lib/auth/issue-verification-email"
+  )
 
-  // Come requestPasswordReset: niente headers della request page — evita
-  // side-effect CSRF/origin sul path auth.api e allinea il comportamento
-  // all'invio reset password (che su Resend funziona).
-  try {
-    await auth.api.sendVerificationEmail({
-      body: {
-        email,
-        callbackURL,
-      },
-    })
-  } catch (error) {
-    if (error instanceof APIError) {
-      console.error("[auth/resendVerificationEmail] APIError:", error.message)
-    } else {
-      console.error("[auth/resendVerificationEmail] Unexpected error:", error)
-    }
+  const result = await issueAndSendVerificationEmail({
+    email,
+    callbackUrl: parsed.data.callbackUrl,
+  })
+
+  if (!result.ok) {
+    console.error("[auth/resendVerificationEmail] send failed:", result.error)
     return {
       error:
-        "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
+        result.error === "Servizio email non configurato"
+          ? "Servizio email non configurato. Contatta lo staff."
+          : "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
     }
   }
+
+  console.info("[auth/resendVerificationEmail] ok", {
+    emailDomain: email.includes("@") ? email.split("@")[1] : null,
+    sent: result.sent,
+  })
 
   return {
     success: true,

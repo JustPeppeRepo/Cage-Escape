@@ -2,8 +2,13 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { prepareSignup, type AuthFormState } from "@/actions/auth";
+import {
+  prepareSignup,
+  resendVerificationEmail,
+  type AuthFormState,
+} from "@/actions/auth";
 import { authClient } from "@/lib/auth-client";
+import { VERIFICATION_RESEND_COOLDOWN_SECONDS } from "@/lib/auth-constants";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
 import { EmailVerificationPending } from "@/components/horror/auth/EmailVerificationPending";
 
@@ -26,7 +31,7 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
         return;
       }
 
-      const email = String(formData.get("email") ?? "").trim();
+      const email = String(formData.get("email") ?? "").trim().toLowerCase();
       const username = String(formData.get("username") ?? "");
       const resolvedCallback = prepared.callbackUrl ?? callbackUrl;
 
@@ -50,13 +55,22 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
         return;
       }
 
-      // Con requireEmailVerification non c'e' sessione: l'utente deve
-      // confermare il link via email prima di poter accedere.
+      // sendOnSignUp: false — invio esplicito così gli errori Resend non
+      // restano nascosti da Better Auth runInBackgroundOrAwait.
+      const resendData = new FormData();
+      resendData.set("email", email);
+      resendData.set("callbackUrl", resolvedCallback);
+      const resend = await resendVerificationEmail(null, resendData);
+
       setState({
         success: true,
         needsEmailVerification: true,
         verificationEmail: email,
         callbackUrl: resolvedCallback,
+        verificationSendError: resend?.error,
+        verificationRetryAfterSeconds: resend?.success
+          ? VERIFICATION_RESEND_COOLDOWN_SECONDS
+          : resend?.retryAfterSeconds,
       });
     });
   }
@@ -66,7 +80,13 @@ export function SignupForm({ callbackUrl }: SignupFormProps) {
       <EmailVerificationPending
         email={state.verificationEmail}
         callbackUrl={state.callbackUrl ?? callbackUrl}
-        description="Ti abbiamo inviato un link per verificare l'account. Apri la casella di posta, conferma l'indirizzo e poi accedi."
+        description={
+          state.verificationSendError
+            ? "Account creato, ma l'invio del link di verifica non è riuscito. Usa il pulsante qui sotto per riprovare."
+            : "Ti abbiamo inviato un link per verificare l'account. Apri la casella di posta, conferma l'indirizzo e poi accedi."
+        }
+        initialError={state.verificationSendError}
+        initialCooldownSeconds={state.verificationRetryAfterSeconds}
         showLoginLink
       />
     );

@@ -43,6 +43,17 @@ const envSchema = z
           "RESEND_FROM_EMAIL obbligatorio quando RESEND_API_KEY è impostata (indirizzo su dominio verificato Resend, es. noreply@cageroom.it)",
       });
     }
+
+    // In produzione le email auth devono funzionare: senza chiave Resend
+    // signup/login "sembrano" ok ma nessuna mail parte.
+    if (data.NODE_ENV === "production" && !data.RESEND_API_KEY) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["RESEND_API_KEY"],
+        message:
+          "RESEND_API_KEY obbligatoria in produzione (verifica email / reset password)",
+      });
+    }
   });
 
 const parsed = envSchema.safeParse(process.env);

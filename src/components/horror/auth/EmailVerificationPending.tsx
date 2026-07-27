@@ -14,6 +14,10 @@ type EmailVerificationPendingProps = {
   /** Testo introduttivo (signup vs login). */
   description: string;
   showLoginLink?: boolean;
+  /** Errore dell'invio automatico (login/signup) da mostrare subito. */
+  initialError?: string;
+  /** Cooldown iniziale (dopo invio automatico o rate limit). */
+  initialCooldownSeconds?: number;
   /** Torna al form di login senza ricaricare la pagina. */
   onBackToForm?: () => void;
 };
@@ -23,10 +27,19 @@ export function EmailVerificationPending({
   callbackUrl,
   description,
   showLoginLink = false,
+  initialError,
+  initialCooldownSeconds,
   onBackToForm,
 }: EmailVerificationPendingProps) {
-  const [cooldown, setCooldown] = useState(VERIFICATION_RESEND_COOLDOWN_SECONDS);
-  const [resendState, setResendState] = useState<ResendVerificationState>(null);
+  const [cooldown, setCooldown] = useState(() => {
+    if (typeof initialCooldownSeconds === "number") {
+      return initialCooldownSeconds;
+    }
+    return initialError ? 0 : VERIFICATION_RESEND_COOLDOWN_SECONDS;
+  });
+  const [resendState, setResendState] = useState<ResendVerificationState>(
+    initialError ? { error: initialError } : null,
+  );
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -64,9 +77,9 @@ export function EmailVerificationPending({
       <h2 className="font-display text-xl text-bone">Controlla la tua email</h2>
       <p className="text-sm text-bone/80">{description}</p>
       <p className="text-sm text-bone/70">
-        Inviata a{" "}
-        <span className="font-medium text-bone">{email}</span>. Controlla anche
-        la cartella spam.
+        {resendState?.error ? "Destinatario: " : "Inviata a "}
+        <span className="font-medium text-bone">{email}</span>
+        {resendState?.error ? null : ". Controlla anche la cartella spam."}
       </p>
 
       {resendState?.success ? (

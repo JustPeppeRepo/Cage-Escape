@@ -4,9 +4,11 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   prepareLogin,
+  resendVerificationEmail,
   type AuthFormState,
 } from "@/actions/auth";
 import { authClient } from "@/lib/auth-client";
+import { VERIFICATION_RESEND_COOLDOWN_SECONDS } from "@/lib/auth-constants";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
 import { EmailVerificationPending } from "@/components/horror/auth/EmailVerificationPending";
 
@@ -29,7 +31,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
         return;
       }
 
-      const email = String(formData.get("email") ?? "").trim();
+      const email = String(formData.get("email") ?? "").trim().toLowerCase();
       const resolvedCallback = prepared.callbackUrl ?? callbackUrl;
 
       const { error } = await authClient.signIn.email({
@@ -39,31 +41,28 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       });
 
       if (error) {
-        // Email non verificata: Better Auth risponde 403 e (con sendOnSignIn)
-        // ha già tentato l'invio nel medesimo POST. Non rifare subito un
-        // secondo invio qui: rischia rate-limit e doppio traffico Resend.
-        // Il reinvio resta sul pulsante in EmailVerificationPending.
+        // Email non verificata: Better Auth risponde 403 ma NON invia più
+        // (sendOnSignIn: false) perché runInBackgroundOrAwait swallowerebbe
+        // gli errori Resend. Inviamo qui in modo esplicito e mostriamo fallimenti.
         const unverified =
           error.status === 403 ||
           error.code === "EMAIL_NOT_VERIFIED" ||
           /email not verified/i.test(error.message ?? "");
 
         if (unverified) {
+          const resendData = new FormData();
+          resendData.set("email", email);
+          resendData.set("callbackUrl", resolvedCallback);
+          const resend = await resendVerificationEmail(null, resendData);
+
           setState({
             needsEmailVerification: true,
             verificationEmail: email,
             callbackUrl: resolvedCallback,
-          });
-          return;
-        }
-
-        if (error.status === 500) {
-          setState({
-            errors: {
-              email: [
-                "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
-              ],
-            },
+            verificationSendError: resend?.error,
+            verificationRetryAfterSeconds: resend?.success
+              ? VERIFICATION_RESEND_COOLDOWN_SECONDS
+              : resend?.retryAfterSeconds,
           });
           return;
         }
@@ -81,7 +80,13 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       <EmailVerificationPending
         email={state.verificationEmail}
         callbackUrl={state.callbackUrl ?? callbackUrl}
-        description="Il tuo account esiste ma l'email non è ancora verificata. Ti abbiamo inviato un link di conferma: aprilo per attivare l'accesso, poi riprova ad entrare."
+        description={
+          state.verificationSendError
+            ? "Il tuo account esiste ma l'email non è ancora verificata. L'invio automatico del link non è riuscito: usa il pulsante qui sotto per riprovare."
+            : "Il tuo account esiste ma l'email non è ancora verificata. Ti abbiamo inviato un link di conferma: aprilo per attivare l'accesso, poi riprova ad entrare."
+        }
+        initialError={state.verificationSendError}
+        initialCooldownSeconds={state.verificationRetryAfterSeconds}
         onBackToForm={() => setState(null)}
       />
     );
