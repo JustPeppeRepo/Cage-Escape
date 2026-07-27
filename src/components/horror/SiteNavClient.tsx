@@ -96,6 +96,42 @@ function AdminLink({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="8" r="3.25" />
+      <path d="M5.5 19.25c.9-3.1 3.1-4.75 6.5-4.75s5.6 1.65 6.5 4.75" />
+    </svg>
+  );
+}
+
+function GuestAccountLink({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <Link
+      href="/login"
+      onClick={onNavigate}
+      title="Accedi"
+      className="group flex min-w-0 flex-col items-center gap-0.5 rounded px-2 py-1 transition-colors"
+    >
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-void-mist text-bone/70 transition-colors group-hover:border-blood/50 group-hover:text-bone">
+        <UserIcon className="h-4 w-4" />
+      </span>
+      <span className="text-[10px] leading-tight text-bone/60 group-hover:text-bone/80">
+        Accedi
+      </span>
+    </Link>
+  );
+}
+
 function NavAuthSection({
   user,
   onNavigate,
@@ -118,19 +154,27 @@ function NavAuthSection({
     );
   }
 
+  if (!compact) {
+    return (
+      <div className={stackClass}>
+        <GuestAccountLink onNavigate={onNavigate} />
+      </div>
+    );
+  }
+
   return (
     <div className={stackClass}>
       <Link
         href="/login"
         onClick={onNavigate}
-        className="text-bone/70 transition-colors hover:text-bone"
+        className="rounded px-2 py-2 text-center text-bone/80 transition-colors hover:bg-void-mist hover:text-bone"
       >
         Accedi
       </Link>
       <Link
         href="/signup"
         onClick={onNavigate}
-        className="rounded bg-blood px-3 py-1.5 text-bone transition-colors hover:bg-blood-bright"
+        className="rounded bg-blood px-3 py-1.5 text-center text-bone transition-colors hover:bg-blood-bright"
       >
         Registrati
       </Link>

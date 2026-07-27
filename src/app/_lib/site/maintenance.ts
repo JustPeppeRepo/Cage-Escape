@@ -6,7 +6,7 @@
  */
 export const MAINTENANCE = {
   /** `true` = solo la pagina di manutenzione è raggiungibile. */
-  enabled: true,
+  enabled: false,
   /** Path interno della pagina (la home pubblica resta `/` via rewrite). */
   path: "/manutenzione",
   brand: "Cage Escape Room",
