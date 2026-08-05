@@ -1,3 +1,11 @@
+/**
+ * Registrazione `/signup`
+ *
+ * @description Creazione account; callbackUrl sanificato.
+ * @components SignupForm → prepareSignup, authClient.signUp
+ * @utils sanitizeCallbackUrl
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { SignupForm } from "@/components/horror/auth/SignupForm";
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect";

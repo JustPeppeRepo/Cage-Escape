@@ -1,3 +1,11 @@
+/**
+ * Manutenzione `/manutenzione`
+ *
+ * @description Schermo muto se MAINTENANCE.enabled; altrimenti redirect a `/`.
+ * @components MaintenanceScreen
+ * @config MAINTENANCE (`src/app/_lib/site/maintenance.ts`)
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { MAINTENANCE } from "@/app/_lib/site/maintenance";

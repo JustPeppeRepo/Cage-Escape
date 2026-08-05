@@ -44,7 +44,7 @@ function ReviewCard({
         {imageUrl ? (
           <Image
             src={imageUrl}
-            alt=""
+            alt={`Foto della recensione di ${author}`}
             fill
             unoptimized
             className="object-cover opacity-80"

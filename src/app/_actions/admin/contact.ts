@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
-import { requireAdmin } from "@/lib/dal";
+import { requireAdminWithRateLimit } from "@/app/_lib/admin/rate-limit";
 import {
   contactMessageIdSchema,
   setContactMessageReadSchema,
@@ -16,7 +16,8 @@ export async function setContactMessageRead(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-contact");
+  if (!gate.ok) return gate.result;
 
   const parsed = setContactMessageReadSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
@@ -48,7 +49,8 @@ export async function deleteContactMessage(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-contact");
+  if (!gate.ok) return gate.result;
 
   const parsed = contactMessageIdSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {

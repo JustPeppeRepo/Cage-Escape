@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
+import { enforceApiRateLimit } from "@/app/_lib/rate-limit";
 
 type RouteContext = {
   params: Promise<{ roomId: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
+  // Anti-DoS: ogni hit carica bytea da Postgres.
+  const limited = await enforceApiRateLimit("media-room", 120);
+  if (limited) return limited;
+
   const { roomId } = await context.params;
 
   if (!/^[a-z0-9]+$/i.test(roomId) || roomId.length > 64) {

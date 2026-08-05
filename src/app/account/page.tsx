@@ -1,3 +1,12 @@
+/**
+ * Account utente `/account`
+ *
+ * @description Profilo, prenotazioni e sicurezza (auth richiesto).
+ * @components AccountDashboard (cancel, password, delete, logout)
+ * @auth requireUser
+ * @data prisma.booking, getCancellationEligibility, formatEuroAmount
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
 import { requireUser } from "@/lib/dal";

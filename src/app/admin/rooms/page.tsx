@@ -1,3 +1,11 @@
+/**
+ * Elenco stanze admin `/admin/rooms`
+ *
+ * @description Lista stanze con link a edit/new.
+ * @auth requireAdmin
+ * @data prisma.room (+ count pricing/bookings)
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/app/_lib/prisma";

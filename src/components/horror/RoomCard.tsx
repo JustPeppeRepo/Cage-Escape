@@ -7,11 +7,18 @@ type RoomCardProps = {
   room: RoomSummary;
   /** Imposta priority/eager per l'immagine above-the-fold (LCP). */
   priority?: boolean;
+  /** Livello titolo: h3 sotto una sezione h2 (home), h2 sotto h1 (pagina stanze). */
+  headingLevel?: "h2" | "h3";
 };
 
-export function RoomCard({ room, priority = false }: RoomCardProps) {
+export function RoomCard({
+  room,
+  priority = false,
+  headingLevel = "h3",
+}: RoomCardProps) {
   const imageSrc = room.imageUrl;
   const unavailable = !room.isActive;
+  const HeadingTag = headingLevel;
 
   const card = (
     <div
@@ -25,7 +32,7 @@ export function RoomCard({ room, priority = false }: RoomCardProps) {
         {imageSrc ? (
           <Image
             src={imageSrc}
-            alt=""
+            alt={`Immagine della stanza ${room.name}`}
             fill
             unoptimized
             priority={priority}
@@ -58,7 +65,9 @@ export function RoomCard({ room, priority = false }: RoomCardProps) {
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-6">
-        <h3 className="font-heading text-2xl text-blood-bright">{room.name}</h3>
+        <HeadingTag className="font-heading text-2xl text-blood-bright">
+          {room.name}
+        </HeadingTag>
         <p className="flex-1 text-sm text-bone/70">{room.description}</p>
 
         <div className="flex items-center justify-between border-t border-void-mist pt-3 text-sm text-bone/80">

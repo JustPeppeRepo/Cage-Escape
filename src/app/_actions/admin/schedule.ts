@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { ScheduleOverrideType } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
-import { requireAdmin } from "@/lib/dal";
+import { requireAdminWithRateLimit } from "@/app/_lib/admin/rate-limit";
 import {
   deleteScheduleOverrideSchema,
   scheduleOverrideFormSchema,
@@ -38,7 +38,8 @@ export async function upsertScheduleOverride(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-schedule");
+  if (!gate.ok) return gate.result;
 
   const parsed = scheduleOverrideFormSchema.safeParse({
     ...formDataToObject(formData),
@@ -141,7 +142,8 @@ export async function deleteScheduleOverride(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-schedule");
+  if (!gate.ok) return gate.result;
 
   const parsed = deleteScheduleOverrideSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
@@ -178,7 +180,8 @@ export async function updateWeeklyOpeningHours(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-schedule");
+  if (!gate.ok) return gate.result;
 
   const parsed = parseWeeklyHoursForm(formData);
   if (!parsed.success) {

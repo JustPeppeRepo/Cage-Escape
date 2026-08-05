@@ -1,3 +1,10 @@
+/**
+ * Privacy Policy `/privacy`
+ *
+ * @description Placeholder legale (iubenda quando configurato).
+ * @components LegalPlaceholderPage → SiteFooter
+ * @seo noindex, follow
+ */
 import type { Metadata } from "next";
 import { LegalPlaceholderPage } from "@/components/horror/legal/LegalPlaceholderPage";
 
@@ -7,6 +14,12 @@ export const metadata: Metadata = {
     "Informativa sulla privacy di Cage Escape Room. Documento in fase di pubblicazione.",
   robots: { index: false, follow: true },
   alternates: { canonical: "/privacy" },
+  openGraph: {
+    title: "Privacy Policy | Cage Escape Room",
+    description:
+      "Informativa sulla privacy di Cage Escape Room. Documento in fase di pubblicazione.",
+    url: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

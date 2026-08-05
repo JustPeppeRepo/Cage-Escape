@@ -1,3 +1,12 @@
+/**
+ * Recensioni admin `/admin/reviews`
+ *
+ * @description CRUD recensioni + upload cover.
+ * @components ReviewsManager, MediaUploadField (via manager)
+ * @actions upsertReview, deleteReview; API `/api/admin/media/reviews/[id]`
+ * @auth requireAdmin
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
 import { getReviewCoverUrl } from "@/app/_lib/media/urls";

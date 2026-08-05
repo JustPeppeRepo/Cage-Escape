@@ -12,7 +12,7 @@ export function LegalPlaceholderPage({
   description,
 }: LegalPlaceholderPageProps) {
   return (
-    <main className="min-h-screen bg-void">
+    <main id="main-content" className="min-h-screen bg-void">
       <div className="mx-auto max-w-2xl px-6 py-20">
         <p className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">
           Informazioni legali

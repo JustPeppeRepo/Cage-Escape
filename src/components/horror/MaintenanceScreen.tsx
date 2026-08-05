@@ -4,7 +4,10 @@ import { MAINTENANCE } from "@/app/_lib/site/maintenance";
 /** Pagina muta: brand + messaggio, nessun link, form o tracker UI. */
 export function MaintenanceScreen() {
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-void-deep px-6 py-16 text-center">
+    <main
+      id="main-content"
+      className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-void-deep px-6 py-16 text-center"
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(133,32,38,0.22)_0%,transparent_55%),linear-gradient(180deg,#030303_0%,#0a0a0a_45%,#120808_100%)]"

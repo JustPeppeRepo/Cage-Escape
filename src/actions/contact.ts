@@ -17,12 +17,15 @@ export async function submitContact(
   prevState: ContactActionState | null,
   formData: FormData,
 ): Promise<ContactActionState> {
-  const rateLimit = await checkRateLimit("contact", 5);
+  // 5 invii / ora per IP (anti-spam / abuso form pubblico).
+  const rateLimit = await checkRateLimit("contact", 5, {
+    windowSeconds: 60 * 60,
+  });
   if (!rateLimit.allowed) {
     return {
       errors: {
         message: [
-          `Troppe richieste. Riprova tra ${rateLimit.retryAfterSeconds} secondi.`,
+          `Troppe richieste. Riprova tra ${Math.ceil(rateLimit.retryAfterSeconds / 60)} minuti.`,
         ],
       },
     };

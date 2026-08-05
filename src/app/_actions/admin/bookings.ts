@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { BookingStatus, PaymentStatus } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
-import { requireAdmin } from "@/lib/dal";
+import { requireAdminWithRateLimit } from "@/app/_lib/admin/rate-limit";
 import { stripe } from "@/app/_lib/stripe";
 import { cancelBookingSchema } from "@/app/_lib/admin/schemas";
 import {
@@ -27,7 +27,9 @@ export async function cancelBooking(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  // Limite stretto: ogni cancel puo' triggerare rimborsi Stripe.
+  const gate = await requireAdminWithRateLimit("admin-cancel-booking", 10);
+  if (!gate.ok) return gate.result;
 
   const parsed = cancelBookingSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {

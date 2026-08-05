@@ -1,3 +1,10 @@
+/**
+ * Password dimenticata `/forgot-password`
+ *
+ * @description Richiesta email di reset.
+ * @components ForgotPasswordForm → requestPasswordReset
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { ForgotPasswordForm } from "@/components/account/ForgotPasswordForm";
 

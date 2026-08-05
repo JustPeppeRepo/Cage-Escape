@@ -1,3 +1,10 @@
+/**
+ * Chi siamo `/about`
+ *
+ * @description Missione, visione, fondatore e team.
+ * @components AboutContent (dynamic), Link CTA stanze
+ * @seo metadata + openGraph / twitter
+ */
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -30,12 +37,22 @@ export const metadata: Metadata = {
     title: "Chi siamo | Cage Escape Room",
     description:
       "Missione, visione e fondatore di Cage Escape Room: escape room immersive a tema.",
+    url: "/about",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chi siamo | Cage Escape Room",
+    description:
+      "Missione, visione e fondatore di Cage Escape Room: escape room immersive a tema.",
   },
 };
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
+    <main
+      id="main-content"
+      className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24"
+    >
       <div className="mx-auto max-w-4xl lg:max-w-5xl">
         <header className="mb-16 flex flex-col items-center gap-2 text-center sm:mb-20">
           <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">

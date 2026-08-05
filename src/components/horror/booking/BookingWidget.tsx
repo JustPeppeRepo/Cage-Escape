@@ -391,32 +391,6 @@ export function BookingWidget({ room, pricingTiers }: BookingWidgetProps) {
     !!holdState && !holdState.success && holdState.code === "SLOT_TAKEN";
   const effectiveSelectedSlot = isSlotTaken ? null : selectedSlot;
 
-  // #region agent log
-  useEffect(() => {
-    if (!effectiveSelectedSlot) return;
-    fetch("http://127.0.0.1:7808/ingest/f514f2e9-5ac4-48b3-b1b3-d645f78092c0", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "3f9b72",
-      },
-      body: JSON.stringify({
-        sessionId: "3f9b72",
-        runId: process.env.NODE_ENV === "development" ? "post-fix" : "pre-fix",
-        hypothesisId: "H1",
-        location: "BookingWidget.tsx:hold-form",
-        message: "hold form visible with server action",
-        data: {
-          holdActionType: typeof holdAction,
-          hasFileInputs: minorCount > 0,
-          minorCount,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }, [effectiveSelectedSlot, holdAction, minorCount]);
-  // #endregion
-
   const previewTier = resolvePricingTier(pricingTiers, participantCount);
 
   const cachedSlotsForSelectedDate =

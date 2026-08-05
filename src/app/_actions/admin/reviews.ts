@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
-import { requireAdmin } from "@/lib/dal";
+import { requireAdminWithRateLimit } from "@/app/_lib/admin/rate-limit";
 import {
   deleteReviewSchema,
   reviewFormSchema,
@@ -16,7 +16,8 @@ export async function upsertReview(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-reviews");
+  if (!gate.ok) return gate.result;
 
   const parsed = reviewFormSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
@@ -58,7 +59,8 @@ export async function deleteReview(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-reviews");
+  if (!gate.ok) return gate.result;
 
   const parsed = deleteReviewSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {

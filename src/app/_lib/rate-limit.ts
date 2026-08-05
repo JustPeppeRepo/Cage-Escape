@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 import { safePostgresFixedWindowCount } from "@/app/_lib/rate-limit-db";
 import { env } from "@/app/_lib/env";
 import { logError } from "@/lib/logger";
@@ -10,11 +11,16 @@ type RateLimitEntry = {
 
 const store = new Map<string, RateLimitEntry>();
 
-const WINDOW_MS = 60_000;
-const WINDOW_SECONDS = 60;
+const DEFAULT_WINDOW_SECONDS = 60;
+
+export type RateLimitResult =
+  | { allowed: true }
+  | { allowed: false; retryAfterSeconds: number };
 
 export type RateLimitOptions = {
   userId?: string;
+  /** Finestra fissa in secondi (default 60). Es. 3600 = 1 ora. */
+  windowSeconds?: number;
 };
 
 async function resolveClientIp(): Promise<string> {
@@ -38,22 +44,28 @@ function buildRateLimitKey(
   ip: string,
   options?: RateLimitOptions,
 ): string {
+  const windowSeconds = options?.windowSeconds ?? DEFAULT_WINDOW_SECONDS;
+  // Include la finestra nella chiave cosi' limiti orari e al minuto non collidono.
+  const windowPart = windowSeconds === DEFAULT_WINDOW_SECONDS ? "" : `:w${windowSeconds}`;
+
   if (options?.userId) {
-    return `ratelimit:${action}:user:${options.userId}`;
+    return `ratelimit:${action}${windowPart}:user:${options.userId}`;
   }
 
-  return `ratelimit:${action}:ip:${ip}`;
+  return `ratelimit:${action}${windowPart}:ip:${ip}`;
 }
 
 function checkInMemoryRateLimit(
   key: string,
   maxRequests: number,
-): { allowed: true } | { allowed: false; retryAfterSeconds: number } {
+  windowSeconds: number,
+): RateLimitResult {
   const now = Date.now();
+  const windowMs = windowSeconds * 1000;
   const existing = store.get(key);
 
   if (!existing || existing.resetAt <= now) {
-    store.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    store.set(key, { count: 1, resetAt: now + windowMs });
     return { allowed: true };
   }
 
@@ -67,18 +79,23 @@ function checkInMemoryRateLimit(
   return { allowed: true };
 }
 
+/**
+ * Rate limit distribuito su Neon (fail-closed in produzione).
+ * In locale, se Postgres non e' raggiungibile, fallback in-memory per-processo.
+ */
 export async function checkRateLimit(
   action: string,
   maxRequests: number,
   options?: RateLimitOptions,
-): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
+): Promise<RateLimitResult> {
+  const windowSeconds = options?.windowSeconds ?? DEFAULT_WINDOW_SECONDS;
   const ip = await resolveClientIp();
   const key = buildRateLimitKey(action, ip, options);
 
-  const count = await safePostgresFixedWindowCount(key, WINDOW_SECONDS);
+  const count = await safePostgresFixedWindowCount(key, windowSeconds);
   if (count !== null) {
     if (count > maxRequests) {
-      return { allowed: false, retryAfterSeconds: WINDOW_SECONDS };
+      return { allowed: false, retryAfterSeconds: windowSeconds };
     }
     return { allowed: true };
   }
@@ -95,8 +112,42 @@ export async function checkRateLimit(
       "rate-limit",
       "Neon Postgres irraggiungibile in produzione: richiesta negata (fail-closed)",
     );
-    return { allowed: false, retryAfterSeconds: WINDOW_SECONDS };
+    return { allowed: false, retryAfterSeconds: windowSeconds };
   }
 
-  return checkInMemoryRateLimit(key, maxRequests);
+  return checkInMemoryRateLimit(key, maxRequests, windowSeconds);
+}
+
+/** Risposta HTTP 429 standard per Route Handler / API. */
+export function tooManyRequestsResponse(
+  retryAfterSeconds: number,
+  message = "Troppe richieste. Riprova più tardi.",
+): NextResponse {
+  return NextResponse.json(
+    { error: message },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(Math.max(1, retryAfterSeconds)),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+      },
+    },
+  );
+}
+
+/**
+ * Applica il rate limit in un Route Handler.
+ * Ritorna una Response 429 da restituire subito, oppure `null` se consentito.
+ */
+export async function enforceApiRateLimit(
+  action: string,
+  maxRequests: number,
+  options?: RateLimitOptions,
+): Promise<NextResponse | null> {
+  const result = await checkRateLimit(action, maxRequests, options);
+  if (!result.allowed) {
+    return tooManyRequestsResponse(result.retryAfterSeconds);
+  }
+  return null;
 }

@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { BookingStatus } from "@/generated/prisma/client";
 import { prisma } from "@/app/_lib/prisma";
-import { requireAdmin } from "@/lib/dal";
+import { requireAdminWithRateLimit } from "@/app/_lib/admin/rate-limit";
 import {
   deletePricingTierSchema,
   deleteRoomSchema,
@@ -26,7 +26,8 @@ export async function upsertRoom(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-rooms");
+  if (!gate.ok) return gate.result;
 
   const parsed = roomFormSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
@@ -121,7 +122,8 @@ export async function deleteRoom(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-rooms");
+  if (!gate.ok) return gate.result;
 
   const parsed = deleteRoomSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
@@ -169,7 +171,8 @@ export async function upsertPricingTier(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-rooms");
+  if (!gate.ok) return gate.result;
 
   const parsed = pricingTierFormSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {
@@ -248,7 +251,8 @@ export async function deletePricingTier(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-rooms");
+  if (!gate.ok) return gate.result;
 
   const parsed = deletePricingTierSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {

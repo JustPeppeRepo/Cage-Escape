@@ -56,7 +56,10 @@ export function SiteFooter() {
         ) : null}
       </nav>
 
-      <nav className="mt-4 flex flex-wrap justify-center gap-4 text-xs">
+      <nav
+        className="mt-4 flex flex-wrap justify-center gap-4 text-xs"
+        aria-label="Pagine del sito"
+      >
         <Link href="/about" className="hover:text-bone/80">
           Chi siamo
         </Link>

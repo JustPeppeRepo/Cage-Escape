@@ -1,3 +1,11 @@
+/**
+ * Nuova stanza `/admin/rooms/new`
+ *
+ * @description Form creazione stanza.
+ * @components RoomForm → upsertRoom
+ * @auth requireAdmin
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/dal";

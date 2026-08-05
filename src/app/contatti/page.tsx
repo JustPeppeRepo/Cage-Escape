@@ -1,3 +1,11 @@
+/**
+ * Contatti `/contatti`
+ *
+ * @description Info sede/WhatsApp/email, social e form messaggio.
+ * @components SocialLinks, ContactForm (dynamic → submitContact action)
+ * @actions submitContact (`src/actions/contact.ts`)
+ * @seo metadata + openGraph / twitter
+ */
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { SocialLinks } from "@/components/horror/contact/SocialLinks";
@@ -30,12 +38,22 @@ export const metadata: Metadata = {
     title: "Contatti | Cage Escape Room",
     description:
       "Contatta Cage Escape Room per prenotazioni, orari e informazioni sulle escape room.",
+    url: "/contatti",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Contatti | Cage Escape Room",
+    description:
+      "Contatta Cage Escape Room per prenotazioni, orari e informazioni sulle escape room.",
   },
 };
 
 export default function ContattiPage() {
   return (
-    <main className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24">
+    <main
+      id="main-content"
+      className="min-h-screen bg-void px-4 py-16 sm:px-6 sm:py-24"
+    >
       <div className="mx-auto grid max-w-5xl gap-12 lg:grid-cols-2">
         <div>
           <span className="text-xs uppercase tracking-[0.3em] text-ectoplasm/80">

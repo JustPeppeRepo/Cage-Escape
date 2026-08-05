@@ -84,12 +84,19 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
           return;
         }
 
+        // Mai esporre messaggi grezzi del provider auth (stack, dettagli interni).
+        if (error.status === 429) {
+          setState({
+            errors: {
+              email: ["Troppi tentativi. Riprova tra poco."],
+            },
+          });
+          return;
+        }
+
         setState({
           errors: {
-            email: [
-              error.message?.trim() ||
-                "Accesso non riuscito. Riprova tra poco.",
-            ],
+            email: ["Accesso non riuscito. Riprova tra poco."],
           },
         });
         return;

@@ -1,3 +1,10 @@
+/**
+ * Reimposta password `/reset-password`
+ *
+ * @description Imposta nuova password da token (`?token=`).
+ * @components ResetPasswordForm → resetPassword
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { ResetPasswordForm } from "@/components/account/ResetPasswordForm";
 

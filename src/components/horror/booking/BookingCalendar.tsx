@@ -175,6 +175,8 @@ export function BookingCalendar({
             <button
               key={cell.dateStr}
               type="button"
+              data-date={cell.dateStr}
+              aria-label={`${cell.date.getDate()} ${MONTH_LABELS[viewedMonth.getMonth()]} ${viewedMonth.getFullYear()}`}
               disabled={isDisabled}
               onClick={() => onSelectDate(cell.dateStr)}
               onMouseEnter={() => {

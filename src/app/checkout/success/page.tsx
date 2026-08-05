@@ -1,3 +1,12 @@
+/**
+ * Checkout success `/checkout/success?session_id=`
+ *
+ * @description Conferma post-Stripe; polling se webhook in ritardo.
+ * @components PaymentStatusPoller, Link
+ * @auth requireUser
+ * @data prisma.booking, stripe.checkout.sessions.retrieve
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";

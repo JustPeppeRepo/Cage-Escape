@@ -1,3 +1,12 @@
+/**
+ * Prenotazioni admin `/admin/bookings`
+ *
+ * @description Elenco filtrabile e annullamento/rimborso.
+ * @components CancelBookingButton → cancelBooking
+ * @auth requireAdmin
+ * @data prisma.booking, formatEuroAmount
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingStatus } from "@/generated/prisma/client";

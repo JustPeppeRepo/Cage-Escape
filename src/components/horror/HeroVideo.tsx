@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 const VERTICAL_SRC = "/video/video-cage-verticale.mp4";
 const HORIZONTAL_SRC = "/video/video-cage-orizzontale.mp4";
@@ -31,20 +32,24 @@ export function HeroVideo() {
   return (
     <>
       {/* Poster CSS-aware: visibile subito, senza scaricare il video inattivo. */}
-      <img
+      <Image
         src={POSTER_HORIZONTAL}
         alt=""
-        aria-hidden="true"
-        fetchPriority="high"
-        decoding="async"
+        aria-hidden
+        fill
+        priority
+        unoptimized
+        sizes="100vw"
         className={`${layerClassName} portrait:hidden ${ready ? "opacity-0" : "opacity-100"}`}
       />
-      <img
+      <Image
         src={POSTER_VERTICAL}
         alt=""
-        aria-hidden="true"
-        fetchPriority="high"
-        decoding="async"
+        aria-hidden
+        fill
+        priority
+        unoptimized
+        sizes="100vw"
         className={`${layerClassName} landscape:hidden ${ready ? "opacity-0" : "opacity-100"}`}
       />
 

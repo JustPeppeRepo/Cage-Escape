@@ -2,6 +2,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { optimizeUploadedImage } from "@/app/_lib/media/optimize-image";
+import { enforceApiRateLimit } from "@/app/_lib/rate-limit";
 import { requireAdmin } from "@/lib/dal";
 
 type RouteContext = {
@@ -9,7 +10,11 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const limited = await enforceApiRateLimit("admin-media-room", 10, {
+    userId: session.user.id,
+  });
+  if (limited) return limited;
 
   const { roomId } = await context.params;
   if (!/^[a-z0-9]+$/i.test(roomId) || roomId.length > 64) {
@@ -60,7 +65,11 @@ export async function POST(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const limited = await enforceApiRateLimit("admin-media-room-delete", 20, {
+    userId: session.user.id,
+  });
+  if (limited) return limited;
 
   const { roomId } = await context.params;
   if (!/^[a-z0-9]+$/i.test(roomId) || roomId.length > 64) {

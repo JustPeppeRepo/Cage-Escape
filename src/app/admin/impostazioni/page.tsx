@@ -1,3 +1,12 @@
+/**
+ * Impostazioni `/admin/impostazioni`
+ *
+ * @description Cooldown slot e sconto easter-egg maledizione.
+ * @components SiteSettingsForm → updateSiteSettings
+ * @auth requireAdmin
+ * @data getSiteSettings
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/dal";
 import { getSiteSettings } from "@/app/_lib/admin/site-settings";

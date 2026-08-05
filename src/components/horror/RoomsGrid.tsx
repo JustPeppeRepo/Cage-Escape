@@ -3,9 +3,10 @@ import type { RoomSummary } from "@/types";
 
 type RoomsGridProps = {
   rooms: RoomSummary[];
+  headingLevel?: "h2" | "h3";
 };
 
-export function RoomsGrid({ rooms }: RoomsGridProps) {
+export function RoomsGrid({ rooms, headingLevel = "h3" }: RoomsGridProps) {
   if (rooms.length === 0) {
     return (
       <p className="text-center text-bone/60">
@@ -23,6 +24,7 @@ export function RoomsGrid({ rooms }: RoomsGridProps) {
           key={room.id}
           room={room}
           priority={room.slug === lcpSlug}
+          headingLevel={headingLevel}
         />
       ))}
     </div>

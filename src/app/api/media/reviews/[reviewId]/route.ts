@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
+import { enforceApiRateLimit } from "@/app/_lib/rate-limit";
 
 type RouteContext = {
   params: Promise<{ reviewId: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
+  const limited = await enforceApiRateLimit("media-review", 120);
+  if (limited) return limited;
+
   const { reviewId } = await context.params;
 
   if (!/^[a-z0-9]+$/i.test(reviewId) || reviewId.length > 64) {

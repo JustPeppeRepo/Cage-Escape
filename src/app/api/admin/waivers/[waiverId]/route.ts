@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
+import { enforceApiRateLimit } from "@/app/_lib/rate-limit";
 import { requireAdmin } from "@/lib/dal";
 import { sanitizeWaiverFileName } from "@/app/_lib/bookings/waiver-upload";
 
@@ -8,7 +9,11 @@ type RouteContext = {
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const limited = await enforceApiRateLimit("admin-waiver-download", 30, {
+    userId: session.user.id,
+  });
+  if (limited) return limited;
 
   const { waiverId } = await context.params;
 

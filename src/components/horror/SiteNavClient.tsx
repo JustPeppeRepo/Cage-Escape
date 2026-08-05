@@ -46,7 +46,7 @@ function UserAccountLink({
       >
         <Image
           src={avatarUrl}
-          alt=""
+          alt={`Avatar di ${user.name}`}
           width={36}
           height={36}
           unoptimized
@@ -69,7 +69,7 @@ function UserAccountLink({
     >
       <Image
         src={avatarUrl}
-        alt=""
+        alt={`Avatar di ${user.name}`}
         width={32}
         height={32}
         unoptimized
@@ -217,6 +217,7 @@ export function SiteNavClient({ user }: SiteNavClientProps) {
             width={32}
             height={32}
             unoptimized
+            aria-hidden
             className="h-7 w-7 shrink-0 brightness-125 saturate-150 sm:h-8 sm:w-8"
           />
           <span className="font-heading m-0 text-sm leading-none sm:text-base md:text-lg">

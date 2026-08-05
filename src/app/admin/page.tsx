@@ -1,3 +1,11 @@
+/**
+ * Dashboard admin `/admin`
+ *
+ * @description Metriche rapide (pending, conflitti, upcoming, stanze, messaggi).
+ * @auth requireAdmin
+ * @data prisma.booking / room / contactMessage counts
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingStatus } from "@/generated/prisma/client";

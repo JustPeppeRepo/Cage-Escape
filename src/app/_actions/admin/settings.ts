@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
-import { requireAdmin } from "@/lib/dal";
+import { requireAdminWithRateLimit } from "@/app/_lib/admin/rate-limit";
 import { siteSettingsFormSchema } from "@/app/_lib/admin/schemas";
 import { SITE_SETTINGS_ID } from "@/app/_lib/admin/site-settings";
 import {
@@ -14,7 +14,8 @@ export async function updateSiteSettings(
   prevState: AdminActionResult | null,
   formData: FormData,
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const gate = await requireAdminWithRateLimit("admin-settings", 20);
+  if (!gate.ok) return gate.result;
 
   const parsed = siteSettingsFormSchema.safeParse(formDataToObject(formData));
   if (!parsed.success) {

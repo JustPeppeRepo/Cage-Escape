@@ -1,3 +1,12 @@
+/**
+ * Checkout `/checkout?bookingId=`
+ *
+ * @description Completa pagamento di un hold attivo (auth + ownership).
+ * @components CheckoutClient → createStripeCheckoutSession
+ * @auth requireUser
+ * @data prisma.booking, resolvePricingTier, getBookingChargeAmount
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";

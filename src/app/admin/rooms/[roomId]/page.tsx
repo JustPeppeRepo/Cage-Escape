@@ -1,3 +1,12 @@
+/**
+ * Modifica stanza `/admin/rooms/[roomId]`
+ *
+ * @description Edit stanza, fasce prezzo, media cover, delete.
+ * @components RoomForm, PricingTierManager, DeleteRoomButton, MediaUploadField
+ * @actions upsertRoom, upsertPricingTier, deleteRoom; API media rooms
+ * @auth requireAdmin
+ * @seo noindex (titolo statico anti-leak)
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";

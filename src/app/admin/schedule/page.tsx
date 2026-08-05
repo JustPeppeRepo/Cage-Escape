@@ -1,3 +1,13 @@
+/**
+ * Orari `/admin/schedule`
+ *
+ * @description Orari settimanali e override calendario.
+ * @components ScheduleManager
+ * @actions updateWeeklyOpeningHours, upsert/deleteScheduleOverride
+ * @auth requireAdmin
+ * @data ensureWeeklyOpeningHours, prisma.scheduleOverride / room
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";

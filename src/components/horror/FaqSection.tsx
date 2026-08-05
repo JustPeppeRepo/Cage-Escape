@@ -1,6 +1,6 @@
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
-const FAQ_ITEMS = [
+export const FAQ_ITEMS = [
   {
     question: "Quanto dura un'esperienza?",
     answer:
@@ -21,7 +21,7 @@ const FAQ_ITEMS = [
     answer:
       "Puoi gestire la tua prenotazione fino a 48 ore prima dell'orario scelto contattando il nostro staff.",
   },
-];
+] as const;
 
 export function FaqSection() {
   return (

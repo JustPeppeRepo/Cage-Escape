@@ -1,3 +1,11 @@
+/**
+ * Login `/login`
+ *
+ * @description Accesso utente; callbackUrl sanificato.
+ * @components LoginForm → prepareLogin, authClient.signIn, resendVerificationEmail
+ * @utils sanitizeCallbackUrl
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/horror/auth/LoginForm";
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect";

@@ -1,3 +1,12 @@
+/**
+ * Inbox contatti `/admin/contatti`
+ *
+ * @description Messaggi dal form pubblico: lettura/eliminazione.
+ * @components ContactMessagesManager
+ * @actions setContactMessageRead, deleteContactMessage
+ * @auth requireAdmin
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import { prisma } from "@/app/_lib/prisma";
 import { requireAdmin } from "@/lib/dal";

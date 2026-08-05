@@ -1,3 +1,12 @@
+/**
+ * Mini-gioco `/maledizione`
+ *
+ * @description Enigma segreto → codice sconto (noindex).
+ * @components MaledizioneGame
+ * @data getMaledizionePageData
+ * @actions generateDiscountCode
+ * @seo noindex
+ */
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getMaledizionePageData } from "@/app/_actions/maledizione";

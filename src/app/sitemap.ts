@@ -10,11 +10,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const baseUrl = env.NEXT_PUBLIC_APP_URL;
 
-  const rooms = await prisma.room.findMany({
-    where: { isActive: true },
-    select: { slug: true, updatedAt: true },
-    orderBy: { createdAt: "asc" },
-  });
+  let rooms: { slug: string; updatedAt: Date }[] = [];
+  try {
+    rooms = await prisma.room.findMany({
+      where: { isActive: true },
+      select: { slug: true, updatedAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch {
+    // Sitemap statica se il DB non è raggiungibile in build.
+  }
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {
