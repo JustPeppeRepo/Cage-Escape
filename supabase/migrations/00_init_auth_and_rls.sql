@@ -192,16 +192,26 @@ CREATE POLICY "Block direct REST updates to payments" ON public."Payment"
   TO anon, authenticated
   WITH CHECK (false);
 
--- Block direct writes to StripeWebhookEvent (only service role)
-ALTER TABLE public."StripeWebhookEvent" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."StripeWebhookEvent" FORCE ROW LEVEL SECURITY;
+-- Block direct writes to stripe_webhook_event (only service role)
+-- Prisma @@map("stripe_webhook_event"); quoted "StripeWebhookEvent" does not exist.
+CREATE TABLE IF NOT EXISTS public.stripe_webhook_event (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "stripe_webhook_event_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "stripe_webhook_event_type_idx"
+  ON public.stripe_webhook_event("type");
 
-CREATE POLICY "Service role only access to webhook events" ON public."StripeWebhookEvent"
+ALTER TABLE public.stripe_webhook_event ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stripe_webhook_event FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role only access to webhook events" ON public.stripe_webhook_event
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
   WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
 
-CREATE POLICY "Block all other access to webhook events" ON public."StripeWebhookEvent"
+CREATE POLICY "Block all other access to webhook events" ON public.stripe_webhook_event
   FOR ALL
   TO anon, authenticated
   USING (false)
