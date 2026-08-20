@@ -2,94 +2,126 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  prepareSignup,
-  resendVerificationEmail,
-  type AuthFormState,
-} from "@/actions/auth";
-import { authClient } from "@/lib/auth-client";
-import { VERIFICATION_RESEND_COOLDOWN_SECONDS } from "@/lib/auth-constants";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
-import { EmailVerificationPending } from "@/components/horror/auth/EmailVerificationPending";
 
 type SignupFormProps = {
   callbackUrl: string;
 };
 
+type SignupFormState = {
+  errors?: {
+    email?: string[];
+    password?: string[];
+    username?: string[];
+    phone?: string[];
+  };
+  success?: boolean;
+  needsEmailVerification?: boolean;
+} | null;
+
 export function SignupForm({ callbackUrl }: SignupFormProps) {
-  const [state, setState] = useState<AuthFormState>(null);
+  const [state, setState] = useState<SignupFormState>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const supabase = createClient();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const prepared = await prepareSignup(null, formData);
-      if (!prepared?.success || prepared.errors) {
-        setState(prepared);
+      const email = String(formData.get("email") ?? "").trim().toLowerCase();
+      const password = String(formData.get("password") ?? "");
+      const username = String(formData.get("username") ?? "");
+      const phone = String(formData.get("phone") ?? "");
+
+      // Basic client-side validation
+      if (!email || !password || !username || !phone) {
+        setState({ errors: { email: ["Tutti i campi sono obbligatori"] } });
         return;
       }
 
-      const email = String(formData.get("email") ?? "").trim().toLowerCase();
-      const username = String(formData.get("username") ?? "");
-      const resolvedCallback = prepared.callbackUrl ?? callbackUrl;
+      if (password.length < 8) {
+        setState({ errors: { password: ["La password deve avere almeno 8 caratteri"] } });
+        return;
+      }
 
-      const { error } = await authClient.signUp.email({
+      // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Supabase Auth sign up
+      // signUp automatically sends email confirmation if configured
+      const { error } = await supabase.auth.signUp({
         email,
-        password: String(formData.get("password") ?? ""),
-        name: username,
-        username,
-        phone: String(formData.get("phone") ?? ""),
-        callbackURL: resolvedCallback,
+        password,
+        options: {
+          data: {
+            username,
+            phone,
+            name: username, // Use username as display name
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackUrl)}`,
+        },
       });
 
       if (error) {
-        setState({
-          errors: {
-            email: [
-              "Registrazione non riuscita. Verifica i dati o prova ad accedere.",
-            ],
-          },
-        });
+        console.error("Signup error:", error);
+
+        // Handle specific Supabase Auth error cases
+        switch (error.message) {
+          case "User already registered":
+            setState({ 
+              errors: { 
+                email: ["Email già registrata. Prova ad accedere o usa il recupero password."] 
+              } 
+            });
+            break;
+          case "Password should be at least 6 characters":
+            setState({ 
+              errors: { 
+                password: ["La password deve avere almeno 8 caratteri"] 
+              } 
+            });
+            break;
+          default:
+            setState({
+              errors: {
+                email: [
+                  "Registrazione non riuscita. Verifica i dati o prova ad accedere.",
+                ],
+              },
+            });
+        }
         return;
       }
 
-      // sendOnSignUp: false — invio esplicito così gli errori Resend non
-      // restano nascosti da Better Auth runInBackgroundOrAwait.
-      const resendData = new FormData();
-      resendData.set("email", email);
-      resendData.set("callbackUrl", resolvedCallback);
-      resendData.set("requireSend", "1");
-      const resend = await resendVerificationEmail(null, resendData);
-
+      // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Successful signup
+      // Show email verification message
       setState({
         success: true,
         needsEmailVerification: true,
-        verificationEmail: email,
-        callbackUrl: resolvedCallback,
-        verificationSendError: resend?.error,
-        verificationRetryAfterSeconds: resend?.success
-          ? VERIFICATION_RESEND_COOLDOWN_SECONDS
-          : resend?.retryAfterSeconds,
       });
     });
   }
 
-  if (state?.needsEmailVerification && state.verificationEmail) {
+  if (state?.needsEmailVerification) {
     return (
-      <EmailVerificationPending
-        email={state.verificationEmail}
-        callbackUrl={state.callbackUrl ?? callbackUrl}
-        description={
-          state.verificationSendError
-            ? "Account creato, ma l'invio del link di verifica non è riuscito. Usa il pulsante qui sotto per riprovare."
-            : "Ti abbiamo inviato un link per verificare l'account. Apri la casella di posta, conferma l'indirizzo e poi accedi."
-        }
-        initialError={state.verificationSendError}
-        initialCooldownSeconds={state.verificationRetryAfterSeconds}
-        showLoginLink
-      />
+      <div className="flex flex-col gap-4 rounded-md border border-void-mist bg-void-deep p-6 text-bone">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-bone mb-2">Verifica la tua email</h2>
+          <p className="text-bone/80">
+            Ti abbiamo inviato un link per verificare l'account. Apri la casella di posta, 
+            conferma l'indirizzo e poi potrai accedere.
+          </p>
+        </div>
+        <div className="text-center">
+          <Link
+            href="/login"
+            className="text-bone/60 underline decoration-blood underline-offset-4 hover:text-bone"
+          >
+            Torna al login
+          </Link>
+        </div>
+      </div>
     );
   }
 

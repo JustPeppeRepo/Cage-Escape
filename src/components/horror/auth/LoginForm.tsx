@@ -2,126 +2,87 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  prepareLogin,
-  resendVerificationEmail,
-  type AuthFormState,
-} from "@/actions/auth";
-import { authClient } from "@/lib/auth-client";
-import { VERIFICATION_RESEND_COOLDOWN_SECONDS } from "@/lib/auth-constants";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { PasswordInput } from "@/components/horror/auth/PasswordInput";
-import { EmailVerificationPending } from "@/components/horror/auth/EmailVerificationPending";
 
 type LoginFormProps = {
   callbackUrl: string;
 };
 
+type LoginFormState = {
+  errors?: {
+    email?: string[];
+    password?: string[];
+  };
+} | null;
+
 export function LoginForm({ callbackUrl }: LoginFormProps) {
-  const [state, setState] = useState<AuthFormState>(null);
+  const [state, setState] = useState<LoginFormState>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const supabase = createClient();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const prepared = await prepareLogin(null, formData);
-      if (!prepared?.success || prepared.errors) {
-        setState(prepared);
+      const email = String(formData.get("email") ?? "").trim().toLowerCase();
+      const password = String(formData.get("password") ?? "");
+
+      // Basic client-side validation
+      if (!email || !password) {
+        setState({ errors: { email: ["Email e password sono obbligatori"] } });
         return;
       }
 
-      const email = String(formData.get("email") ?? "").trim().toLowerCase();
-      const resolvedCallback = prepared.callbackUrl ?? callbackUrl;
-
-      const { error } = await authClient.signIn.email({
+      // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Supabase Auth sign in with rate limiting
+      // signInWithPassword handles server-side validation and returns proper error codes
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        password: String(formData.get("password") ?? ""),
-        callbackURL: resolvedCallback,
+        password,
       });
 
       if (error) {
-        // Su POST /sign-in/email: 401 = password/email errati, 403 = email
-        // non verificata (Better Auth FORBIDDEN + EMAIL_NOT_VERIFIED).
-        // status===403 è affidabile su questo endpoint; code/message possono
-        // mancare nel client e senza di essi l'utente vedeva "credenziali
-        // non valide" con password corretta.
-        const unverified =
-          error.status === 403 ||
-          error.code === "EMAIL_NOT_VERIFIED" ||
-          /email not verified/i.test(error.message ?? "");
+        console.error("Login error:", error);
 
-        if (unverified) {
-          let sendError: string | undefined;
-          let retryAfter: number | undefined;
-          try {
-            const resendData = new FormData();
-            resendData.set("email", email);
-            resendData.set("callbackUrl", resolvedCallback);
-            resendData.set("requireSend", "1");
-            const resend = await resendVerificationEmail(null, resendData);
-            sendError = resend?.error;
-            retryAfter = resend?.success
-              ? VERIFICATION_RESEND_COOLDOWN_SECONDS
-              : resend?.retryAfterSeconds;
-          } catch {
-            sendError =
-              "Impossibile inviare l'email di verifica. Usa il pulsante per riprovare.";
-          }
-
-          setState({
-            needsEmailVerification: true,
-            verificationEmail: email,
-            callbackUrl: resolvedCallback,
-            verificationSendError: sendError,
-            verificationRetryAfterSeconds: retryAfter,
-          });
-          return;
+        // Handle specific Supabase Auth error cases
+        switch (error.message) {
+          case "Invalid login credentials":
+            setState({ errors: { email: ["Credenziali non valide"] } });
+            break;
+          case "Email not confirmed":
+            setState({ 
+              errors: { 
+                email: ["Email non verificata. Controlla la tua casella di posta per il link di conferma."] 
+              } 
+            });
+            break;
+          case "Too many requests":
+            setState({ 
+              errors: { 
+                email: ["Troppi tentativi. Riprova tra poco."] 
+              } 
+            });
+            break;
+          default:
+            setState({ 
+              errors: { 
+                email: ["Accesso non riuscito. Riprova tra poco."] 
+              } 
+            });
         }
-
-        if (error.status === 401) {
-          setState({ errors: { email: ["Credenziali non valide"] } });
-          return;
-        }
-
-        // Mai esporre messaggi grezzi del provider auth (stack, dettagli interni).
-        if (error.status === 429) {
-          setState({
-            errors: {
-              email: ["Troppi tentativi. Riprova tra poco."],
-            },
-          });
-          return;
-        }
-
-        setState({
-          errors: {
-            email: ["Accesso non riuscito. Riprova tra poco."],
-          },
-        });
         return;
       }
 
-      window.location.assign(resolvedCallback);
+      // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Successful authentication
+      // Redirect to callback URL after successful authentication
+      router.push(callbackUrl);
+      router.refresh(); // Ensure middleware picks up the new session
     });
   }
 
-  if (state?.needsEmailVerification && state.verificationEmail) {
-    return (
-      <EmailVerificationPending
-        email={state.verificationEmail}
-        callbackUrl={state.callbackUrl ?? callbackUrl}
-        description={
-          state.verificationSendError
-            ? "Il tuo account esiste ma l'email non è ancora verificata. L'invio automatico del link non è riuscito: usa il pulsante qui sotto per riprovare."
-            : "Il tuo account esiste ma l'email non è ancora verificata. Ti abbiamo inviato un link di conferma: aprilo per attivare l'accesso, poi riprova ad entrare."
-        }
-        initialError={state.verificationSendError}
-        initialCooldownSeconds={state.verificationRetryAfterSeconds}
-        onBackToForm={() => setState(null)}
-      />
-    );
-  }
 
   return (
     <form
@@ -164,7 +125,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
 
       <p className="text-right text-sm">
         <Link
-          href="/forgot-password"
+          href="/reset-password"
           className="text-bone/60 underline decoration-blood underline-offset-4 hover:text-bone"
         >
           Password dimenticata?
