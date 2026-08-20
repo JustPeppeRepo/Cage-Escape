@@ -34,10 +34,10 @@ ALTER TABLE IF EXISTS "account" RENAME TO "_account_archived_betterauth";
 ALTER TABLE IF EXISTS "verification" RENAME TO "_verification_archived_betterauth";
 
 -- Comment archived tables for audit trail
-COMMENT ON TABLE IF EXISTS "_user_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth user table. Safe to drop after migration verification.';
-COMMENT ON TABLE IF EXISTS "_session_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth session table. Safe to drop after migration verification.';
-COMMENT ON TABLE IF EXISTS "_account_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth account table. Safe to drop after migration verification.';
-COMMENT ON TABLE IF EXISTS "_verification_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth verification table. Safe to drop after migration verification.';
+COMMENT ON TABLE "_user_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth user table. Safe to drop after migration verification.';
+COMMENT ON TABLE "_session_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth session table. Safe to drop after migration verification.';
+COMMENT ON TABLE "_account_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth account table. Safe to drop after migration verification.';
+COMMENT ON TABLE "_verification_archived_betterauth" IS 'ARCHIVED: Legacy betterAuth verification table. Safe to drop after migration verification.';
 
 -- =====================================================================================
 -- STEP 2: CREATE HARDENED PUBLIC.PROFILES TABLE
