@@ -41,73 +41,23 @@ enum ScheduleOverrideType {
   CUSTOM_HOURS
 }
 
-model User {
-  id                  String    @id @default(uuid())
-  name                String
-  email               String    @unique
-  emailVerified       Boolean   @default(false)
-  image               String?   @default("https://cageroom.avatar")
-  role                Role      @default(USER)
-  username            String    @unique
-  phone               String
-  failedLoginAttempts Int       @default(0)
-  lockedUntil         DateTime?
-  createdAt           DateTime  @default(now()) @db.Timestamptz
-  updatedAt           DateTime  @updatedAt @db.Timestamptz
-  bookings            Booking[]
-  sessions            Session[]
-  accounts            Account[]
-  discountCodes       DiscountCode[]
+model Profile {
+  id            String         @id @db.Uuid
+  name          String
+  email         String         @unique
+  emailVerified Boolean        @default(false)
+  image         String?        @default("https://cageroom.avatar")
+  role          Role           @default(USER)
+  username      String         @unique
+  phone         String
+  createdAt     DateTime       @default(now()) @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @db.Timestamptz
+  bookings      Booking[]
+  discountCodes DiscountCode[]
 
-  @@map("user")
+  @@map("profiles")
 }
 
-model Session {
-  id        String   @id @default(uuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("session")
-}
-
-model Account {
-  id                    String    @id @default(uuid())
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id @default(uuid())
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-  @@map("verification")
-}
 
 model Room {
   id              String             @id @default(cuid())
@@ -178,8 +128,8 @@ model WeeklyOpeningHours {
 
 model Booking {
   id              String        @id @default(cuid())
-  user            User          @relation(fields: [userId], references: [id])
-  userId          String
+  user            Profile       @relation(fields: [userId], references: [id])
+  userId          String        @db.Uuid
   room            Room          @relation(fields: [roomId], references: [id])
   roomId          String
   startTime       DateTime      @db.Timestamptz
@@ -254,8 +204,8 @@ model DiscountCode {
   id              String    @id @default(cuid())
   code            String    @unique
   discountPercent Int
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String    @db.Uuid
+  user            Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
   used            Boolean   @default(false)
   usedAt          DateTime? @db.Timestamptz
   expiresAt       DateTime  @db.Timestamptz

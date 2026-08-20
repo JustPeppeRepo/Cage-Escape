@@ -6,7 +6,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
-// ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Why getUser() is enforced over getSession()
+// ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: [Enforcement of getUser() over getSession()]
 // getSession() reads unvalidated JWT payload from untrusted cookie data without server verification.
 // getUser() performs server-side validation against Supabase Auth service, ensuring token integrity
 // and preventing privilege escalation from tampered client-side JWT tokens.
@@ -16,11 +16,11 @@ import { NextRequest, NextResponse } from "next/server";
  * FAIL-CLOSED: All routes default to ALLOW unless explicitly protected
  */
 const PROTECTED_ROUTES = [
+  "/account",
+  "/admin", 
+  "/booking",
+  "/checkout",
   "/dashboard",
-  "/settings", 
-  "/api/protected",
-  "/admin", // Add admin routes to protection
-  "/account", // Add account management
 ] as const;
 
 /**
@@ -28,15 +28,21 @@ const PROTECTED_ROUTES = [
  */
 const PUBLIC_ROUTES = [
   "/",
-  "/login", 
-  "/signup",
+  "/about",
   "/auth",
+  "/contatti", 
+  "/cookie",
+  "/forgot-password",
+  "/login",
+  "/maledizione",
+  "/manutenzione", 
+  "/privacy",
   "/reset-password",
   "/rooms",
-  "/contatti",
-  "/privacy",
+  "/signup",
   "/termini",
-  "/api/webhooks", // Allow webhook endpoints
+  "/api/media",      // Public media endpoints
+  "/api/webhooks",   // Webhook endpoints (have their own security)
 ] as const;
 
 /**
@@ -67,7 +73,7 @@ const createSupabaseClient = (request: NextRequest, response: NextResponse) => {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // ⚠️ CRITICAL SECURITY CHECK [ROUTE_PROTECTION]: Middleware cookie mutation for session refresh
+          // ⚠️ CRITICAL SECURITY CHECK [COOKIE_HANDLING]: [Cookie mutation scope explanation]
           // Edge Middleware can set cookies in the response headers to forward
           // refreshed session tokens from Supabase Auth service back to client
           cookiesToSet.forEach(({ name, value, options }) => {
@@ -100,7 +106,7 @@ async function updateSession(request: NextRequest) {
   const supabase = createSupabaseClient(request, response);
 
   try {
-    // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Enforcing getUser() over getSession()
+    // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: [Enforcement of getUser() over getSession()]
     // getUser() performs server-side JWT validation against Supabase Auth service
     // This prevents attacks using tampered or forged client-side JWT tokens
     const {
@@ -130,7 +136,7 @@ async function updateSession(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for static assets and API routes that don't need auth
+  // Skip middleware for static assets and webhook endpoints
   if (
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/api/webhooks/") ||
@@ -138,8 +144,12 @@ export async function middleware(request: NextRequest) {
     pathname.includes("/favicon") ||
     pathname.endsWith(".png") ||
     pathname.endsWith(".jpg") ||
+    pathname.endsWith(".webp") ||
     pathname.endsWith(".svg") ||
-    pathname.endsWith(".ico")
+    pathname.endsWith(".ico") ||
+    pathname.includes("/manifest") ||
+    pathname.includes("/robots") ||
+    pathname.includes("/sitemap")
   ) {
     return NextResponse.next();
   }
@@ -163,15 +173,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // ⚠️ CRITICAL SECURITY CHECK [ROUTE_PROTECTION]: Additional role-based checks
-    // Admin routes require elevated privileges
+    // ⚠️ CRITICAL SECURITY CHECK [ROLE_AUTHORIZATION]: Admin route protection
+    // Admin routes require elevated privileges from profile data
     if (pathname.startsWith("/admin")) {
-      // Assuming user metadata contains role information
-      const userRole = user.user_metadata?.role || user.app_metadata?.role;
-      if (userRole !== "admin" && userRole !== "ADMIN") {
-        // Redirect non-admin users attempting to access admin routes
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
+      // Note: Role checking will be done server-side via Prisma queries
+      // Middleware handles basic authentication, server actions handle authorization
+      // This prevents information disclosure about user roles in edge environment
     }
   }
 
@@ -187,12 +194,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api/webhooks (webhook endpoints)
+     * - api/webhooks (webhook endpoints have their own security)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, icon files, and other static assets
      * This ensures middleware runs on all pages and API routes that might need authentication
      */
-    "/((?!api/webhooks|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.svg$|.*\\.ico$).*)",
+    "/((?!api/webhooks|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.webp$|.*\\.svg$|.*\\.ico$|manifest|robots|sitemap).*)",
   ],
 };

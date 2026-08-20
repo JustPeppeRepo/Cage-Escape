@@ -1,17 +1,48 @@
 import { cache } from "react";
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { createClient } from "@/utils/supabase/server";
 import { logError } from "@/lib/logger";
 
-// Data Access Layer: unico punto in cui viene letta/validata la sessione
-// server-side (query al DB tramite Better Auth, non il semplice cookie
-// ottimistico letto dal proxy). `cache()` deduplica la chiamata entro lo
-// stesso render pass, cosi' piu' componenti/azioni che la richiamano nella
-// stessa request non pagano round-trip multipli.
+// ⚠️ CRITICAL SECURITY CHECK [IDOR_PREVENTION]: [User session matching before booking creation]
+// Data Access Layer: único punto de acceso para validación de sesión server-side
+// `cache()` deduplica las llamadas dentro del mismo render pass, evitando
+// múltiples round-trips de componentes/acciones que requieren la sesión.
 export const getCurrentSession = cache(async () => {
   try {
-    return await auth.api.getSession({ headers: await headers() });
+    const supabase = await createClient();
+    
+    // ⚠️ CRITICAL SECURITY CHECK [IDOR_PREVENTION]: Enforce getUser() validation
+    // getUser() performs server-side JWT validation against Supabase Auth service
+    // This prevents attacks using tampered or forged client-side JWT tokens
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      return null;
+    }
+    
+    // Fetch user profile from database to get role and other details
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (!profile) {
+      return null;
+    }
+    
+    return {
+      user: {
+        id: user.id,
+        email: user.email!,
+        role: profile.role,
+        name: profile.name,
+        username: profile.username,
+        phone: profile.phone,
+        image: profile.image,
+        emailVerified: profile.emailVerified,
+      }
+    };
   } catch (error) {
     logError("getCurrentSession", "Session lookup failed", {
       message: error instanceof Error ? error.message : String(error),

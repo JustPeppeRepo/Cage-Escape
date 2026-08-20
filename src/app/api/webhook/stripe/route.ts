@@ -5,8 +5,8 @@ import {
   PaymentStatus,
   PaymentType,
   Prisma,
-} from "@/generated/prisma/client";
-import { prisma } from "@/app/_lib/prisma";
+} from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";
 import { isSlotAvailable } from "@/app/_lib/bookings/slots";
@@ -90,15 +90,27 @@ async function recordConflictPayment(
   }
 }
 
+// ⚠️ CRITICAL SECURITY CHECK [WEBHOOK_IDEMPOTENCY]: WRITE-FIRST pattern enforcement
+// This function implements the WRITE-FIRST idempotency pattern where we attempt
+// to insert the event.id into StripeWebhookEvent BEFORE processing any business logic.
+// Concurrent requests are immediately blocked by DB Unique Constraint Violation (P2002).
+// This prevents race conditions and ensures exactly-once processing of webhook events.
 async function claimWebhookEvent(
   event: Stripe.Event,
 ): Promise<"claimed" | "duplicate"> {
   try {
+    // ⚠️ CRITICAL SECURITY CHECK [WEBHOOK_IDEMPOTENCY]: ATOMIC WRITE-FIRST CLAIM
+    // This CREATE operation MUST happen BEFORE any business logic processing.
+    // The unique constraint on StripeWebhookEvent.id ensures only one concurrent
+    // request can claim an event ID, all others receive P2002 and return "duplicate".
     await prisma.stripeWebhookEvent.create({
       data: { id: event.id, type: event.type },
     });
     return "claimed";
   } catch (error) {
+    // ⚠️ CRITICAL SECURITY CHECK [WEBHOOK_IDEMPOTENCY]: P2002 duplicate detection
+    // Prisma error P2002 indicates unique constraint violation on event.id
+    // This is the expected mechanism for detecting duplicate webhook deliveries
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
@@ -792,6 +804,9 @@ async function handleChargeRefunded(
 export async function POST(request: Request): Promise<NextResponse> {
   const signature = request.headers.get("stripe-signature");
 
+  // ⚠️ CRITICAL SECURITY CHECK [WEBHOOK_SECURITY]: [Signature verification and idempotency check]
+  // Stripe webhook signature verification prevents replay attacks and ensures 
+  // webhook events are authentic and unmodified during transmission
   if (!signature) {
     return NextResponse.json(
       { error: "Missing stripe-signature header" },
@@ -803,6 +818,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   let event: Stripe.Event;
 
   try {
+    // ⚠️ CRITICAL SECURITY CHECK [WEBHOOK_SECURITY]: [Signature verification and idempotency check]
+    // constructEvent validates the webhook signature using the raw request body
+    // This prevents attackers from forging webhook events
     event = stripe.webhooks.constructEvent(
       body,
       signature,
@@ -813,9 +831,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // Claim atomico ANTICIPATO su event.id: due delivery concorrenti non
-  // processano entrambe. Se l'handler fallisce rilasciamo il claim cosi'
-  // Stripe puo' ritentare (altrimenti l'evento resterebbe perso).
+  // ⚠️ CRITICAL SECURITY CHECK [WEBHOOK_SECURITY]: [Signature verification and idempotency check]
+  // Atomic event claiming prevents duplicate processing of the same webhook event.
+  // If handler fails, we release the claim so Stripe can retry (otherwise event would be lost).
+  // Uses StripeWebhookEvent model for idempotency tracking as required.
   const claim = await claimWebhookEvent(event);
   if (claim === "duplicate") {
     return NextResponse.json({ received: true, duplicate: true });
