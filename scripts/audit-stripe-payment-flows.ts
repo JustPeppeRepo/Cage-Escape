@@ -137,17 +137,13 @@ async function main() {
   const expectedCents = Math.round(Number(tier.totalPrice.toString()) * 100);
   const depositCents = Math.round(Number(tier.depositPrice.toString()) * 100);
 
-  let user = await prisma.user.findFirst({ where: { role: Role.USER } });
+  const user =
+    (await prisma.profile.findFirst({ where: { role: Role.USER } })) ??
+    (await prisma.profile.findFirst());
   if (!user) {
-    user = await prisma.user.create({
-      data: {
-        name: "Audit Tester",
-        email: `audit-stripe-${Date.now()}@example.com`,
-        username: `audit_${Date.now()}`,
-        phone: "+390000000000",
-        emailVerified: true,
-      },
-    });
+    throw new Error(
+      "Nessun profilo in public.profiles — crea un utente Auth (Supabase) e il relativo profilo prima dell'audit.",
+    );
   }
 
   const createdBookingIds: string[] = [];

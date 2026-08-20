@@ -86,7 +86,7 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 -- Policy: Users can view their own bookings
 CREATE POLICY "Users can view own bookings" ON public."Booking"
   FOR SELECT
-  USING (auth.uid() = "userId");
+  USING (auth.uid()::text = "userId");
 
 -- Policy: Service role can perform all operations on bookings (server-side Prisma)
 CREATE POLICY "Service role full access to bookings" ON public."Booking"
@@ -97,7 +97,7 @@ CREATE POLICY "Service role full access to bookings" ON public."Booking"
 -- Policy: Authenticated users can create bookings (but only for themselves)
 CREATE POLICY "Users can create own bookings" ON public."Booking"
   FOR INSERT
-  WITH CHECK (auth.uid() = "userId");
+  WITH CHECK (auth.uid()::text = "userId");
 
 -- =============================================================================
 -- RLS POLICIES FOR PAYMENTS
@@ -110,7 +110,7 @@ CREATE POLICY "Users can view own payments" ON public."Payment"
     EXISTS (
       SELECT 1 FROM public."Booking" b 
       WHERE b.id = "Payment"."bookingId" 
-      AND b."userId" = auth.uid()
+      AND b."userId" = auth.uid()::text
     )
   );
 
@@ -131,7 +131,7 @@ CREATE POLICY "Users can view own booking waivers" ON public."BookingWaiver"
     EXISTS (
       SELECT 1 FROM public."Booking" b 
       WHERE b.id = "BookingWaiver"."bookingId" 
-      AND b."userId" = auth.uid()
+      AND b."userId" = auth.uid()::text
     )
   );
 
@@ -142,7 +142,7 @@ CREATE POLICY "Users can create waivers for own bookings" ON public."BookingWaiv
     EXISTS (
       SELECT 1 FROM public."Booking" b 
       WHERE b.id = "BookingWaiver"."bookingId" 
-      AND b."userId" = auth.uid()
+      AND b."userId" = auth.uid()::text
     )
   );
 
@@ -159,7 +159,7 @@ CREATE POLICY "Service role full access to waivers" ON public."BookingWaiver"
 -- Policy: Users can view their own discount codes
 CREATE POLICY "Users can view own discount codes" ON public."DiscountCode"
   FOR SELECT
-  USING (auth.uid() = "userId");
+  USING (auth.uid()::text = "userId");
 
 -- Policy: Service role can perform all operations on discount codes
 CREATE POLICY "Service role full access to discount codes" ON public."DiscountCode"
