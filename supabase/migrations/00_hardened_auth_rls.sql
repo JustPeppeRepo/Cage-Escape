@@ -46,9 +46,15 @@ COMMENT ON TABLE "_verification_archived_betterauth" IS 'ARCHIVED: Legacy better
 -- ⚠️ CRITICAL SECURITY CHECK [DB_RLS]: Creating profiles table with mandatory RLS
 CREATE TABLE public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email TEXT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+    image TEXT DEFAULT 'https://cageroom.avatar',
+    role TEXT NOT NULL DEFAULT 'USER',
+    username TEXT NOT NULL UNIQUE,
+    phone TEXT NOT NULL,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ⚠️ CRITICAL SECURITY CHECK [DB_RLS]: Enable RLS and FORCE RLS to prevent owner bypass
@@ -91,8 +97,14 @@ AS $$
 BEGIN
     -- ⚠️ CRITICAL SECURITY CHECK [DB_RLS]: Insert new profile for authenticated user
     -- This function runs with SECURITY DEFINER to bypass RLS for system operations
-    INSERT INTO public.profiles (id, email)
-    VALUES (NEW.id, NEW.email);
+    INSERT INTO public.profiles (id, name, email, username, phone)
+    VALUES (
+        NEW.id, 
+        COALESCE(NEW.raw_user_meta_data ->> 'name', NEW.email),
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data ->> 'username', split_part(NEW.email, '@', 1)),
+        COALESCE(NEW.raw_user_meta_data ->> 'phone', '')
+    );
     
     RETURN NEW;
 EXCEPTION
@@ -193,9 +205,7 @@ CREATE POLICY "audit_log_admin_select" ON public.security_audit_log
         EXISTS (
             SELECT 1 FROM public.profiles 
             WHERE profiles.id = auth.uid() 
-            AND profiles.id IN (
-                SELECT id FROM auth.users WHERE raw_user_meta_data->>'role' = 'admin'
-            )
+            AND profiles.role = 'ADMIN'
         )
         OR user_id = auth.uid()
     );
