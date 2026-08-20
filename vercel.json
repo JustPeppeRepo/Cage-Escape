@@ -9,8 +9,5 @@
     "src/app/api/cron/keep-alive/route.ts": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "CRON_SECRET": "@cron-secret"
   }
 }

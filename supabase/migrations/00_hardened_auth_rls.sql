@@ -55,9 +55,6 @@ CREATE TABLE public.profiles (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles FORCE ROW LEVEL SECURITY;
 
--- Add optimized index for auth lookups
-CREATE INDEX CONCURRENTLY profiles_id_idx ON public.profiles(id);
-
 -- Add table comment for audit purposes
 COMMENT ON TABLE public.profiles IS 'SECURE: User profiles linked to auth.users with zero-trust RLS policies';
 
@@ -124,7 +121,7 @@ COMMENT ON FUNCTION public.handle_new_user() IS 'SECURE: System function to sync
 ALTER TABLE "Booking" ADD COLUMN auth_user_id UUID;
 
 -- Create index for new foreign key
-CREATE INDEX CONCURRENTLY booking_auth_user_id_idx ON "Booking"(auth_user_id);
+CREATE INDEX booking_auth_user_id_idx ON "Booking"(auth_user_id);
 
 -- ⚠️ IMPORTANT: Data migration step would go here in production
 -- This is commented out as it requires specific business logic to map betterAuth users to Supabase users
