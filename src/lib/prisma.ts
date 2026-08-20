@@ -3,7 +3,7 @@
 // Senior Full-Stack Security Engineer Implementation
 // =====================================================================================
 
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 
@@ -121,4 +121,4 @@ function getPrismaClient(): PrismaClient {
 export const prisma = getPrismaClient();
 
 // Re-export Prisma types for convenience
-export { Prisma, type PrismaClient } from '@prisma/client';
+export { Prisma, type PrismaClient } from '@/generated/prisma/client';

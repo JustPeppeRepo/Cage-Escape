@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/app/_lib/rate-limit"
 import { getLoginLockStatus } from "@/app/_lib/auth/lockout"
 import { sanitizeCallbackUrl } from "@/lib/safe-redirect"
 import { VERIFICATION_RESEND_COOLDOWN_SECONDS } from "@/lib/auth-constants"
+import { createClient } from "@/utils/supabase/server"
 
 export type AuthFormState = {
   errors?: {
@@ -162,34 +163,34 @@ export async function resendVerificationEmail(
 
   const email = parsed.data.email.trim().toLowerCase()
   const requireSend = formData.get("requireSend") === "1"
-  const { issueAndSendVerificationEmail } = await import(
-    "@/app/_lib/auth/issue-verification-email"
-  )
+  const callbackUrl = sanitizeCallbackUrl(parsed.data.callbackUrl ?? null)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "")
 
-  const result = await issueAndSendVerificationEmail({
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resend({
+    type: "signup",
     email,
-    callbackUrl: parsed.data.callbackUrl,
-    requireSend,
+    options: appUrl
+      ? {
+          emailRedirectTo: `${appUrl}/auth/callback?next=${encodeURIComponent(callbackUrl)}`,
+        }
+      : undefined,
   })
 
-  if (!result.ok) {
-    console.error("[auth/resendVerificationEmail] send failed:", result.error)
-    return {
-      error:
-        result.error === "Servizio email non configurato"
-          ? "Servizio email non configurato. Contatta lo staff."
-          : result.error.startsWith("Impossibile") ||
-              result.error.startsWith("Questo account")
-            ? result.error
-            : "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
+  if (error) {
+    console.error("[auth/resendVerificationEmail] send failed:", error.message)
+    if (requireSend) {
+      return {
+        error:
+          "Impossibile inviare l'email di verifica. Riprova più tardi o contatta lo staff.",
+      }
     }
   }
 
   // Anti-enumerazione sul reinvio manuale: successo anche se non inviato.
-  // Con requireSend, sent è sempre true se ok.
   return {
     success: true,
-    sent: result.sent,
+    sent: !error,
     retryAfterSeconds: VERIFICATION_RESEND_COOLDOWN_SECONDS,
   }
 }

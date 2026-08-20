@@ -3,7 +3,7 @@
 // Senior Full-Stack Developer & Cybersecurity Auditor Implementation
 // =====================================================================================
 
-import { createServerClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import type { User } from "@supabase/supabase-js";
 
 /**
@@ -21,7 +21,7 @@ import type { User } from "@supabase/supabase-js";
 export async function validateUserSession(): Promise<User> {
   // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Fresh server client creation
   // Always create a new server client to ensure latest cookie state
-  const supabase = await createServerClient();
+  const supabase = await createClient();
 
   // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Server-side user validation
   // getUser() performs JWT validation against Supabase Auth service

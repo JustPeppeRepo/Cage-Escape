@@ -5,7 +5,7 @@ import {
   PaymentStatus,
   PaymentType,
   Prisma,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/app/_lib/stripe";
 import { env } from "@/app/_lib/env";

@@ -38,7 +38,7 @@ export const validateSupabaseEnv = () => {
   const result = supabaseEnvSchema.safeParse(process.env);
   
   if (!result.success) {
-    const errorMessages = result.error.errors
+    const errorMessages = result.error.issues
       .map(err => `- ${err.path.join('.')}: ${err.message}`)
       .join('\n');
     

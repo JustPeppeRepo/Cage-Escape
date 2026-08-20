@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
       email: data.user.email,
       timestamp: new Date().toISOString(),
       userAgent: request.headers.get("user-agent"),
-      ip: request.headers.get("x-forwarded-for") || request.ip,
+      ip: request.headers.get("x-forwarded-for"),
     });
 
     // ⚠️ CRITICAL SECURITY CHECK [ROUTE_PROTECTION]: Sanitize redirect target

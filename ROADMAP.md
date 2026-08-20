@@ -1,164 +1,254 @@
 # Roadmap — Cage Escape Room
 
-Documento vivo: aggiornato al 2026-07-27 (orari settimanali admin, cooldown slot, override multi-giorno, StarRating, manutenzione solo-prod, Stripe `rk_`, co-location UI, iubenda/SEO).
+Documento vivo: **aggiornato al 2026-08-20** (migrazione Supabase Auth, RLS Postgres, hardening webhook/cron, audit concorrenza booking).
+
+---
+
+## Panoramica architettura (come è fatto il progetto)
+
+| Layer | Tecnologia | Ruolo |
+|-------|------------|--------|
+| **Frontend** | Next.js 16 App Router, React 19, Tailwind 4 | Pagine pubbliche, admin, account, checkout |
+| **Auth** | **Supabase Auth** (`@supabase/ssr`) — *migrazione in corso* | Login/signup PKCE, sessioni cookie, callback `/auth/callback` |
+| **API dati app** | **Prisma 7** + PostgreSQL (Neon/Supabase) | Business logic server-side: booking, pagamenti, admin |
+| **Pagamenti** | Stripe Checkout + webhook | Hold → checkout → conferma via `StripeWebhookEvent` |
+| **Edge gate** | `src/middleware.ts` (Supabase) + `proxy.ts` (legacy Better Auth) | Protezione rotte, refresh token — **⚠️ da unificare** |
+| **Sicurezza DB** | RLS Supabase (`supabase/migrations/`) | Isolamento righe su `profiles`, `Booking`, `Payment`, … |
+| **Ops** | Vercel Cron (`/api/cron/keep-alive`) | Keep-alive connessione DB ogni 5 giorni |
+
+### Flusso prenotazione (end-to-end)
+
+```
+Utente → /rooms/[slug] → selezione slot
+       → holdSlot (Server Action, transazione Serializable)
+       → /checkout?bookingId=…
+       → createStripeCheckoutSession (prezzi da RoomPricingTier, mai dal client)
+       → Stripe Checkout
+       → webhook checkout.session.completed (idempotenza event.id)
+       → Booking PAID / DEPOSIT_PAID + Payment
+```
+
+### Flusso auth (target post-migrazione)
+
+```
+Signup/Login (Supabase client) → PKCE redirect → /auth/callback
+       → exchangeCodeForSession → cookie session
+       → trigger DB handle_new_user() → riga profiles
+       → middleware getUser() su rotte protette
+       → DAL getCurrentSession() nelle Server Action
+```
+
+---
 
 ## Stato attuale (riepilogo — già fatto)
 
-- [x] Auth: Better Auth (login/signup, cookie/session server-side via `src/lib/dal.ts`, `trustedOrigins`, verifica email, lockout login)
-- [x] Home page: hero cinematico (video), card stanze da Prisma, recensioni da DB, FAQ, JSON-LD `LocalBusiness`, footer
-- [x] Listing e dettaglio stanze (`/rooms`, `/rooms/[slug]`) con calendario e booking widget (+ codice sconto)
-- [x] Checkout con countdown hold (`/checkout?bookingId=`), polling stato pagamento, success page
-- [x] Stripe Checkout + webhook (firma, importo, metadata, duplicati, `PAYMENT_CONFLICT_REFUND_REQUIRED`, sconto easter egg; chiavi `sk_` e restricted `rk_`)
+### Prodotto e business logic (invariato)
+
+- [x] Listing e dettaglio stanze, calendario, widget prenotazione, codice sconto
+- [x] Checkout con hold, polling, success page
+- [x] Stripe Checkout + webhook (firma, importo, metadata, duplicati, conflitti rimborso)
 - [x] Prevenzione doppie prenotazioni: transazioni `Serializable` + vincolo `EXCLUDE` a DB
-- [x] Rilascio hold scaduti (`releaseExpiredHolds`) + cap prenotazioni pendenti per utente
-- [x] Rate limiting su mutazioni sensibili (Postgres `RateLimitCounter` / Neon in prod, fail-closed; in-memory solo in dev se DB irraggiungibile)
-- [x] Validazione Zod su Server Action; nessun calcolo prezzo lato client
-- [x] Liberatoria minorenni: upload PDF in prenotazione (`BookingWaiver`), download template `/documents/liberatoria.pdf`, download admin
-- [x] Pannello Admin (`/admin`: rooms + media, schedule/orari settimanali, bookings, reviews, contatti, impostazioni)
-- [x] Pagine `/about`, `/contatti`, `/maledizione`
-- [x] Area utente `/account` + recupero password
+- [x] Rate limiting su mutazioni sensibili (`RateLimitCounter`)
+- [x] Validazione Zod; **nessun calcolo prezzo lato client**
+- [x] Liberatoria minorenni, pannello admin completo, area `/account`
 - [x] Annullamento self-service con rimborso Stripe (>48h)
-- [x] SEO: metadata, `sitemap.ts`, `robots.ts`, ottimizzazioni mobile
-- [x] Analytics: Vercel Analytics + Speed Insights (disattivati in manutenzione)
-- [x] Legale (hook): pagine placeholder `/privacy`, `/cookie`, `/termini` + integrazione iubenda opzionale via env (`NEXT_PUBLIC_IUBENDA_*`)
-- [x] Next.js 16: gate richieste in `proxy.ts` (ex `middleware.ts`, deprecato)
-- [x] **Manutenzione pubblica** (attiva in produzione Vercel): unica pagina muta, resto bloccato — toggle in `src/app/_lib/site/maintenance.ts` (`desired` + `VERCEL_ENV === "production"`)
+- [x] SEO, analytics, manutenzione prod, iubenda opzionale
 
-## Fase A — Pannello Admin ✅
+### Migrazione sicurezza Supabase (2026-08-20) — **parziale**
 
-- [x] `/admin/rooms`: CRUD stanze + tier di prezzo + upload foto
-- [x] `/admin/schedule`: orari settimanali (`WeeklyOpeningHours`) + CRUD `ScheduleOverride` (anche multi-giorno / range)
-- [x] `/admin/bookings`: elenco, filtri, annullamento, evidenza conflitti pagamento, download liberatorie
-- [x] `/admin/impostazioni`: `SiteSettings` (sconto easter egg + cooldown slot minuti)
-- [x] `/admin/reviews`: CRUD recensioni homepage
-- [x] `/admin/contatti`: messaggi dal form contatti
-- [x] Dashboard overview in `/admin`
+- [x] **Schema Prisma**: `User` → `Profile` (`@@map("profiles")`, `id @db.Uuid`); rimossi `Session`, `Account`, `Verification`
+- [x] **SQL RLS**: `supabase/migrations/00_init_auth_and_rls.sql` (trigger `handle_new_user`, FORCE RLS, policy utente/admin/service_role)
+- [x] **Client Supabase**: `src/utils/supabase/client.ts`, `server.ts` (solo chiavi pubbliche nel browser)
+- [x] **Prisma client**: `src/lib/prisma.ts` (pool PG, cache globale)
+- [x] **DAL**: `src/lib/dal.ts` → `getUser()` + query `profiles` (non più Better Auth)
+- [x] **Middleware Supabase**: `src/middleware.ts` (`getUser()`, rotte protette, refresh cookie)
+- [x] **Auth callback PKCE**: `src/app/auth/callback/route.ts` (open-redirect defense)
+- [x] **Webhook Stripe**: idempotenza WRITE-FIRST su `StripeWebhookEvent` (`src/app/api/webhook/stripe/route.ts`)
+- [x] **Cron keep-alive**: `src/app/api/cron/keep-alive/route.ts` + `vercel.json`
+- [x] **UI auth**: `LoginForm`, `SignupForm`, `LogoutButton` → Supabase client
+- [x] **Audit documentazione**: `SECURITY_AUDIT_MIGRATION.md`, `CONCURRENCY_AUDIT_REPORT.md`
+- [x] **Server Action checkout (nuova)**: `src/app/actions/booking-checkout.ts` (transazione atomica post-audit)
 
-## Fase B — Pagine pubbliche ✅
+### Legacy ancora presente — **da completare prima del go-live auth**
 
-- [x] `/about`
-- [x] `/contatti` + `ContactMessage` + Resend (env: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `CONTACT_EMAIL_TO`)
-- [x] Footer con link legali / social
+- [ ] **`proxy.ts`**: usa ancora `better-auth/cookies` e gate ottimistico legacy
+- [ ] **`src/app/api/auth/[...better-auth]/route.ts`**: route Better Auth (da eliminare)
+- [ ] **`src/lib/auth-client.ts`**: client Better Auth (da eliminare o sostituire)
+- [ ] **`src/actions/auth.ts`**: lockout/verifica legati al vecchio stack (da riscrivere su Supabase)
+- [ ] **Unificare gate edge**: scegliere **solo** `src/middleware.ts` *oppure* migrare manutenzione in middleware e rimuovere `proxy.ts`
+- [ ] **Applicare migrazioni SQL** su Supabase prod (vedi checklist sotto)
+- [ ] **Prisma migrate** per tabella `profiles` e FK `userId @db.Uuid`
+- [ ] **Allineare import Prisma**: molti file usano ancora `@/app/_lib/prisma` e `@/generated/prisma/client`
 
-## Fase C — Easter Egg ✅
+---
 
-- [x] `/maledizione` + `DiscountCode` + redemption server-side da `SiteSettings`
+## Fase K — Migrazione Better Auth → Supabase Auth 🔄
 
-## Fase D — Rifiniture ✅
+### K.1 Database e RLS
 
-- [x] Shake su errori login/signup
-- [x] `src/lib/logger.ts`
-- [x] Tipi consolidati in `src/types/`
-- [x] `.env.example`
-- [x] Navbar pubblica con sessione server-side (`SiteNav`)
-- [x] Recensioni homepage da DB con CRUD admin
-- [x] Brand/SEO: positioning escape room immersiva (non solo horror), CTA conversione, hero video
-- [x] Difficoltà stanze: `StarRating` (ex `SkullRating`)
+| Task | File | Stato |
+|------|------|--------|
+| Schema Profile + purge modelli auth | `prisma/schema.prisma` | ✅ |
+| Migrazione RLS + trigger profilo | `supabase/migrations/00_init_auth_and_rls.sql` | ✅ scritta |
+| Migrazione cleanup legacy (alternativa) | `supabase/migrations/00_hardened_auth_rls.sql` | ⚠️ **non eseguire entrambe** — scegliere una strategia |
+| Deploy Prisma | `npx prisma migrate dev` | ⬜ manuale |
+| Apply SQL Supabase | Dashboard SQL o `supabase db push` | ⬜ manuale |
 
-## Fase E — Area utente e recupero password ✅
+### K.2 Runtime applicativo
 
-- [x] `/account`: profilo con avatar, ordini, cambio password, eliminazione account
-- [x] Recupero password: `/forgot-password`, `/reset-password`
-- [x] Email reset / verifica via Resend (`RESEND_FROM_EMAIL` obbligatorio se c’è API key)
-- [x] Blocco eliminazione account con prenotazioni attive o pagate
+| Task | File | Stato |
+|------|------|--------|
+| Browser client | `src/utils/supabase/client.ts` | ✅ |
+| Server client + cookie try/catch | `src/utils/supabase/server.ts` | ✅ |
+| DAL sessione | `src/lib/dal.ts` | ✅ |
+| Edge middleware | `src/middleware.ts` | ✅ |
+| PKCE callback | `src/app/auth/callback/route.ts` | ✅ |
+| Rimuovere Better Auth route | `src/app/api/auth/[...better-auth]/route.ts` | ⬜ |
+| Aggiornare proxy/manutenzione | `proxy.ts` → middleware unificato | ⬜ |
+| Form login/signup | `src/components/horror/auth/*.tsx` | ✅ parziale |
+| Account actions | `src/app/_actions/account.ts` | ⬜ verificare compatibilità Profile |
 
-## Fase F — Sicurezza pagamenti e policy di rimborso ✅
+### K.3 Pagamenti e booking (sicurezza)
 
-- [x] Rate limiting distribuito su Neon Postgres (`RateLimitCounter`) con fallback in-memory solo in sviluppo
-- [x] Riserva atomica del codice sconto + guardia webhook
-- [x] Refund Stripe obbligatorio nell’annullamento admin, incluso `PAYMENT_CONFLICT_REFUND_REQUIRED`
-- [x] `customRules` Better Auth + lockout account
-- [x] Alert operativi email per conflitti pagamento
-- [x] Rimozione `experimental.authInterrupts` (sostituita con `notFound()`)
-- [x] Ogni ramo `PAYMENT_CONFLICT_REFUND_REQUIRED` registra `Payment` tracciabile
-- [x] Annullamento self-service `/account` con rimborso automatico se >48h prima dell’evento
+| Task | File | Stato |
+|------|------|--------|
+| Hold slot atomico (canonico) | `src/app/_actions/bookings.ts` → `holdSlot` | ✅ Serializable |
+| Checkout Stripe (canonico) | `src/app/_actions/bookings.ts` → `createStripeCheckoutSession` | ✅ |
+| Checkout alternativo (nuovo) | `src/app/actions/booking-checkout.ts` | ✅ transazione post-audit — **decidere se unificare con holdSlot** |
+| Webhook idempotente | `src/app/api/webhook/stripe/route.ts` | ✅ WRITE-FIRST |
+| Alias webhook | `src/app/api/webhooks/stripe/route.ts` | ✅ |
 
-## Fase G — Hardening Stripe prenotazioni (audit 2026-07-24) ✅ / backlog
+### K.4 Ops e infrastruttura
 
-Script di regressione: `scripts/audit-stripe-payment-flows.ts`.
+| Task | File | Stato |
+|------|------|--------|
+| Cron keep-alive | `src/app/api/cron/keep-alive/route.ts` | ✅ |
+| Schedule Vercel | `vercel.json` | ✅ ogni 5 giorni |
+| Secret cron | env `CRON_SECRET` su Vercel | ⬜ manuale |
 
-- [x] Idempotenza webhook su `event.id` (`StripeWebhookEvent`)
-- [x] Alert ops deferred con `after()`
-- [x] Confronto importo in centesimi interi
-- [x] Handler `charge.refunded`
-- [x] `payment_intent.payment_failed` documentato come no-op
-- [x] Alias path `/api/webhooks/stripe`
-- [x] Admin cancel: claim `CANCELLED` prima dei refund
-- [x] `releaseExpiredHolds` anche in lettura slot
-- [x] Re-test automatizzato: `scripts/audit-stripe-payment-flows.ts` (14/14 PASS)
-- [x] Validatore `STRIPE_SECRET_KEY`: accetta `sk_` e restricted key `rk_` (anche con `_` nel body)
-- [ ] Dispute / chargeback (`charge.dispute.created`)
-- [ ] Auto-refund sui conflitti `PAYMENT_CONFLICT_REFUND_REQUIRED`
-- [ ] Job periodico cleanup hold scaduti
+---
 
-## Fase H — Manutenzione e prep go-live ✅ / aperto
+## 🔐 Checklist validazione sicurezza manuale
 
-### Fatto
+**Eseguire prima di ogni deploy in produzione.** Spuntare ogni voce dopo verifica reale (non solo code review).
 
-- [x] Flag centralizzato in `src/app/_lib/site/maintenance.ts` (`desired` + gate `VERCEL_ENV === "production"`)
-- [x] Pagina muta `MaintenanceScreen` + route `/manutenzione`
-- [x] Gate: `proxy.ts` (rewrite `/` → manutenzione, redirect resto → `/`) + redirect backup in `next.config.ts`
-- [x] Con manutenzione ON: niente nav, floating CTA, Iubenda, Analytics, Speed Insights; `robots` disallow; sitemap vuota
-- [x] In locale / preview Vercel: sito normale anche con `desired: true`
-- [x] Hook iubenda nel layout/footer (si attiva solo con ID in env)
-- [x] Pagine legali placeholder locali finché iubenda non è configurato
+### Priorità CRITICA
 
-### Aperto (prima del lancio pubblico pieno)
+| # | Cosa verificare | File da aprire / testare | Tag audit |
+|---|----------------|----------------------------|-----------|
+| 1 | **Middleware usa `getUser()`, mai `getSession()`** | `src/middleware.ts` | `[TOKEN_VALIDATION]` |
+| 2 | **Nessuna `SUPABASE_SERVICE_ROLE_KEY` nel bundle client** | `src/utils/supabase/client.ts`, build `npm run build` + ispeziona chunk | `[ENV_LEAK]` |
+| 3 | **Server Supabase: cookie `setAll` in try/catch** | `src/utils/supabase/server.ts` | `[COOKIE_HANDLING]` |
+| 4 | **RLS FORCE su tabelle sensibili** | `supabase/migrations/00_init_auth_and_rls.sql` → eseguire su DB e controllare `\d+ profiles` | `[DB_RLS]` |
+| 5 | **Trigger profilo: `SET search_path = public, auth`** | stesso file SQL, funzione `handle_new_user` | `[SECURITY_DEFINER]` |
+| 6 | **Webhook: firma Stripe + claim `event.id` PRIMA della business logic** | `src/app/api/webhook/stripe/route.ts` | `[WEBHOOK_SECURITY]` |
+| 7 | **Booking: check disponibilità + create nella stessa `$transaction`** | `src/app/_actions/bookings.ts` (`holdSlot`), `src/app/actions/booking-checkout.ts` | `[CONCURRENCY_PROTECTION]` |
+| 8 | **Prezzi solo server-side da `RoomPricingTier`** | `src/app/_actions/bookings.ts`, `src/app/actions/booking-checkout.ts` | `[PAYMENT_INTEGRITY]` |
+| 9 | **IDOR: booking sempre con `userId` della sessione validata** | `src/lib/dal.ts`, actions booking | `[IDOR_PREVENTION]` |
+| 10 | **Callback auth: redirect solo path interni** | `src/app/auth/callback/route.ts` | `[ROUTE_PROTECTION]` |
 
-- [ ] Spegnere manutenzione: `desired = false` in `src/app/_lib/site/maintenance.ts`
-- [ ] Configurare iubenda (Privacy / Cookie / Termini) e ID in env Vercel
-- [ ] PDF liberatoria legale reale (sostituire `public/documents/liberatoria.pdf` demo)
-- [ ] Stripe live (`sk_live_` / `rk_live_`, webhook live, `STRIPE_WEBHOOK_SECRET` live)
-- [ ] Resend: dominio verificato + `RESEND_FROM_EMAIL` + `CONTACT_EMAIL_TO` / ops email
-- [ ] URL prod allineati: `NEXT_PUBLIC_APP_URL` = `BETTER_AUTH_URL`
-- [ ] Contatti/social reali (indirizzo, WhatsApp, mappa, orari in `/contatti`)
-- [ ] Asset: favicon, apple-touch, OG image
-- [ ] Backlog Fase G residuo (dispute, auto-refund conflitti, job hold)
+### Priorità ALTA
 
-### Come riaprire il sito
+| # | Cosa verificare | File |
+|---|----------------|------|
+| 11 | Cron: header `Authorization` vs `CRON_SECRET` (timing-safe) | `src/app/api/cron/keep-alive/route.ts` |
+| 12 | Rate limit su checkout/hold/cancel | `src/app/_lib/rate-limit.ts`, actions |
+| 13 | Admin: `requireAdmin()` su ogni `page.tsx` sotto `/admin` | `src/lib/dal.ts`, `src/app/admin/**/page.tsx` |
+| 14 | Stripe metadata coerenti con booking (`bookingId`, `userId`, `paymentType`) | webhook handler + creazione session |
+| 15 | Nessun write REST diretto su Booking/Payment (RLS blocca anon) | test con Supabase client anon key |
 
-1. In `src/app/_lib/site/maintenance.ts` imposta `desired: false`
-2. Deploy (o riavvio locale)
-3. Verifica che `/rooms`, login e checkout rispondano di nuovo in produzione
+### Test manuali consigliati
 
-## Fase I — Co-location UI pubblica ✅
+```bash
+# 1. Webhook locale
+stripe listen --forward-to localhost:3000/api/webhook/stripe
 
-Refactoring UI (2026-07-27): meno file frammentati, stesso aspetto/UX. Auth, Stripe e Server Action di mutazione **non** riscritti (solo path import dove serviva).
+# 2. Audit flussi Stripe (se presente)
+npx tsx scripts/audit-stripe-payment-flows.ts
 
-- [x] Home: sezioni verticali in ordine di resa — `HeroSection`, `RoomsSection`, `ReviewsSection` (+ ReviewCard), `FaqSection`, `BookingCtaSection`
-- [x] Hero: `FogOverlay` inline in `HeroSection`; `HeroVideo` resta client separato
-- [x] About: un solo `AboutContent.tsx`; rimossi frecce disattivate (`AboutFlowArrows`, `aboutArrowArt`) e micro-sezioni
-- [x] Nav: `SiteNavShell` + `SiteNavAuth` uniti in `SiteNav`; resta `SiteNavClient`
-- [x] Room detail: `dynamic()` di `BookingWidget` inline in `rooms/[slug]/page.tsx` (loader dedicato eliminato)
-- [x] Cleanup: cartella vuota `photographer/`, campo inutilizzato `LEGAL_ENTITY.tradeName`; rimossi `CHECKLIST-PUBBLICAZIONE.md` e `STRIPE_INTEGRATION_ROADMAP.md` (contenuti assorbiti qui)
-- [x] Fuori scope (intatti): webhook/checkout Stripe, Better Auth, interni `BookingWidget` / form auth, pannello admin
+# 3. Concorrenza hold (due tab stesso slot → una sola deve vincere)
+# 4. Login → /auth/callback → redirect sicuro (?next=//evil.com deve fallire)
+# 5. Cron (solo con CRON_SECRET impostato)
+curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/keep-alive
+```
 
-## Fase J — Orari, slot e cooldown ✅
+---
 
-Gestione disponibilità (2026-07-27).
+## Fasi precedenti (storico — completate)
 
-- [x] Modello `WeeklyOpeningHours` (lun–dom: aperto/chiuso + open/close hour) con seed/ensure 7 righe
-- [x] Resolver giorno: **override** → **orario settimanale** → fallback 10–22
-- [x] Admin `/admin/schedule`: form orari settimanali + override multi-giorno (lista date o range Dal→Al, max 62)
-- [x] `SiteSettings.slotCooldownMinutes` (default 15, admin 0–120): buffer tra fine sessione e inizio successiva
-- [x] Generazione slot: step = durata stanza + cooldown; occupancy considera il cooldown
-- [x] UI booking: ogni slot mostra `inizio – fine` (es. `12:00 – 13:30`)
-- [x] Giorni settimanali chiusi non prenotabili anche sul calendario (`getMonthClosedDates`)
-- [x] Prisma client revision (`PRISMA_CLIENT_REVISION`) per evitare HMR con DMMF obsoleto dopo `prisma generate`
+<details>
+<summary>Fase A–J (admin, UI, Stripe, manutenzione, orari) — espandi</summary>
 
-## Note
+### Fase A — Pannello Admin ✅
+CRUD stanze, schedule, bookings, impostazioni, reviews, contatti.
 
-- In caso di conflitto col prompt architetturale, vince lo stato attuale funzionante.
-- Resend: con sola API key e senza `RESEND_FROM_EMAIL` su dominio verificato, le email auth non arrivano agli utenti reali.
-- Webhook Stripe in locale: serve `stripe listen --forward-to localhost:3000/api/webhook/stripe` e aggiornare `STRIPE_WEBHOOK_SECRET` con il `whsec_...` della CLI.
+### Fase B — Pagine pubbliche ✅
+About, contatti, footer legali.
 
-## Convenzioni progetto (sempre valide)
+### Fase C — Easter Egg ✅
+`/maledizione` + `DiscountCode`.
 
-- **`proxy.ts`, non `middleware.ts`**: su Next.js 16 la convenzione middleware è deprecata; il gate auth + manutenzione vive in `proxy.ts` (`export function proxy`). Non reintrodurre `middleware.ts`.
-- **Niente `experimental.*` in `next.config.ts`**: niente flag sperimentali. Next.js 16 espone ancora `bodySizeLimit` delle Server Action solo sotto `experimental`; preferiamo il default (1MB). Se serviranno upload multipli più grandi sull’hold, Route Handler dedicato.
-- **Manutenzione**: un solo punto di controllo — `src/app/_lib/site/maintenance.ts` (`desired`). In produzione Vercel si attiva solo se `desired && VERCEL_ENV === "production"`. Non spargere altri flag.
-- **Orari**: priorità override giorno → `WeeklyOpeningHours` → `DEFAULT_OPEN/CLOSE_HOUR`. Cooldown globale in `SiteSettings.slotCooldownMinutes`.
-- **Calendario booking**: niente precarico colori/disponibilità mese; solo chiusure admin (`getMonthClosedDates`) + slot on-demand (`getAvailableSlots`) con cache client e prefetch al hover.
-- **Server Actions read-only** (es. `getAvailableSlots`, `getMonthClosedDates`): niente rate limit; il rate limit resta sulle mutazioni (`holdSlot`, checkout, ecc.).
-- **Env**: accesso solo via `src/app/_lib/env.ts`, mai `process.env` sparso nel codice applicativo (eccezione ammessa: gate manutenzione su `VERCEL_ENV`).
-`)
+### Fase D — Rifiniture ✅
+Logger, tipi, navbar, SEO brand.
+
+### Fase E — Area utente ✅
+Account, reset password, Resend.
+
+### Fase F — Sicurezza pagamenti ✅
+Rate limit distribuito, refund policy, alert ops.
+
+### Fase G — Hardening Stripe ✅ / backlog
+- [x] Idempotenza `StripeWebhookEvent`, `charge.refunded`, audit script
+- [ ] Dispute / auto-refund conflitti / job cleanup hold
+
+### Fase H — Manutenzione ✅ / go-live
+- [ ] Spegnere manutenzione, iubenda, Stripe live, Resend dominio, asset OG
+
+### Fase I — Co-location UI ✅
+Refactoring sezioni home/about/nav.
+
+### Fase J — Orari e cooldown ✅
+`WeeklyOpeningHours`, `slotCooldownMinutes`, override multi-giorno.
+
+</details>
+
+---
+
+## Variabili d'ambiente (post-migrazione Supabase)
+
+| Variabile | Dove | Note |
+|-----------|------|------|
+| `DATABASE_URL` | Server / Prisma | Connessione Postgres |
+| `NEXT_PUBLIC_SUPABASE_URL` | Client + server | Pubblico |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client + server | Pubblico, RLS applicata |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Solo server se necessario** — mai import in client | Bypass RLS: usare con estrema cautela |
+| `STRIPE_SECRET_KEY` | Server | `sk_` o `rk_` |
+| `STRIPE_WEBHOOK_SECRET` | Webhook route | `whsec_` |
+| `CRON_SECRET` | Cron route + Vercel | Bearer token per keep-alive |
+| `NEXT_PUBLIC_APP_URL` | Callback, Stripe URLs | Deve coincidere con dominio prod |
+| `RESEND_*` | Email auth/contatti | Opzionale ma richiesto per email reali |
+
+---
+
+## Convenzioni progetto (aggiornate 2026-08-20)
+
+- **Gate auth**: target = **`src/middleware.ts`** con Supabase `getUser()`. `proxy.ts` è **legacy** finché non migrato.
+- **Sessione server-side**: sempre via **`src/lib/dal.ts`** (`getCurrentSession`, `requireUser`, `requireAdmin`).
+- **Prisma**: preferire **`src/lib/prisma.ts`**; deprecare duplicato `src/app/_lib/prisma.ts` quando gli import saranno migrati.
+- **Due cartelle actions**: `src/app/_actions/` (canonico storico) e `src/app/actions/` (nuove action post-migrazione) — unificare quando possibile.
+- **Manutenzione**: resta in `src/app/_lib/site/maintenance.ts` — integrare nel middleware Supabase prima di rimuovere `proxy.ts`.
+- **Documentazione sicurezza**: `SECURITY_AUDIT_MIGRATION.md` (checklist auth/payment/cron), `CONCURRENCY_AUDIT_REPORT.md` (race booking).
+
+---
+
+## Prossimi passi consigliati (ordine)
+
+1. **Eseguire migrazioni DB** (Prisma + SQL Supabase) in staging
+2. **Completare purge Better Auth** (proxy, route, auth-client)
+3. **Test checklist sicurezza** (tabella sopra)
+4. **Unificare flusso booking** (holdSlot vs booking-checkout)
+5. **Go-live Fase H** (manutenzione off, Stripe live, legali)
+
+---
+
+*In caso di conflitto tra questo documento e il codice, verificare sempre il repository; se la migrazione Supabase è a metà, vince lo stato transitional descritto in Fase K.*

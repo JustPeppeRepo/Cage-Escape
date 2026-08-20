@@ -77,7 +77,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Validate authorization header using timing-safe comparison
   if (!validateCronAuthorization(authHeader)) {
     console.warn("[cron keep-alive] Unauthorized cron request", {
-      ip: request.headers.get('x-forwarded-for') || request.ip,
+      ip: request.headers.get('x-forwarded-for'),
       userAgent: request.headers.get('user-agent'),
       timestamp: new Date().toISOString(),
     });
@@ -93,10 +93,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     // Perform minimal database read to keep connection pool active
     // Uses profiles table as it's guaranteed to exist and be lightweight
-    const result = await prisma.profile.findFirst({
-      select: { id: true },
-      take: 1,
-    });
+    const result = await prisma.$queryRaw<{ ok: number }[]>`SELECT 1 AS ok`;
     
     const timestamp = new Date().toISOString();
     

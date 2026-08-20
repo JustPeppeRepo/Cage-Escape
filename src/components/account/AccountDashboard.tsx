@@ -32,8 +32,8 @@ import {
   adminSecondaryButtonClassName,
 } from "@/components/admin/AdminFormFeedback";
 import { CancelMyBookingButton } from "@/components/account/CancelMyBookingButton";
-import { authClient } from "@/lib/auth-client";
 import { clearClientSessionAndGoHome } from "@/lib/clear-client-session";
+import { createClient } from "@/utils/supabase/client";
 
 type AccountBookingStatus =
   | "PENDING"
@@ -164,13 +164,28 @@ function ProfileSection({
     }
 
     const { name: nextName, phone, avatarId } = parsed.data;
-    // Client updateUser: aggiorna DB e invalida l'atom di useSession
-    // (navbar nome/avatar). La Server Action non triggera quel refresh.
-    const { error } = await authClient.updateUser({
-      name: nextName,
-      phone,
-      image: getAvatarUrlById(avatarId),
-    });
+    const supabase = createClient();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      setState({
+        success: false,
+        error: "Sessione scaduta. Accedi di nuovo.",
+      });
+      setPending(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        name: nextName,
+        phone,
+        image: getAvatarUrlById(avatarId),
+      })
+      .eq("id", authUser.id);
 
     if (error) {
       setState({

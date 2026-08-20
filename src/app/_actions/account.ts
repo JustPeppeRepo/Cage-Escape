@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { BookingStatus } from "@/generated/prisma/client";
 import { validateUserSession } from "@/utils/supabase/auth-validation";
-import { createServerClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/app/_lib/prisma";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
 import {
@@ -107,7 +107,7 @@ export async function changePassword(
     const { currentPassword, newPassword } = parsed.data;
 
     // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Supabase Auth password update
-    const supabase = await createServerClient();
+    const supabase = await createClient();
     
     // First verify current password
     const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -166,7 +166,7 @@ export async function requestPasswordReset(
 
   try {
     // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Supabase Auth password reset
-    const supabase = await createServerClient();
+    const supabase = await createClient();
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/reset-password`,
@@ -211,7 +211,7 @@ export async function resetPassword(
     // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Supabase Auth password reset update
     // Note: This requires the user to be in a password reset session
     // The token validation is handled by Supabase Auth service
-    const supabase = await createServerClient();
+    const supabase = await createClient();
     
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
@@ -278,7 +278,7 @@ export async function deleteAccount(
     }
 
     // ⚠️ CRITICAL SECURITY CHECK [TOKEN_VALIDATION]: Password verification
-    const supabase = await createServerClient();
+    const supabase = await createClient();
     
     const { error: verifyError } = await supabase.auth.signInWithPassword({
       email: user.email!,

@@ -6,6 +6,17 @@
 **Severity:** 🚨 **CRITICAL** - Double-Booking Vulnerability  
 **Status:** ✅ **RESOLVED** - Atomic Transaction Implementation  
 
+> **Indice progetto:** vedi [`ROADMAP.md`](./ROADMAP.md) (Fase K + checklist manuale) e [`SECURITY_AUDIT_MIGRATION.md`](./SECURITY_AUDIT_MIGRATION.md) (tag `[CONCURRENCY_PROTECTION]`).
+
+### Riepilogo italiano (2026-08-20)
+
+| Action | File | Transazione Serializable | Validazione manuale |
+|--------|------|--------------------------|---------------------|
+| **Hold slot (canonico)** | `src/app/_actions/bookings.ts` → `holdSlot` | ✅ già presente | Test concorrenza 2 tab stesso slot |
+| **Checkout unificato (nuovo)** | `src/app/actions/booking-checkout.ts` | ✅ patch applicata | Stesso test + verifica prezzi server-side |
+
+**File da controllare manualmente:** entrambe le action sopra; confermare che `isSlotAvailable(..., tx)` e `tx.booking.create` vivano **nella stessa** `prisma.$transaction` con `isolationLevel: Serializable`.
+
 ---
 
 ## 🎯 EXECUTIVE SUMMARY

@@ -12,7 +12,7 @@ import {
   PaymentType,
   Prisma,
   type RoomPricingTier 
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 
 type TransactionClient = Prisma.TransactionClient;
 import { prisma } from "@/lib/prisma";
