@@ -138,8 +138,8 @@ async function main() {
   const depositCents = Math.round(Number(tier.depositPrice.toString()) * 100);
 
   const user =
-    (await prisma.profiles.findFirst({ where: { role: Role.USER } })) ??
-    (await prisma.profiles.findFirst());
+    (await prisma.profile.findFirst({ where: { role: Role.USER } })) ??
+    (await prisma.profile.findFirst());
   if (!user) {
     throw new Error(
       "Nessun profilo in public.profiles — crea un utente Auth (Supabase) e il relativo profilo prima dell'audit.",

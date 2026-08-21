@@ -1,6 +1,6 @@
 # Roadmap — Cage Escape Room
 
-Documento vivo: **aggiornato al 2026-08-20** (migrazione Supabase Auth, RLS Postgres, hardening webhook/cron, audit concorrenza booking).
+Documento vivo: **aggiornato al 2026-08-21** (Supabase Auth su `proxy.ts`, purge Better Auth, cron keep-alive, RLS, env post-migrazione).
 
 ---
 
@@ -9,12 +9,12 @@ Documento vivo: **aggiornato al 2026-08-20** (migrazione Supabase Auth, RLS Post
 | Layer | Tecnologia | Ruolo |
 |-------|------------|--------|
 | **Frontend** | Next.js 16 App Router, React 19, Tailwind 4 | Pagine pubbliche, admin, account, checkout |
-| **Auth** | **Supabase Auth** (`@supabase/ssr`) — *migrazione in corso* | Login/signup PKCE, sessioni cookie, callback `/auth/callback` |
+| **Auth** | **Supabase Auth** (`@supabase/ssr`) | Login/signup PKCE, sessioni cookie, callback `/auth/callback` |
 | **API dati app** | **Prisma 7** + PostgreSQL (Neon/Supabase) | Business logic server-side: booking, pagamenti, admin |
 | **Pagamenti** | Stripe Checkout + webhook | Hold → checkout → conferma via `StripeWebhookEvent` |
-| **Edge gate** | `src/middleware.ts` (Supabase) + `proxy.ts` (legacy Better Auth) | Protezione rotte, refresh token — **⚠️ da unificare** |
+| **Edge gate** | `src/proxy.ts` (convenzione Next.js 16, ex middleware) | Manutenzione, refresh token, `getUser()`, rotte protette |
 | **Sicurezza DB** | RLS Supabase (`supabase/migrations/`) | Isolamento righe su `profiles`, `Booking`, `Payment`, … |
-| **Ops** | Vercel Cron (`/api/cron/keep-alive`) | Keep-alive connessione DB ogni 5 giorni |
+| **Ops** | Vercel Cron (`/api/cron/keep-alive`) | Keep-alive connessione DB ogni 5 giorni (`CRON_SECRET`) |
 
 ### Flusso prenotazione (end-to-end)
 
@@ -28,14 +28,14 @@ Utente → /rooms/[slug] → selezione slot
        → Booking PAID / DEPOSIT_PAID + Payment
 ```
 
-### Flusso auth (target post-migrazione)
+### Flusso auth (attuale)
 
 ```
-Signup/Login (Supabase client) → PKCE redirect → /auth/callback
+Signup/Login (Supabase browser client) → PKCE redirect → /auth/callback
        → exchangeCodeForSession → cookie session
        → trigger DB handle_new_user() → riga profiles
-       → middleware getUser() su rotte protette
-       → DAL getCurrentSession() nelle Server Action
+       → proxy.ts getUser() su rotte protette
+       → DAL getCurrentSession() / validateUserSession() nelle Server Action
 ```
 
 ---
@@ -54,45 +54,47 @@ Signup/Login (Supabase client) → PKCE redirect → /auth/callback
 - [x] Annullamento self-service con rimborso Stripe (>48h)
 - [x] SEO, analytics, manutenzione prod, iubenda opzionale
 
-### Migrazione sicurezza Supabase (2026-08-20) — **parziale**
+### Migrazione sicurezza Supabase — runtime **completo** (2026-08-20/21)
 
 - [x] **Schema Prisma**: `User` → `Profile` (`@@map("profiles")`, `id @db.Uuid`); rimossi `Session`, `Account`, `Verification`
-- [x] **SQL RLS**: `supabase/migrations/00_init_auth_and_rls.sql` (trigger `handle_new_user`, FORCE RLS, policy utente/admin/service_role)
+- [x] **SQL RLS**: `supabase/migrations/00_init_auth_and_rls.sql` (trigger `handle_new_user`, FORCE RLS, policy; **2026-08-21**: `ALTER … ADD COLUMN IF NOT EXISTS role`)
 - [x] **Client Supabase**: `src/utils/supabase/client.ts`, `server.ts` (solo chiavi pubbliche nel browser)
-- [x] **Prisma client**: `src/lib/prisma.ts` (pool PG, cache globale)
-- [x] **DAL**: `src/lib/dal.ts` → `getUser()` + query `profiles` (non più Better Auth)
-- [x] **Middleware Supabase**: `src/middleware.ts` (`getUser()`, rotte protette, refresh cookie)
-- [x] **Auth callback PKCE**: `src/app/auth/callback/route.ts` (open-redirect defense)
-- [x] **Webhook Stripe**: idempotenza WRITE-FIRST su `StripeWebhookEvent` (`src/app/api/webhook/stripe/route.ts`)
+- [x] **Prisma client**: `src/lib/prisma.ts` + duplicato ancora usato `src/app/_lib/prisma.ts`
+- [x] **DAL**: `src/lib/dal.ts` → `getUser()` + query `profiles`
+- [x] **Edge**: `src/proxy.ts` — Next.js 16, Supabase `getUser()`, manutenzione, gate rotte (**non è più Better Auth**)
+- [x] **Auth callback PKCE**: `src/app/auth/callback/route.ts`
+- [x] **Webhook Stripe**: idempotenza WRITE-FIRST su `StripeWebhookEvent`
 - [x] **Cron keep-alive**: `src/app/api/cron/keep-alive/route.ts` + `vercel.json`
 - [x] **UI auth**: `LoginForm`, `SignupForm`, `LogoutButton` → Supabase client
-- [x] **Audit documentazione**: `SECURITY_AUDIT_MIGRATION.md`, `CONCURRENCY_AUDIT_REPORT.md`
-- [x] **Server Action checkout (nuova)**: `src/app/actions/booking-checkout.ts` (transazione atomica post-audit)
+- [x] **Account actions**: password change/reset/delete via `validateUserSession()` + `supabase.auth.*`
+- [x] **Resend verifica**: `src/actions/auth.ts` → `supabase.auth.resend({ type: "signup" })`
+- [x] **Dipendenza `better-auth` rimossa** da `package.json`; route `[...better-auth]` e `auth-client.ts` **eliminati**
+- [x] **Audit script**: `prisma.profile` (modello Prisma, non `prisma.profiles`)
+- [x] **Env**: schema senza `BETTER_AUTH_*`; aggiunte `NEXT_PUBLIC_SUPABASE_*` e `CRON_SECRET` — vedi [`.env.example`](./.env.example)
 
-### Legacy ancora presente — **da completare prima del go-live auth**
+### Ancora da fare prima del go-live
 
-- [ ] **`proxy.ts`**: usa ancora `better-auth/cookies` e gate ottimistico legacy
-- [ ] **`src/app/api/auth/[...better-auth]/route.ts`**: route Better Auth (da eliminare)
-- [ ] **`src/lib/auth-client.ts`**: client Better Auth (da eliminare o sostituire)
-- [ ] **`src/actions/auth.ts`**: lockout/verifica legati al vecchio stack (da riscrivere su Supabase)
-- [ ] **Unificare gate edge**: scegliere **solo** `src/middleware.ts` *oppure* migrare manutenzione in middleware e rimuovere `proxy.ts`
-- [ ] **Applicare migrazioni SQL** su Supabase prod (vedi checklist sotto)
+- [ ] **Applicare SQL RLS** su staging/prod (`00_init_auth_and_rls.sql` — **non** eseguire anche `00_hardened_auth_rls.sql`)
 - [ ] **Prisma migrate** per tabella `profiles` e FK `userId @db.Uuid`
-- [ ] **Allineare import Prisma**: molti file usano ancora `@/app/_lib/prisma` e `@/generated/prisma/client`
+- [ ] **Impostare env** (Supabase, `CRON_SECRET`, Site URL / Redirect URLs in dashboard Auth) — vedi sotto
+- [ ] **Allineare import Prisma**: molti file usano ancora `@/app/_lib/prisma`
+- [ ] **Unificare checkout**: `holdSlot` vs `src/app/actions/booking-checkout.ts`
+- [ ] Pulizia residua: commenti Better Auth in `src/actions/auth.ts` / `src/app/login/page.tsx`; matcher `proxy.ts` ancora esclude `api/auth`; fallback callback `/dashboard` (rotta inesistente → usare `/` o `/account`)
+- [ ] `src/app/_lib/auth/email.ts` e lockout Better Auth sono **dead code** (lockout è no-op)
 
 ---
 
-## Fase K — Migrazione Better Auth → Supabase Auth 🔄
+## Fase K — Migrazione Better Auth → Supabase Auth ✅ runtime / 🔄 deploy DB
 
 ### K.1 Database e RLS
 
 | Task | File | Stato |
 |------|------|--------|
 | Schema Profile + purge modelli auth | `prisma/schema.prisma` | ✅ |
-| Migrazione RLS + trigger profilo | `supabase/migrations/00_init_auth_and_rls.sql` | ✅ scritta |
-| Migrazione cleanup legacy (alternativa) | `supabase/migrations/00_hardened_auth_rls.sql` | ⚠️ **non eseguire entrambe** — scegliere una strategia |
-| Deploy Prisma | `npx prisma migrate dev` | ⬜ manuale |
-| Apply SQL Supabase | Dashboard SQL o `supabase db push` | ⬜ manuale |
+| Migrazione RLS + trigger profilo | `supabase/migrations/00_init_auth_and_rls.sql` | ✅ scritta (+ colonna `role` 2026-08-21) |
+| Migrazione cleanup legacy (alternativa) | `supabase/migrations/00_hardened_auth_rls.sql` | ⚠️ **non eseguire entrambe** |
+| Deploy Prisma | `npx prisma migrate dev` / `migrate deploy` | ⬜ manuale |
+| Apply SQL Supabase | Dashboard SQL Editor o `supabase db push` | ⬜ manuale |
 
 ### K.2 Runtime applicativo
 
@@ -101,12 +103,14 @@ Signup/Login (Supabase client) → PKCE redirect → /auth/callback
 | Browser client | `src/utils/supabase/client.ts` | ✅ |
 | Server client + cookie try/catch | `src/utils/supabase/server.ts` | ✅ |
 | DAL sessione | `src/lib/dal.ts` | ✅ |
-| Edge middleware | `src/middleware.ts` | ✅ |
+| Edge (Next.js 16 `proxy`) | `src/proxy.ts` | ✅ `getUser()` + manutenzione |
 | PKCE callback | `src/app/auth/callback/route.ts` | ✅ |
-| Rimuovere Better Auth route | `src/app/api/auth/[...better-auth]/route.ts` | ⬜ |
-| Aggiornare proxy/manutenzione | `proxy.ts` → middleware unificato | ⬜ |
-| Form login/signup | `src/components/horror/auth/*.tsx` | ✅ parziale |
-| Account actions | `src/app/_actions/account.ts` | ⬜ verificare compatibilità Profile |
+| Server Action re-auth | `src/utils/supabase/auth-validation.ts` | ✅ |
+| Route Better Auth | `src/app/api/auth/[...better-auth]/route.ts` | ✅ **eliminata** |
+| Client Better Auth | `src/lib/auth-client.ts` | ✅ **eliminato** |
+| Form login/signup | `src/components/horror/auth/*.tsx` | ✅ |
+| Account actions | `src/app/_actions/account.ts` | ✅ Supabase |
+| prepareLogin / resend verifica | `src/actions/auth.ts` | ✅ parziale (commenti legacy; lockout no-op) |
 
 ### K.3 Pagamenti e booking (sicurezza)
 
@@ -123,8 +127,9 @@ Signup/Login (Supabase client) → PKCE redirect → /auth/callback
 | Task | File | Stato |
 |------|------|--------|
 | Cron keep-alive | `src/app/api/cron/keep-alive/route.ts` | ✅ |
-| Schedule Vercel | `vercel.json` | ✅ ogni 5 giorni |
-| Secret cron | env `CRON_SECRET` su Vercel | ⬜ manuale |
+| Schedule Vercel | `vercel.json` | ✅ `0 0 */5 * *` |
+| Secret cron | env `CRON_SECRET` su Vercel | ⬜ **manuale** — vedi `.env.example` |
+| Env schema | `src/app/_lib/env.ts` + `.env.example` | ✅ 2026-08-21 |
 
 ---
 
@@ -136,7 +141,7 @@ Signup/Login (Supabase client) → PKCE redirect → /auth/callback
 
 | # | Cosa verificare | File da aprire / testare | Tag audit |
 |---|----------------|----------------------------|-----------|
-| 1 | **Middleware usa `getUser()`, mai `getSession()`** | `src/middleware.ts` | `[TOKEN_VALIDATION]` |
+| 1 | **Proxy usa `getUser()`, mai `getSession()`** | `src/proxy.ts` | `[TOKEN_VALIDATION]` |
 | 2 | **Nessuna `SUPABASE_SERVICE_ROLE_KEY` nel bundle client** | `src/utils/supabase/client.ts`, build `npm run build` + ispeziona chunk | `[ENV_LEAK]` |
 | 3 | **Server Supabase: cookie `setAll` in try/catch** | `src/utils/supabase/server.ts` | `[COOKIE_HANDLING]` |
 | 4 | **RLS FORCE su tabelle sensibili** | `supabase/migrations/00_init_auth_and_rls.sql` → eseguire su DB e controllare `\d+ profiles` | `[DB_RLS]` |
@@ -153,9 +158,10 @@ Signup/Login (Supabase client) → PKCE redirect → /auth/callback
 |---|----------------|------|
 | 11 | Cron: header `Authorization` vs `CRON_SECRET` (timing-safe) | `src/app/api/cron/keep-alive/route.ts` |
 | 12 | Rate limit su checkout/hold/cancel | `src/app/_lib/rate-limit.ts`, actions |
-| 13 | Admin: `requireAdmin()` su ogni `page.tsx` sotto `/admin` | `src/lib/dal.ts`, `src/app/admin/**/page.tsx` |
+| 13 | Admin: `requireAdmin()` su ogni `page.tsx` sotto `/admin` (ruolo da `profiles`, non da JWT metadata) | `src/lib/dal.ts`, `src/app/admin/**/page.tsx` |
 | 14 | Stripe metadata coerenti con booking (`bookingId`, `userId`, `paymentType`) | webhook handler + creazione session |
 | 15 | Nessun write REST diretto su Booking/Payment (RLS blocca anon) | test con Supabase client anon key |
+| 16 | Dashboard Supabase: Site URL + Redirect URLs allineati a `NEXT_PUBLIC_APP_URL` | Authentication → URL Configuration |
 
 ### Test manuali consigliati
 
@@ -163,7 +169,7 @@ Signup/Login (Supabase client) → PKCE redirect → /auth/callback
 # 1. Webhook locale
 stripe listen --forward-to localhost:3000/api/webhook/stripe
 
-# 2. Audit flussi Stripe (se presente)
+# 2. Audit flussi Stripe
 npx tsx scripts/audit-stripe-payment-flows.ts
 
 # 3. Concorrenza hold (due tab stesso slot → una sola deve vincere)
@@ -192,7 +198,7 @@ About, contatti, footer legali.
 Logger, tipi, navbar, SEO brand.
 
 ### Fase E — Area utente ✅
-Account, reset password, Resend.
+Account, reset password, Resend (contatti/ops; Auth ora via Supabase).
 
 ### Fase F — Sicurezza pagamenti ✅
 Rate limit distribuito, refund policy, alert ops.
@@ -202,7 +208,7 @@ Rate limit distribuito, refund policy, alert ops.
 - [ ] Dispute / auto-refund conflitti / job cleanup hold
 
 ### Fase H — Manutenzione ✅ / go-live
-- [ ] Spegnere manutenzione, iubenda, Stripe live, Resend dominio, asset OG
+- [ ] Spegnere manutenzione (`src/app/_lib/site/maintenance.ts` → `desired = false`), iubenda, Stripe live, Resend dominio, asset OG
 
 ### Fase I — Co-location UI ✅
 Refactoring sezioni home/about/nav.
@@ -216,39 +222,48 @@ Refactoring sezioni home/about/nav.
 
 ## Variabili d'ambiente (post-migrazione Supabase)
 
-| Variabile | Dove | Note |
-|-----------|------|------|
-| `DATABASE_URL` | Server / Prisma | Connessione Postgres |
-| `NEXT_PUBLIC_SUPABASE_URL` | Client + server | Pubblico |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client + server | Pubblico, RLS applicata |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Solo server se necessario** — mai import in client | Bypass RLS: usare con estrema cautela |
-| `STRIPE_SECRET_KEY` | Server | `sk_` o `rk_` |
-| `STRIPE_WEBHOOK_SECRET` | Webhook route | `whsec_` |
-| `CRON_SECRET` | Cron route + Vercel | Bearer token per keep-alive |
-| `NEXT_PUBLIC_APP_URL` | Callback, Stripe URLs | Deve coincidere con dominio prod |
-| `RESEND_*` | Email auth/contatti | Opzionale ma richiesto per email reali |
+**File di riferimento:** [`.env.example`](./.env.example) — copia in `.env` e compila.  
+**Validazione:** `src/app/_lib/env.ts` (manca una env obbligatoria → l'app non parte).
+
+| Variabile | Dove prenderla | Note |
+|-----------|----------------|------|
+| `DATABASE_URL` | Supabase → **Project Settings → Database → Connection string** (URI). Pooler 6543 in serverless; Direct 5432 per migrate. Oppure Neon. | Server / Prisma |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → **Project Settings → API → Project URL** | Pubblico |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Stessa pagina → **Project API keys → `anon` `public`** | Pubblico, RLS applicata |
+| `SUPABASE_SERVICE_ROLE_KEY` | Stessa pagina → `service_role` | **Non usata dal codice.** Mai `NEXT_PUBLIC_`. Bypass RLS. |
+| Redirect Auth (non-env) | Supabase → **Authentication → URL Configuration** | Site URL = `NEXT_PUBLIC_APP_URL`; allow list `/auth/callback` |
+| `CRON_SECRET` | **La generi tu** (`openssl rand -hex 32`) e la metti in **Vercel → Settings → Environment Variables** | Vercel la manda come `Authorization: Bearer …` ai cron in `vercel.json` |
+| `STRIPE_SECRET_KEY` | [Stripe API keys](https://dashboard.stripe.com/apikeys) | `sk_` o `rk_` |
+| `STRIPE_WEBHOOK_SECRET` | Stripe → Developers → Webhooks, oppure `stripe listen` in locale | `whsec_` |
+| `NEXT_PUBLIC_APP_URL` | Dominio pubblico (prod: `https://cageroom.it`, **non** `*.vercel.app`) | Callback, Stripe URLs |
+| `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | [resend.com/api-keys](https://resend.com/api-keys) + [domains](https://resend.com/domains) | Contatti + alert ops. Auth email = dashboard Supabase (SMTP opzionale) |
+| `CONTACT_EMAIL_TO` / `STRIPE_OPS_EMAIL_TO` | Caselle staff | Ops fallback su contact se vuoto |
+| `NEXT_PUBLIC_IUBENDA_*` | Dashboard iubenda | Opzionali |
+| `VERCEL_ENV` | Impostata da Vercel | Manutenzione + rate-limit fail-closed |
+
+**Rimuovere dal `.env`:** `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (non più lette).
 
 ---
 
-## Convenzioni progetto (aggiornate 2026-08-20)
+## Convenzioni progetto (aggiornate 2026-08-21)
 
-- **Gate auth**: target = **`src/middleware.ts`** con Supabase `getUser()`. `proxy.ts` è **legacy** finché non migrato.
-- **Sessione server-side**: sempre via **`src/lib/dal.ts`** (`getCurrentSession`, `requireUser`, `requireAdmin`).
-- **Prisma**: preferire **`src/lib/prisma.ts`**; deprecare duplicato `src/app/_lib/prisma.ts` quando gli import saranno migrati.
-- **Due cartelle actions**: `src/app/_actions/` (canonico storico) e `src/app/actions/` (nuove action post-migrazione) — unificare quando possibile.
-- **Manutenzione**: resta in `src/app/_lib/site/maintenance.ts` — integrare nel middleware Supabase prima di rimuovere `proxy.ts`.
-- **Documentazione sicurezza**: `SECURITY_AUDIT_MIGRATION.md` (checklist auth/payment/cron), `CONCURRENCY_AUDIT_REPORT.md` (race booking).
+- **Gate auth:** **`src/proxy.ts`** (Next.js 16). Non esiste `src/middleware.ts`. Usa solo `getUser()`.
+- **Sessione server-side:** **`src/lib/dal.ts`** (`getCurrentSession`, `requireUser`, `requireAdmin`) oppure `validateUserSession()` per le action account.
+- **Prisma:** preferire **`src/lib/prisma.ts`**; deprecare duplicato `src/app/_lib/prisma.ts` quando gli import saranno migrati.
+- **Due cartelle actions:** `src/app/_actions/` (canonico storico) e `src/app/actions/` (checkout post-audit) — unificare quando possibile.
+- **Manutenzione:** `src/app/_lib/site/maintenance.ts`, già integrata in `proxy.ts`.
+- **Documentazione:** `SECURITY_AUDIT_MIGRATION.md`, `CONCURRENCY_AUDIT_REPORT.md`, `PROJECT_STRUCTURE.md`.
 
 ---
 
 ## Prossimi passi consigliati (ordine)
 
-1. **Eseguire migrazioni DB** (Prisma + SQL Supabase) in staging
-2. **Completare purge Better Auth** (proxy, route, auth-client)
+1. **Compilare `.env` / Vercel env** (Supabase + `CRON_SECRET` + Site URL / Redirect URLs)
+2. **Eseguire migrazioni DB** (Prisma + SQL `00_init_auth_and_rls.sql`) in staging
 3. **Test checklist sicurezza** (tabella sopra)
-4. **Unificare flusso booking** (holdSlot vs booking-checkout)
+4. **Unificare flusso booking** (holdSlot vs booking-checkout) e client Prisma
 5. **Go-live Fase H** (manutenzione off, Stripe live, legali)
 
 ---
 
-*In caso di conflitto tra questo documento e il codice, verificare sempre il repository; se la migrazione Supabase è a metà, vince lo stato transitional descritto in Fase K.*
+*In caso di conflitto tra questo documento e il codice, vince il repository. Lo stato transizionale Better Auth → Supabase è chiuso a livello runtime; resta il deploy DB e il cleanup Prisma duplicato.*

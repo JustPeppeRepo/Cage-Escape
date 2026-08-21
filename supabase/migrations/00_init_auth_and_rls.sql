@@ -5,6 +5,10 @@
 -- SUPABASE AUTH & ROW LEVEL SECURITY INITIALIZATION
 -- =============================================================================
 
+-- Ensure profiles.role exists before any RLS policy that filters on p.role = 'ADMIN'
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'USER';
+
+
 -- Create profiles table auto-sync function with SECURITY DEFINER and locked search_path
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER 

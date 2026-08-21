@@ -6,7 +6,7 @@
 **Severity:** 🚨 **CRITICAL** - Double-Booking Vulnerability  
 **Status:** ✅ **RESOLVED** - Atomic Transaction Implementation  
 
-> **Indice progetto:** vedi [`ROADMAP.md`](./ROADMAP.md) (Fase K + checklist manuale) e [`SECURITY_AUDIT_MIGRATION.md`](./SECURITY_AUDIT_MIGRATION.md) (tag `[CONCURRENCY_PROTECTION]`).
+> **Indice progetto:** vedi [`ROADMAP.md`](./ROADMAP.md) (Fase K + checklist manuale) e [`SECURITY_AUDIT_MIGRATION.md`](./SECURITY_AUDIT_MIGRATION.md) (tag `[CONCURRENCY_PROTECTION]`). Aggiornamento 2026-08-21: il fix Serializable resta in vigore su entrambe le action; nessun regresso noto.
 
 ### Riepilogo italiano (2026-08-20)
 

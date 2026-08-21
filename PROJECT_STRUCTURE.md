@@ -1,9 +1,9 @@
 # Cage Escape Room — struttura del progetto
 
 Indice delle rotte, moduli di sicurezza e flussi dati.  
-Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso) · **Stripe** · **PostgreSQL**
+Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** · **Stripe** · **PostgreSQL**
 
-> Ultimo aggiornamento: **2026-08-20** — vedi anche `ROADMAP.md` e `SECURITY_AUDIT_MIGRATION.md`.
+> Ultimo aggiornamento: **2026-08-21** — vedi anche `ROADMAP.md`, `SECURITY_AUDIT_MIGRATION.md` e `.env.example`.
 
 ---
 
@@ -16,8 +16,8 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
-│  Edge: src/middleware.ts (Supabase getUser, rotte protette)  │
-│  Legacy: proxy.ts (Better Auth cookie — da rimuovere)        │
+│  Edge: src/proxy.ts (Next.js 16)                             │
+│  getUser(), refresh cookie, manutenzione, rotte protette     │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
@@ -66,19 +66,21 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 | `src/utils/supabase/client.ts` | Solo chiavi `NEXT_PUBLIC_*`; niente service role |
 | `src/utils/supabase/server.ts` | Cookie `setAll` in try/catch; stesse chiavi pubbliche |
 | `src/app/auth/callback/route.ts` | `exchangeCodeForSession` + sanitizzazione redirect |
-| `src/middleware.ts` | Solo `getUser()`, mai `getSession()` |
-| `src/lib/dal.ts` | Sessione server-side per IDOR prevention |
+| `src/proxy.ts` | Solo `getUser()`, mai `getSession()`; manutenzione |
+| `src/lib/dal.ts` | Sessione server-side per IDOR prevention (`profiles.role`) |
+| `src/utils/supabase/auth-validation.ts` | Re-auth Server Action (`validateUserSession`) |
 | `src/components/horror/auth/LoginForm.tsx` | Flusso login Supabase |
 | `src/components/horror/auth/SignupForm.tsx` | Metadata profilo (name, phone, username) |
 | `src/components/horror/auth/LogoutButton.tsx` | Logout lato client |
 
-### Auth — legacy da rimuovere ⚠️
+### Auth — già rimosso / non usare
 
 | File | Stato |
 |------|--------|
-| `proxy.ts` | Gate Better Auth + manutenzione — **sostituire con middleware unificato** |
-| `src/app/api/auth/[...better-auth]/route.ts` | Route Better Auth — **eliminare** |
-| `src/lib/auth-client.ts` | Client Better Auth — **eliminare** |
+| `src/middleware.ts` | **Non esiste** — in Next.js 16 il gate è `src/proxy.ts` |
+| `src/app/api/auth/[...better-auth]/route.ts` | Eliminata |
+| `src/lib/auth-client.ts` | Eliminato |
+| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` | Non più lette — togliere dal `.env` |
 
 ## Checkout
 
@@ -99,7 +101,7 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 | `/admin/contatti` | … | Inbox messaggi |
 | `/admin/impostazioni` | … | SiteSettings |
 
-> Ogni `page.tsx` sotto `/admin` deve chiamare `requireAdmin()` (partial rendering Next.js).
+> Ogni `page.tsx` sotto `/admin` deve chiamare `requireAdmin()` (partial rendering Next.js). Il ruolo admin vive in `profiles.role`, non nei JWT metadata.
 
 ## API Route Handlers
 
@@ -108,7 +110,7 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 | `/auth/callback` | `src/app/auth/callback/route.ts` | OAuth/PKCE Supabase |
 | `/api/webhook/stripe` | `src/app/api/webhook/stripe/route.ts` | Webhook Stripe **canonico** |
 | `/api/webhooks/stripe` | `src/app/api/webhooks/stripe/route.ts` | Alias → stesso handler |
-| `/api/cron/keep-alive` | `src/app/api/cron/keep-alive/route.ts` | Keep-alive DB (Vercel Cron) |
+| `/api/cron/keep-alive` | `src/app/api/cron/keep-alive/route.ts` | Keep-alive DB (Vercel Cron, `CRON_SECRET`) |
 | `/api/media/rooms/[roomId]` | … | Cover stanza WebP |
 | `/api/media/reviews/[reviewId]` | … | Immagine recensione |
 | `/api/admin/media/*` | … | Upload admin |
@@ -123,7 +125,7 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 | `src/app/actions/booking-checkout.ts` | Checkout alternativo con transazione atomica (post-audit) |
 | `src/app/_lib/bookings/pricing.ts` | `resolvePricingTier` |
 | `src/app/_lib/bookings/charge-amount.ts` | Importo addebito deposit/full |
-| `scripts/audit-stripe-payment-flows.ts` | Regressione automatizzata flussi Stripe |
+| `scripts/audit-stripe-payment-flows.ts` | Regressione automatizzata flussi Stripe (`prisma.profile`) |
 
 ## Database e sicurezza Postgres
 
@@ -131,7 +133,7 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 |------|--------|
 | `prisma/schema.prisma` | Modelli app: `Profile`, `Room`, `Booking`, `Payment`, … |
 | `prisma/migrations/` | Migrazioni Prisma (storico Better Auth + business) |
-| `supabase/migrations/00_init_auth_and_rls.sql` | Trigger profilo, FORCE RLS, policy |
+| `supabase/migrations/00_init_auth_and_rls.sql` | Trigger profilo, FORCE RLS, policy, colonna `role` |
 | `supabase/migrations/00_hardened_auth_rls.sql` | Alternativa cleanup legacy — **non eseguire entrambe** |
 
 ### DB — file da validare manualmente 🔐
@@ -148,9 +150,10 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 |------|--------|
 | `src/app/layout.tsx` | Root layout, nav, analytics, iubenda |
 | `src/app/admin/layout.tsx` | Shell admin |
-| `src/middleware.ts` | **Gate Supabase** (target produzione) |
-| `proxy.ts` | Gate legacy Better Auth + manutenzione |
+| `src/proxy.ts` | **Gate produzione** (Supabase + manutenzione) |
 | `vercel.json` | Cron keep-alive ogni 5 giorni |
+| `.env.example` | Template env + dove trovare i valori |
+| `src/app/_lib/env.ts` | Validazione env all'avvio |
 | `src/app/sitemap.ts`, `robots.ts`, `manifest.ts` | SEO |
 
 ## Server Actions
@@ -159,17 +162,17 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 |--------|--------|----------------|
 | `src/app/_actions/bookings.ts` | `holdSlot`, `createStripeCheckoutSession`, `cancelMyBooking`, slot read | **Canonico** — transazione Serializable su hold |
 | `src/app/actions/booking-checkout.ts` | `createBookingCheckout` | Nuovo — hold+checkout in un'action; transazione post-audit |
-| `src/app/_actions/account.ts` | Profilo, password, delete account | Verificare mapping `Profile` |
+| `src/app/_actions/account.ts` | Profilo, password, delete account | Supabase Auth + `validateUserSession` |
 | `src/app/_actions/maledizione.ts` | Codice sconto easter egg | |
 | `src/app/_actions/admin/*` | CRUD admin | `requireAdmin` |
-| `src/actions/auth.ts` | Prepare login/signup legacy | **Da migrare** su Supabase |
-| `src/actions/contact.ts` | Form contatti | |
+| `src/actions/auth.ts` | prepareLogin/Signup + `supabase.auth.resend` | Lockout Better Auth è no-op |
+| `src/actions/contact.ts` | Form contatti | Resend |
 
 ## Librerie condivise
 
 | Path | Contenuto |
 |------|-----------|
-| `src/utils/supabase/` | Client browser/server Supabase SSR |
+| `src/utils/supabase/` | Client browser/server Supabase SSR + `auth-validation.ts` |
 | `src/lib/dal.ts` | `getCurrentSession`, `requireUser`, `requireAdmin` |
 | `src/lib/prisma.ts` | PrismaClient cached (**preferito**) |
 | `src/app/_lib/prisma.ts` | Duplicato legacy — migrare import |
@@ -185,7 +188,8 @@ Stack: **Next.js 16** · **Prisma 7** · **Supabase Auth** (migrazione in corso)
 
 | File | Contenuto |
 |------|-----------|
-| `ROADMAP.md` | Roadmap vivente, fasi, checklist sicurezza manuale |
+| `ROADMAP.md` | Roadmap vivente, fasi, checklist sicurezza, **dove trovare le env** |
+| `.env.example` | Template variabili + dashboard di origine |
 | `SECURITY_AUDIT_MIGRATION.md` | Audit tag, checkpoint auth/payment/cron |
 | `CONCURRENCY_AUDIT_REPORT.md` | Race condition booking, transazioni |
 | `PROJECT_STRUCTURE.md` | Questo file — indice architettura |
